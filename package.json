@@ -1,0 +1,26 @@
+{
+  "name": "pabbly-roadmap",
+  "version": "1.0.0",
+  "description": "A web-based roadmap application to manage products, features, and progress.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pabbly-mohit-rathore/pabbly-roadmap.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pabbly-mohit-rathore/pabbly-roadmap/issues"
+  },
+  "homepage": "https://github.com/pabbly-mohit-rathore/pabbly-roadmap#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "pg": "^8.20.0"
+  }
+}

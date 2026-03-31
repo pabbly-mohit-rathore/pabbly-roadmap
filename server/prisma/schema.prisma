@@ -1,0 +1,391 @@
+// ============================================================
+// PRISMA CONFIGURATION
+// Yahan batate hain ki hum kaunsa database use kar rahe hain
+// aur connection string kahan se milegi (.env file se)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// MODEL 1: User
+// Har ek registered person — admin, manager, ya normal user
+// Role sirf 2 hain globally: "admin" ya "user"
+// Board-level manager role alag table (BoardMember) mein hoga
+// ============================================================
+
+model User {
+  id            String    @id @default(uuid())   // Unique ID — UUID format (random string)
+  email         String    @unique                 // Email unique honi chahiye
+  password      String                            // Hashed password (bcrypt)
+  name          String
+  avatar        String?                           // ? matlab optional field
+  phone         String?
+  role          Role      @default(user)          // "admin" ya "user" — default user
+  isActive      Boolean   @default(true)          // false = banned user
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations — yeh User ke saath connected tables hain
+  posts              Post[]
+  votes              Vote[]
+  comments           Comment[]
+  subscriptions      Subscription[]
+  activities         Activity[]
+  notifications      Notification[]
+  boardMemberships   BoardMember[]       // Boards jahan ye manager hai
+  boardAccess        UserBoardAccess[]   // Boards jahan ye user dekh sakta hai
+  createdInviteLinks BoardInviteLink[]   // Invite links jo isne banaye
+
+  @@map("users")  // Database mein table ka naam "users" hoga
+}
+
+// Enum = fixed options mein se ek choose karo
+enum Role {
+  admin
+  user
+}
+
+// ============================================================
+// MODEL 2: Board
+// Ek board = ek product (e.g., "Pabbly Connect", "Pabbly Billing")
+// Admin boards banata hai, users invite link se access paate hain
+// ============================================================
+
+model Board {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique   // URL-friendly name — e.g., "pabbly-connect"
+  description String?
+  icon        String?
+  color       String   @default("#6366f1")  // Default purple color
+  order       Int      @default(0)          // Boards ko reorder karne ke liye
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  posts       Post[]
+  tags        Tag[]
+  members     BoardMember[]     // Managers of this board
+  userAccess  UserBoardAccess[] // Users who can see this board
+  activities  Activity[]
+
+  @@map("boards")
+}
+
+// ============================================================
+// MODEL 3: BoardMember
+// Yeh table batata hai ki kaun MANAGER hai kis board ka
+// Admin panel access milta hai — posts manage, tags, status change
+// ============================================================
+
+model BoardMember {
+  id        String   @id @default(uuid())
+  userId    String
+  boardId   String
+  role      String   @default("manager")  // Abhi sirf "manager" hoga
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, boardId])  // Ek user ek board ka sirf ek baar manager ho sakta hai
+  @@map("board_members")
+}
+
+// ============================================================
+// MODEL 4: UserBoardAccess
+// Yeh table batata hai ki kaun USER dekh sakta hai kis board ko
+// Invite link use karne ke baad yahan entry hoti hai
+// ============================================================
+
+model UserBoardAccess {
+  id           String   @id @default(uuid())
+  userId       String
+  boardId      String
+  inviteLinkId String?  // Kaunse invite link se access mila (optional)
+  createdAt    DateTime @default(now())
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board       Board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  inviteLink  BoardInviteLink? @relation(fields: [inviteLinkId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, boardId])  // Ek user ek board ka sirf ek baar access pa sakta hai
+  @@map("user_board_access")
+}
+
+// ============================================================
+// MODEL 5: BoardInviteLink
+// Admin yeh links banata hai aur share karta hai
+// Link click karne se user selected boards ka access pata hai
+// ============================================================
+
+model BoardInviteLink {
+  id          String    @id @default(uuid())
+  token       String    @unique  // URL mein yeh aayega: /invite/abc123xyz
+  name        String?            // Label: "Support Team Access"
+  boardIds    String             // JSON array: ["board-id-1", "board-id-2"]
+  createdById String
+  expiresAt   DateTime?          // null = kabhi expire nahi hoga
+  maxUses     Int?               // null = unlimited
+  usedCount   Int       @default(0)
+  isActive    Boolean   @default(true)  // false = revoked
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdBy  User              @relation(fields: [createdById], references: [id])
+  usedBy     UserBoardAccess[]
+
+  @@map("board_invite_links")
+}
+
+// ============================================================
+// MODEL 6: Post
+// User ka feedback — ek feature request, bug report, etc.
+// ============================================================
+
+model Post {
+  id            String     @id @default(uuid())
+  title         String
+  slug          String     @unique
+  description   String     @db.Text   // Long text support
+  status        PostStatus @default(open)
+  type          PostType   @default(feature)
+  priority      Priority   @default(none)
+  priorityScore Int        @default(0)   // 0-100
+  valueScore    Int        @default(0)   // 0-100
+  effortScore   Int        @default(0)   // 0-100
+  voteCount     Int        @default(0)   // Cache — har baar COUNT nahi karenge
+  commentCount  Int        @default(0)   // Cache — performance ke liye
+  eta           DateTime?               // Expected delivery date
+  isPublic      Boolean    @default(true)
+  isPinned      Boolean    @default(false)
+  authorId      String
+  boardId       String
+  assigneeId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  author       User           @relation(fields: [authorId], references: [id])
+  board        Board          @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  votes        Vote[]
+  comments     Comment[]
+  tags         PostTag[]
+  subscriptions Subscription[]
+  activities   Activity[]
+  notifications Notification[]
+
+  // Indexes — commonly filtered/sorted columns fast honge
+  @@index([boardId])
+  @@index([status])
+  @@index([voteCount])
+  @@index([createdAt])
+  @@index([authorId])
+  @@map("posts")
+}
+
+enum PostStatus {
+  open
+  under_review
+  planned
+  in_progress
+  live
+  closed
+  hold
+}
+
+enum PostType {
+  feature
+  bug
+  improvement
+  integration
+}
+
+enum Priority {
+  none
+  low
+  medium
+  high
+  critical
+}
+
+// ============================================================
+// MODEL 7: Tag
+// Labels for posts — har board ke apne tags hote hain
+// e.g., "New Feature", "Bug", "Enhancement"
+// ============================================================
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  color     String   @default("#6366f1")
+  boardId   String              // Tag belongs to a specific board
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  board Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  posts PostTag[]
+
+  @@index([boardId])
+  @@map("tags")
+}
+
+// ============================================================
+// MODEL 8: PostTag
+// Many-to-Many: Ek post ke multiple tags ho sakte hain
+// Ek tag multiple posts pe lag sakta hai
+// ============================================================
+
+model PostTag {
+  id     String @id @default(uuid())
+  postId String
+  tagId  String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tagId])  // Ek post pe ek tag sirf ek baar
+  @@map("post_tags")
+}
+
+// ============================================================
+// MODEL 9: Vote
+// Upvote only — Canny style
+// Vote exist = upvoted, Vote delete = vote removed
+// ============================================================
+
+model Vote {
+  id        String   @id @default(uuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])  // Ek user ek post ko sirf ek baar vote kar sakta hai
+  @@index([postId])
+  @@map("votes")
+}
+
+// ============================================================
+// MODEL 10: Comment
+// Post pe comments — nested replies support hai
+// Official response aur internal notes bhi hain
+// ============================================================
+
+model Comment {
+  id         String   @id @default(uuid())
+  content    String   @db.Text
+  isOfficial Boolean  @default(false)  // Admin/Manager ka official response
+  isInternal Boolean  @default(false)  // Sirf admin/manager dekh sakte hain
+  authorId   String
+  postId     String
+  parentId   String?  // Nested reply — kisi comment ka reply
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author  User      @relation(fields: [authorId], references: [id])
+  post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@map("comments")
+}
+
+// ============================================================
+// MODEL 11: Subscription
+// User kisi post ko "follow" karta hai
+// Status change hone pe notification milegi
+// ============================================================
+
+model Subscription {
+  id        String   @id @default(uuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("subscriptions")
+}
+
+// ============================================================
+// MODEL 12: Activity
+// Audit log — kaun kya karta hai wo record hota hai
+// Admin sab dekh sakta hai, manager sirf apna board
+// ============================================================
+
+model Activity {
+  id          String         @id @default(uuid())
+  action      ActivityAction
+  description String
+  metadata    String?        @db.Text  // JSON string — extra details
+  userId      String
+  postId      String?
+  boardId     String?
+  createdAt   DateTime       @default(now())
+
+  user  User   @relation(fields: [userId], references: [id])
+  post  Post?  @relation(fields: [postId], references: [id], onDelete: SetNull)
+  board Board? @relation(fields: [boardId], references: [id], onDelete: SetNull)
+
+  @@index([boardId])
+  @@index([createdAt])
+  @@map("activities")
+}
+
+enum ActivityAction {
+  created
+  updated
+  status_changed
+  commented
+  voted
+  merged
+  member_added
+  member_removed
+}
+
+// ============================================================
+// MODEL 13: Notification
+// In-app notifications — bell icon mein dikhenge
+// Status change, new comment, official reply pe trigger hoga
+// ============================================================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           // Kise bheja yeh notification
+  type      NotificationType
+  title     String
+  message   String
+  postId    String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post? @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  status_changed
+  new_comment
+  official_reply
+}
