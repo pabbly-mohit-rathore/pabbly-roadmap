@@ -1,1 +1,527 @@
-// TODO: getComments, addComment, editComment, deleteComment
+// ============================================================
+// COMMENT CONTROLLER
+//
+// Ye file Comments ka logic handle karta hai:
+//   - Get all comments for a post (nested replies, pagination)
+//   - Add comment/reply
+//   - Edit comment (author or admin/manager)
+//   - Delete comment (author or admin/manager)
+//   - Mark as official response (admin/manager)
+//   - Add internal note (admin/manager)
+// ============================================================
+
+const prisma = require('../config/database');
+
+// ============================================================
+// 1. GET ALL COMMENTS FOR A POST
+//
+// Nested replies, pagination
+// Params:
+//   - postId: Post ID
+//   - page: Page number (default 1)
+//   - limit: Items per page (default 20)
+// ============================================================
+const getComments = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const { userId, role } = req.user || {};
+
+    const skip = (page - 1) * limit;
+    const take = Math.min(parseInt(limit), 50);
+
+    // Post dhundho
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, boardId: true },
+    });
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found.',
+      });
+    }
+
+    // Get parent comments only (no replies)
+    const where = {
+      postId,
+      parentId: null, // Only top-level comments
+    };
+
+    // Internal comments - only admin/manager can see
+    if (role !== 'admin' && userId) {
+      const isBoardManager = await prisma.boardMember.findUnique({
+        where: {
+          userId_boardId: {
+            userId,
+            boardId: post.boardId,
+          },
+        },
+      });
+      if (!isBoardManager) {
+        where.isInternal = false;
+      }
+    } else if (!userId) {
+      where.isInternal = false;
+    }
+
+    const total = await prisma.comment.count({ where });
+
+    const comments = await prisma.comment.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
+        replies: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        comments,
+        pagination: {
+          page: parseInt(page),
+          limit: take,
+          total,
+          pages: Math.ceil(total / take),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// 2. ADD COMMENT / REPLY
+//
+// Frontend se: { content, parentId (optional for replies) }
+// ============================================================
+const addComment = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    const { content, parentId } = req.body;
+    const { userId } = req.user;
+
+    // Post dhundho
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, boardId: true, authorId: true },
+    });
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found.',
+      });
+    }
+
+    // Check: Kya user ko is board ka access hai?
+    const hasAccess = await prisma.userBoardAccess.findUnique({
+      where: {
+        userId_boardId: {
+          userId,
+          boardId: post.boardId,
+        },
+      },
+    });
+
+    if (req.user.role !== 'admin' && !hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have access to this board.',
+      });
+    }
+
+    // Agar parentId hai toh parent comment check karo
+    if (parentId) {
+      const parentComment = await prisma.comment.findUnique({
+        where: { id: parentId },
+      });
+      if (!parentComment || parentComment.postId !== postId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid parent comment.',
+        });
+      }
+    }
+
+    // Comment banao
+    const comment = await prisma.comment.create({
+      data: {
+        content,
+        authorId: userId,
+        postId,
+        parentId: parentId || null,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    // Increment comment count on post
+    await prisma.post.update({
+      where: { id: postId },
+      data: { commentCount: { increment: 1 } },
+    });
+
+    // Activity log
+    await prisma.activity.create({
+      data: {
+        action: 'commented',
+        description: `Comment added on post`,
+        userId,
+        postId,
+        boardId: post.boardId,
+      },
+    });
+
+    // Notification to post author (agar commenter != author)
+    if (userId !== post.authorId) {
+      await prisma.notification.create({
+        data: {
+          userId: post.authorId,
+          type: 'new_comment',
+          title: 'New comment on your post',
+          message: `${comment.author.name} commented on your post`,
+          postId,
+        },
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Comment added successfully.',
+      data: { comment },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// 3. UPDATE COMMENT
+//
+// Author apna comment edit kar sakta hai
+// ============================================================
+const updateComment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const { userId, role } = req.user;
+
+    // Comment dhundho
+    const comment = await prisma.comment.findUnique({
+      where: { id },
+      include: { post: { select: { id: true, boardId: true } } },
+    });
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found.',
+      });
+    }
+
+    // Check: Kya user author hai ya admin/manager?
+    if (comment.authorId !== userId && role !== 'admin') {
+      const isBoardManager = await prisma.boardMember.findUnique({
+        where: {
+          userId_boardId: {
+            userId,
+            boardId: comment.post.boardId,
+          },
+        },
+      });
+      if (!isBoardManager) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to edit this comment.',
+        });
+      }
+    }
+
+    // Comment update karo
+    const updatedComment = await prisma.comment.update({
+      where: { id },
+      data: { content },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    // Activity log
+    await prisma.activity.create({
+      data: {
+        action: 'updated',
+        description: 'Comment edited',
+        userId,
+        postId: comment.post.id,
+        boardId: comment.post.boardId,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Comment updated successfully.',
+      data: { comment: updatedComment },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// 4. DELETE COMMENT
+//
+// Author apna delete kar sakta hai
+// Admin/Manager kisi bhi ko delete kar sakta hai
+// ============================================================
+const deleteComment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { userId, role } = req.user;
+
+    // Comment dhundho
+    const comment = await prisma.comment.findUnique({
+      where: { id },
+      include: { post: { select: { id: true, boardId: true } } },
+    });
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found.',
+      });
+    }
+
+    // Check permission
+    const isAuthor = comment.authorId === userId;
+    let isBoardManager = false;
+
+    if (role !== 'admin') {
+      isBoardManager = !!(await prisma.boardMember.findUnique({
+        where: {
+          userId_boardId: {
+            userId,
+            boardId: comment.post.boardId,
+          },
+        },
+      }));
+    }
+
+    if (!isAuthor && !isBoardManager && role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to delete this comment.',
+      });
+    }
+
+    // Comment delete karo
+    await prisma.comment.delete({
+      where: { id },
+    });
+
+    // Decrement comment count on post
+    await prisma.post.update({
+      where: { id: comment.post.id },
+      data: { commentCount: { decrement: 1 } },
+    });
+
+    // Activity log
+    await prisma.activity.create({
+      data: {
+        action: 'deleted',
+        description: 'Comment deleted',
+        userId,
+        postId: comment.post.id,
+        boardId: comment.post.boardId,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Comment deleted successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// 5. MARK AS OFFICIAL RESPONSE (Admin/Manager only)
+// ============================================================
+const markAsOfficial = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { userId, role } = req.user;
+
+    const comment = await prisma.comment.findUnique({
+      where: { id },
+      include: { post: { select: { id: true, boardId: true } } },
+    });
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found.',
+      });
+    }
+
+    // Check permission
+    if (role !== 'admin') {
+      const isBoardManager = await prisma.boardMember.findUnique({
+        where: {
+          userId_boardId: {
+            userId,
+            boardId: comment.post.boardId,
+          },
+        },
+      });
+      if (!isBoardManager) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only admins and board managers can mark official responses.',
+        });
+      }
+    }
+
+    // Toggle official status
+    const updatedComment = await prisma.comment.update({
+      where: { id },
+      data: { isOfficial: !comment.isOfficial },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+
+    // Activity log
+    await prisma.activity.create({
+      data: {
+        action: 'updated',
+        description: `Comment marked as ${updatedComment.isOfficial ? 'official response' : 'regular comment'}`,
+        userId,
+        postId: comment.post.id,
+        boardId: comment.post.boardId,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `Comment marked as ${updatedComment.isOfficial ? 'official' : 'regular'} successfully.`,
+      data: { comment: updatedComment },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// 6. MARK AS INTERNAL NOTE (Admin/Manager only)
+// ============================================================
+const markAsInternal = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { userId, role } = req.user;
+
+    const comment = await prisma.comment.findUnique({
+      where: { id },
+      include: { post: { select: { id: true, boardId: true } } },
+    });
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found.',
+      });
+    }
+
+    // Check permission
+    if (role !== 'admin') {
+      const isBoardManager = await prisma.boardMember.findUnique({
+        where: {
+          userId_boardId: {
+            userId,
+            boardId: comment.post.boardId,
+          },
+        },
+      });
+      if (!isBoardManager) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only admins and board managers can add internal notes.',
+        });
+      }
+    }
+
+    // Toggle internal status
+    const updatedComment = await prisma.comment.update({
+      where: { id },
+      data: { isInternal: !comment.isInternal },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+
+    // Activity log
+    await prisma.activity.create({
+      data: {
+        action: 'updated',
+        description: `Comment marked as ${updatedComment.isInternal ? 'internal note' : 'public comment'}`,
+        userId,
+        postId: comment.post.id,
+        boardId: comment.post.boardId,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `Comment marked as ${updatedComment.isInternal ? 'internal' : 'public'} successfully.`,
+      data: { comment: updatedComment },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getComments,
+  addComment,
+  updateComment,
+  deleteComment,
+  markAsOfficial,
+  markAsInternal,
+};
