@@ -18,16 +18,11 @@ export default function AdminSidebar() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <aside className={`w-64 h-screen fixed left-0 top-16 border-r transition-colors ${
-      theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
-    }`}>
-      <nav className="p-4">
-        <div className={`text-xs font-semibold uppercase mb-4 px-3 ${
-          theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-        }`}>
-          Menu
-        </div>
-        <ul className="space-y-2">
+    <aside className={`h-screen fixed left-0 top-16 border-r transition-colors overflow-y-auto ${
+      theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'
+    }`} style={{ width: '207px' }}>
+      <nav className="p-3">
+        <ul className="space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -35,18 +30,18 @@ export default function AdminSidebar() {
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm ${
                     active
                       ? theme === 'dark'
-                        ? 'bg-teal-600 text-white'
-                        : 'bg-teal-50 text-teal-700'
+                        ? 'bg-gray-800 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-900'
                       : theme === 'dark'
-                      ? 'text-gray-300 hover:bg-gray-800'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-sm font-medium">{item.label}</span>
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="truncate">{item.label}</span>
                 </Link>
               </li>
             );
