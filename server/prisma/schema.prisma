@@ -34,15 +34,16 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relations — yeh User ke saath connected tables hain
-  posts              Post[]
-  votes              Vote[]
-  comments           Comment[]
-  subscriptions      Subscription[]
-  activities         Activity[]
-  notifications      Notification[]
-  boardMemberships   BoardMember[]       // Boards jahan ye manager hai
-  boardAccess        UserBoardAccess[]   // Boards jahan ye user dekh sakta hai
-  createdInviteLinks BoardInviteLink[]   // Invite links jo isne banaye
+  posts                Post[]
+  votes                Vote[]
+  comments             Comment[]
+  subscriptions        Subscription[]
+  activities           Activity[]
+  notifications        Notification[]
+  boardMemberships     BoardMember[]       // Boards jahan ye manager hai
+  boardAccess          UserBoardAccess[]   // Boards jahan ye user dekh sakta hai
+  createdInviteLinks   BoardInviteLink[]   // Invite links jo isne banaye
+  createdQuickResponses QuickResponse[]    // Quick response templates created
 
   @@map("users")  // Database mein table ka naam "users" hoga
 }
@@ -71,11 +72,12 @@ model Board {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  posts       Post[]
-  tags        Tag[]
-  members     BoardMember[]     // Managers of this board
-  userAccess  UserBoardAccess[] // Users who can see this board
-  activities  Activity[]
+  posts            Post[]
+  tags             Tag[]
+  members          BoardMember[]     // Managers of this board
+  userAccess       UserBoardAccess[] // Users who can see this board
+  activities       Activity[]
+  quickResponses   QuickResponse[]   // Response templates for this board
 
   @@map("boards")
 }
@@ -359,6 +361,16 @@ enum ActivityAction {
   merged
   member_added
   member_removed
+  invite_link_created
+  invite_link_revoked
+  invite_link_reactivated
+  invite_link_deleted
+  user_joined_via_invite
+  user_banned
+  user_unbanned
+  quick_response_created
+  quick_response_updated
+  quick_response_deleted
 }
 
 // ============================================================
@@ -388,4 +400,29 @@ enum NotificationType {
   status_changed
   new_comment
   official_reply
+}
+
+// ============================================================
+// MODEL 14: QuickResponse
+// Pre-written response templates for board managers
+// Managers can use these templates when responding to feedback
+// Board-scoped — har board ke apne templates hote hain
+// ============================================================
+
+model QuickResponse {
+  id          String   @id @default(uuid())
+  title       String                         // Template title
+  content     String   @db.Text              // Template content
+  boardId     String                         // Board-scoped
+  createdById String                         // Creator
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  board     Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdBy User  @relation(fields: [createdById], references: [id])
+
+  @@index([boardId])
+  @@index([createdAt])
+  @@map("quick_responses")
 }
