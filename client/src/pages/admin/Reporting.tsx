@@ -64,11 +64,19 @@ export default function AdminReporting() {
 
   return (
     <div>
-      <h1 className={`text-3xl font-bold mb-8 ${
-        theme === 'dark' ? 'text-white' : 'text-gray-900'
-      }`}>
-        Reporting & Analytics
-      </h1>
+      {/* Header Section */}
+      <div className="mb-12">
+        <h1 className={`text-4xl font-bold mb-2 ${
+          theme === 'dark' ? 'text-white' : 'text-gray-900'
+        }`}>
+          Reporting & Analytics
+        </h1>
+        <p className={`text-sm ${
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          Analyze platform metrics and trends
+        </p>
+      </div>
 
       {loading ? (
         <div className="text-center py-8">Loading reports...</div>

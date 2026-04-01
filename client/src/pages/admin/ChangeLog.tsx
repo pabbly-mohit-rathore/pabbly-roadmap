@@ -51,11 +51,19 @@ export default function AdminChangeLog() {
 
   return (
     <div>
-      <h1 className={`text-3xl font-bold mb-8 ${
-        theme === 'dark' ? 'text-white' : 'text-gray-900'
-      }`}>
-        Change Log
-      </h1>
+      {/* Header Section */}
+      <div className="mb-12">
+        <h1 className={`text-4xl font-bold mb-2 ${
+          theme === 'dark' ? 'text-white' : 'text-gray-900'
+        }`}>
+          Change Log
+        </h1>
+        <p className={`text-sm ${
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          Track all platform activity and changes
+        </p>
+      </div>
 
       {loading ? (
         <div className="text-center py-8">Loading activity log...</div>

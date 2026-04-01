@@ -64,12 +64,18 @@ export default function AdminFeedback() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className={`text-3xl font-bold ${
+      {/* Header Section */}
+      <div className="mb-12">
+        <h1 className={`text-4xl font-bold mb-2 ${
           theme === 'dark' ? 'text-white' : 'text-gray-900'
         }`}>
           Feedback
         </h1>
+        <p className={`text-sm ${
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          Manage and track all feedback submissions
+        </p>
       </div>
 
       {/* Filters */}

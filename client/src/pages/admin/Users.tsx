@@ -63,12 +63,18 @@ export default function AdminUsers() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className={`text-3xl font-bold ${
+      {/* Header Section */}
+      <div className="mb-12">
+        <h1 className={`text-4xl font-bold mb-2 ${
           theme === 'dark' ? 'text-white' : 'text-gray-900'
         }`}>
           Users
         </h1>
+        <p className={`text-sm ${
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          Manage platform users and permissions
+        </p>
       </div>
 
       {/* Filters */}

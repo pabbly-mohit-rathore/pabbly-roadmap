@@ -85,12 +85,18 @@ export default function AdminRoadmap() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className={`text-3xl font-bold mb-4 ${
+      {/* Header Section */}
+      <div className="mb-12">
+        <h1 className={`text-4xl font-bold mb-2 ${
           theme === 'dark' ? 'text-white' : 'text-gray-900'
         }`}>
           Roadmap
         </h1>
+        <p className={`text-sm mb-6 ${
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          View your product roadmap by status
+        </p>
 
         {/* Board Selector */}
         <div className="mb-6">
