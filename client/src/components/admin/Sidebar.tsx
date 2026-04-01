@@ -18,9 +18,15 @@ export default function AdminSidebar() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <aside className={`h-screen fixed left-0 top-16 border-r transition-colors overflow-y-auto ${
-      theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'
-    }`} style={{ width: '207px' }}>
+    <aside
+      className={`h-screen fixed left-0 top-16 border-r border-b transition-colors overflow-y-auto ${
+        theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'
+      }`}
+      style={{ width: '207px' }}
+    >
+      {/* Top underline/border */}
+      <div className={`h-px w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`} />
+
       <nav className="p-3">
         <ul className="space-y-1">
           {menuItems.map((item) => {
@@ -33,11 +39,11 @@ export default function AdminSidebar() {
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm ${
                     active
                       ? theme === 'dark'
-                        ? 'bg-gray-800 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-900'
+                        ? 'bg-black text-white'
+                        : 'bg-black text-white'
                       : theme === 'dark'
-                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-300'
+                      : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                   }`}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
