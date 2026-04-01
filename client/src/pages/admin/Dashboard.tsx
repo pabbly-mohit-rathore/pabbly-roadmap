@@ -1,57 +1,97 @@
-import { TrendingUp, MessageSquare, ThumbsUp, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Eye, MessageSquare, Users, TrendingUp, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
+import api from '../../services/api';
+
+interface DashboardStats {
+  totalPosts: number;
+  totalVotes: number;
+  totalUsers: number;
+  totalBoards: number;
+  activeUsers: number;
+  engagementRate: number;
+  avgPostsPerBoard: number;
+}
 
 export default function AdminDashboard() {
   const theme = useThemeStore((state) => state.theme);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const stats = [
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
+
+  const fetchDashboardStats = async () => {
+    try {
+      const response = await api.get('/admin/dashboard/stats');
+      if (response.data.success) {
+        setStats(response.data.data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statCards = [
     {
-      icon: MessageSquare,
+      icon: Eye,
       label: 'Total Posts',
-      value: '1,234',
-      change: '+12% from last month',
+      value: stats?.totalPosts || 0,
+      change: '+12%',
+      trend: 'up',
       color: 'teal',
     },
     {
-      icon: ThumbsUp,
+      icon: MessageSquare,
       label: 'Total Votes',
-      value: '5,678',
-      change: '+8% from last month',
+      value: stats?.totalVotes || 0,
+      change: '+8%',
+      trend: 'up',
       color: 'blue',
     },
     {
       icon: Users,
-      label: 'Total Users',
-      value: '342',
-      change: '+5% from last month',
-      color: 'purple',
+      label: 'Active Users',
+      value: stats?.activeUsers || 0,
+      change: '+5%',
+      trend: 'up',
+      color: 'green',
     },
     {
       icon: TrendingUp,
       label: 'Engagement Rate',
-      value: '78%',
-      change: '+3% from last month',
-      color: 'green',
+      value: stats?.engagementRate.toFixed(2) || '0',
+      change: '+3%',
+      trend: 'up',
+      color: 'purple',
+      suffix: 'x',
     },
   ];
 
   const getColorClasses = (color: string, isDark: boolean) => {
-    const colors: { [key: string]: { bg: string; text: string } } = {
+    const colors: { [key: string]: { bg: string; text: string; border: string } } = {
       teal: {
-        bg: isDark ? 'bg-teal-900/30' : 'bg-teal-50',
+        bg: isDark ? 'bg-teal-500/10' : 'bg-teal-50',
         text: isDark ? 'text-teal-400' : 'text-teal-600',
+        border: isDark ? 'border-teal-500/20' : 'border-teal-200',
       },
       blue: {
-        bg: isDark ? 'bg-blue-900/30' : 'bg-blue-50',
+        bg: isDark ? 'bg-blue-500/10' : 'bg-blue-50',
         text: isDark ? 'text-blue-400' : 'text-blue-600',
+        border: isDark ? 'border-blue-500/20' : 'border-blue-200',
       },
       purple: {
-        bg: isDark ? 'bg-purple-900/30' : 'bg-purple-50',
+        bg: isDark ? 'bg-purple-500/10' : 'bg-purple-50',
         text: isDark ? 'text-purple-400' : 'text-purple-600',
+        border: isDark ? 'border-purple-500/20' : 'border-purple-200',
       },
       green: {
-        bg: isDark ? 'bg-green-900/30' : 'bg-green-50',
+        bg: isDark ? 'bg-green-500/10' : 'bg-green-50',
         text: isDark ? 'text-green-400' : 'text-green-600',
+        border: isDark ? 'border-green-500/20' : 'border-green-200',
       },
     };
     return colors[color] || colors.teal;
@@ -67,38 +107,44 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat) => {
+        {statCards.map((stat) => {
           const Icon = stat.icon;
           const colors = getColorClasses(stat.color, theme === 'dark');
+          const TrendIcon = stat.trend === 'up' ? ArrowUpRight : ArrowDownRight;
+          const trendColor = stat.trend === 'up' ? 'text-green-500' : 'text-red-500';
 
           return (
             <div
               key={stat.label}
               className={`p-6 rounded-xl border transition-colors ${
                 theme === 'dark'
-                  ? 'bg-gray-800 border-gray-700'
-                  : 'bg-white border-gray-200'
-              }`}
+                  ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                  : 'bg-white border-gray-200 hover:border-gray-300'
+              } hover:shadow-lg`}
             >
               <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-lg ${colors.bg}`}>
+                <div className={`p-3 rounded-lg border ${colors.bg} ${colors.border}`}>
                   <Icon className={`w-6 h-6 ${colors.text}`} />
                 </div>
+                <div className={`flex items-center gap-1 text-xs font-semibold ${trendColor}`}>
+                  <TrendIcon className="w-4 h-4" />
+                  {stat.change}
+                </div>
               </div>
-              <p className={`text-sm font-medium mb-1 ${
+              <p className={`text-sm font-medium mb-2 ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>
                 {stat.label}
               </p>
-              <h3 className={`text-2xl font-bold mb-2 ${
+              <h3 className={`text-3xl font-bold mb-1 ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
-                {stat.value}
+                {stat.value}{stat.suffix || ''}
               </h3>
               <p className={`text-xs ${
                 theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
               }`}>
-                {stat.change}
+                From last month
               </p>
             </div>
           );

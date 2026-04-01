@@ -7,6 +7,11 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
 import AdminDashboard from './pages/admin/Dashboard';
+import AdminFeedback from './pages/admin/Feedback';
+import AdminRoadmap from './pages/admin/Roadmap';
+import AdminUsers from './pages/admin/Users';
+import AdminChangeLog from './pages/admin/ChangeLog';
+import AdminReporting from './pages/admin/Reporting';
 import useThemeStore from './store/themeStore';
 import useAuthStore from './store/authStore';
 
@@ -59,7 +64,11 @@ function App() {
                 <AdminLayout>
                   <Routes>
                     <Route path="dashboard" element={<AdminDashboard />} />
-                    {/* Add more admin routes here */}
+                    <Route path="feedback" element={<AdminFeedback />} />
+                    <Route path="roadmap" element={<AdminRoadmap />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="changelog" element={<AdminChangeLog />} />
+                    <Route path="reporting" element={<AdminReporting />} />
                   </Routes>
                 </AdminLayout>
                 <Toaster position="top-right" />

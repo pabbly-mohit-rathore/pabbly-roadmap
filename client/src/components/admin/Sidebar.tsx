@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FolderOpen, Users, BarChart3, Settings, MessageSquare, Inbox } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, MapPin, Users, History, BarChart3 } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 
 export default function AdminSidebar() {
@@ -8,12 +8,11 @@ export default function AdminSidebar() {
 
   const menuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { label: 'Boards', icon: FolderOpen, path: '/admin/boards' },
-    { label: 'Posts', icon: MessageSquare, path: '/admin/posts' },
-    { label: 'Users', icon: Users, path: '/admin/users' },
-    { label: 'Feedback', icon: Inbox, path: '/admin/feedback' },
+    { label: 'Feedback', icon: MessageSquare, path: '/admin/feedback' },
+    { label: 'Roadmap', icon: MapPin, path: '/admin/roadmap' },
+    { label: 'User', icon: Users, path: '/admin/users' },
+    { label: 'Change Log', icon: History, path: '/admin/changelog' },
     { label: 'Reporting', icon: BarChart3, path: '/admin/reporting' },
-    { label: 'Settings', icon: Settings, path: '/admin/settings' },
   ];
 
   const isActive = (path: string) => location.pathname === path;
