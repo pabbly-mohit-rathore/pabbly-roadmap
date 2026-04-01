@@ -426,3 +426,21 @@ model QuickResponse {
   @@index([createdAt])
   @@map("quick_responses")
 }
+
+// ============================================================
+// MODEL 15: PasswordResetToken
+// Password reset tokens — time-limited tokens for forgot password flow
+// ============================================================
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique              // Unique reset token
+  email     String                        // Email for reset
+  expiresAt DateTime                      // Token expiry time
+  used      Boolean  @default(false)      // Has token been used?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}

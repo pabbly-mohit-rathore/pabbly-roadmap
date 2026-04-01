@@ -25,6 +25,8 @@ const {
   getProfile,
   updateProfile,
   changePassword,
+  forgotPassword,
+  resetPassword,
 } = require('../controllers/auth.controller');
 
 // ──────────────────────────────────────
@@ -65,6 +67,22 @@ const changePasswordRules = [
     .matches(/[0-9]/).withMessage('Password must contain a number.'),
 ];
 
+const forgotPasswordRules = [
+  body('email')
+    .isEmail().withMessage('Please enter a valid email.')
+    .normalizeEmail({ gmail_remove_dots: false }),
+];
+
+const resetPasswordRules = [
+  body('token')
+    .notEmpty().withMessage('Reset token is required.'),
+  body('newPassword')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters.')
+    .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter.')
+    .matches(/[a-z]/).withMessage('Password must contain a lowercase letter.')
+    .matches(/[0-9]/).withMessage('Password must contain a number.'),
+];
+
 // ──────────────────────────────────────
 // Routes
 //
@@ -83,6 +101,8 @@ const changePasswordRules = [
 router.post('/register', registerRules, validate, register);
 router.post('/login', loginRules, validate, login);
 router.post('/refresh-token', refreshToken);
+router.post('/forgot-password', forgotPasswordRules, validate, forgotPassword);
+router.post('/reset-password', resetPasswordRules, validate, resetPassword);
 
 // Protected — authenticate middleware pehle chalega
 router.get('/profile', authenticate, getProfile);

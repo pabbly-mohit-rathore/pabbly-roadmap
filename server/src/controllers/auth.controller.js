@@ -317,6 +317,141 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// 7. FORGOT PASSWORD — Password reset token generate karo
+//
+// Email verify karke ek reset token banao aur bhej do
+// Frontend use karega token ko reset password endpoint mein
+// ============================================================
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    // Email se user dhundho
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      // Security: Same message whether user exists or not
+      return res.status(200).json({
+        success: true,
+        message: 'If email exists, reset link will be sent.',
+      });
+    }
+
+    // Purana reset tokens ko expire kar do (same email ke liye)
+    await prisma.passwordResetToken.deleteMany({
+      where: {
+        email,
+        used: false,
+        expiresAt: { lt: new Date() },
+      },
+    });
+
+    // Naya reset token banao (32 character random string)
+    const crypto = require('crypto');
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    // Token ko database mein save karo (1 hour validity)
+    const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+    await prisma.passwordResetToken.create({
+      data: {
+        token: resetToken,
+        email,
+        expiresAt: tokenExpiry,
+      },
+    });
+
+    // TODO: Email bhejne ka code yahan aayega
+    // For now, sirf token response mein de rahe hain (development only)
+    // Production mein, email service se email bhejenge reset link ke saath
+
+    res.json({
+      success: true,
+      message: 'If email exists, reset link will be sent.',
+      // Dev only - remove in production:
+      data: {
+        resetToken, // Frontend test ke liye temporary
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// 8. RESET PASSWORD — Reset token use karke password change karo
+//
+// Token verify karo aur naya password set karo
+// ============================================================
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    // Reset token dhundho aur valid check karo
+    const resetToken = await prisma.passwordResetToken.findUnique({
+      where: { token },
+    });
+
+    if (!resetToken || resetToken.used) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token.',
+      });
+    }
+
+    // Check if token has expired
+    if (new Date() > resetToken.expiresAt) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset token has expired.',
+      });
+    }
+
+    // User dhundho
+    const user = await prisma.user.findUnique({
+      where: { email: resetToken.email },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.',
+      });
+    }
+
+    // Naya password hash karo aur save karo
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword },
+    });
+
+    // Reset token ko "used" mark karo
+    await prisma.passwordResetToken.update({
+      where: { token },
+      data: { used: true },
+    });
+
+    // Activity log
+    await prisma.activity.create({
+      data: {
+        action: 'updated',
+        description: 'Password reset via forgot password',
+        userId: user.id,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully. You can now login with your new password.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -324,4 +459,6 @@ module.exports = {
   getProfile,
   updateProfile,
   changePassword,
+  forgotPassword,
+  resetPassword,
 };
