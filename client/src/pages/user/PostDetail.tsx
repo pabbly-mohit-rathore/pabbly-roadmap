@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ThumbsUp, ChevronLeft, Trash2, Heart } from 'lucide-react';
+import { ThumbsUp, ChevronLeft, Trash2, Heart, X } from 'lucide-react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -58,7 +58,7 @@ const getTimeAgo = (dateStr: string): string => {
 
 export default function UserPostDetail() {
   const theme = useThemeStore((state) => state.theme);
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
 
@@ -74,6 +74,7 @@ export default function UserPostDetail() {
   const [refreshTimestamp, setRefreshTimestamp] = useState(0);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Refresh timestamps every minute
   useEffect(() => {
@@ -132,6 +133,11 @@ export default function UserPostDetail() {
   };
 
   const handleVote = async () => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
     try {
       const response = await api.post(`/votes/${post?.id}`);
       if (response.data.success) {
@@ -152,6 +158,11 @@ export default function UserPostDetail() {
   };
 
   const handleAddComment = async () => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
     if (!commentText.trim()) {
       toast.error('Comment cannot be empty');
       return;
@@ -221,6 +232,11 @@ export default function UserPostDetail() {
   };
 
   const handleLikeComment = async (commentId: string) => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
     try {
       const response = await api.post(`/comments/${commentId}/like`);
       if (response.data.success) {
@@ -240,6 +256,11 @@ export default function UserPostDetail() {
   };
 
   const handleReply = async (parentId: string) => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
     if (!replyText.trim()) {
       toast.error('Reply cannot be empty');
       return;
@@ -941,6 +962,56 @@ export default function UserPostDetail() {
             </div>
           </div>
         </div>
+
+        {/* Login Required Modal */}
+        {showLoginModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className={`max-w-md w-full mx-4 p-8 rounded-lg ${
+              theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+            }`}>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className={`text-xl font-bold ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>
+                  Login Required
+                </h2>
+                <button
+                  onClick={() => setShowLoginModal(false)}
+                  className={`p-1 hover:bg-gray-200 rounded transition ${
+                    theme === 'dark' ? 'hover:bg-gray-700' : ''
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className={`mb-6 ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                To vote or comment on this post, please log in to your account.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLoginModal(false)}
+                  className={`flex-1 px-4 py-2 rounded border transition ${
+                    theme === 'dark'
+                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="flex-1 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition font-medium"
+                >
+                  Sign In
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </UserLayout>
   );
