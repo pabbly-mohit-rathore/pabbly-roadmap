@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { SquareCheckBig } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const login = useAuthStore((state) => state.login);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -25,9 +26,14 @@ export default function LoginPage() {
 
       toast.success('Login successful!');
 
-      // Admin → admin page, User → home page
+      // Check if there's a redirect URL (from invite link flow)
+      const redirectUrl = searchParams.get('redirect');
+
+      // Admin → admin page, User → home page or redirect URL
       if (user.role === 'admin') {
         navigate('/admin');
+      } else if (redirectUrl) {
+        navigate(redirectUrl);
       } else {
         navigate('/');
       }
