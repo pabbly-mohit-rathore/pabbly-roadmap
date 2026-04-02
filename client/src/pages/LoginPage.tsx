@@ -26,6 +26,11 @@ export default function LoginPage() {
 
       toast.success('Login successful!');
 
+      // Clear invite data from localStorage after successful login
+      Object.keys(localStorage)
+        .filter(key => key.startsWith('invite_'))
+        .forEach(key => localStorage.removeItem(key));
+
       // Check if there's a redirect URL (from invite link flow)
       const redirectUrl = searchParams.get('redirect');
 

@@ -99,6 +99,13 @@ export default function UserPostDetail() {
     }
   }, [post?.id]);
 
+  // Re-fetch data when authentication status changes (e.g., after login)
+  useEffect(() => {
+    if (post) {
+      fetchComments();
+    }
+  }, [isAuthenticated]);
+
   const fetchPost = async () => {
     try {
       setLoading(true);

@@ -105,6 +105,11 @@ export default function UserBoardDetail() {
     fetchTags();
   }, [boardId]);
 
+  // Re-fetch data when authentication status changes (e.g., after login)
+  useEffect(() => {
+    fetchPosts();
+  }, [isAuthenticated]);
+
   const handleCreatePost = async () => {
     if (!formData.title.trim() || !formData.description.trim()) {
       toast.error('Title and description are required');
