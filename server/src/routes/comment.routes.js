@@ -63,8 +63,8 @@ const commentIdParamRules = [
 // Routes
 // ──────────────────────────────────────
 
-// GET /post/:postId — Get all comments for a post (public but with auth check)
-router.get('/post/:postId', postIdParamRules, validate, getComments);
+// GET /post/:postId — Get all comments for a post (public but with optional auth)
+router.get('/post/:postId', authenticate, postIdParamRules, validate, getComments);
 
 // POST /post/:postId — Add comment to post (authenticated)
 router.post(
