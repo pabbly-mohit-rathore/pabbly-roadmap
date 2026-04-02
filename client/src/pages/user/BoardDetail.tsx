@@ -302,7 +302,10 @@ export default function UserBoardDetail() {
                       >
                         <td className="px-6 py-4">
                           <button
-                            onClick={() => handleVote(post.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleVote(post.id);
+                            }}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors font-medium ${
                               votedPostIds.has(post.id)
                                 ? 'bg-black text-white'
