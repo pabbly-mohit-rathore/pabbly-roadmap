@@ -106,7 +106,7 @@ export default function UserBoardsPage() {
                 {boards.map((board) => (
                   <div
                     key={board.id}
-                    onClick={() => navigate(`/user/roadmap?board=${board.id}`)}
+                    onClick={() => navigate(`/user/boards/${board.id}`)}
                     className={`p-6 rounded-lg border cursor-pointer ${
                       theme === 'dark'
                         ? 'bg-gray-800 border-gray-700 hover:border-gray-600'

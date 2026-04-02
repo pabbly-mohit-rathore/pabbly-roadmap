@@ -26,6 +26,8 @@ import AdminChangeLog from './pages/admin/ChangeLog';
 import AdminReporting from './pages/admin/Reporting';
 import UserBoardsPage from './pages/user/BoardsPage';
 import UserRoadmapPage from './pages/user/RoadmapPage';
+import UserBoardDetail from './pages/user/BoardDetail';
+import UserPostDetail from './pages/user/PostDetail';
 import useThemeStore from './store/themeStore';
 import useAuthStore from './store/authStore';
 
@@ -190,6 +192,34 @@ function App() {
             isAuthenticated ? (
               <>
                 <UserRoadmapPage />
+                <Toaster position="top-right" />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="/user/boards/:boardId"
+          element={
+            isAuthenticated ? (
+              <>
+                <UserBoardDetail />
+                <Toaster position="top-right" />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="/user/posts/:postId"
+          element={
+            isAuthenticated ? (
+              <>
+                <UserPostDetail />
                 <Toaster position="top-right" />
               </>
             ) : (
