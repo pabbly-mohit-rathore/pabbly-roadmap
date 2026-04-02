@@ -76,7 +76,6 @@ export default function InvitePage() {
   useEffect(() => {
     if (inviteData && !error && inviteData.boards.length > 0) {
       const boards = inviteData.boards; // Store ALL boards
-      const firstBoard = boards[0];
 
       // Clear all previous invite boards from localStorage
       Object.keys(localStorage)
@@ -93,8 +92,8 @@ export default function InvitePage() {
         // Authenticated user - redeem and go to user dashboard
         redeemAndNavigate();
       } else {
-        // Unauthenticated user - go directly to first board preview
-        navigate(`/?board=${firstBoard.id}&invite=${token}`);
+        // Unauthenticated user - go to user boards view (with invite data in localStorage)
+        navigate(`/user/boards`);
       }
     }
   }, [inviteData, error, token, isAuthenticated, navigate]);

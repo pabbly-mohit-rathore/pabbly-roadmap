@@ -31,25 +31,24 @@ import UserPostDetail from './pages/user/PostDetail';
 import useThemeStore from './store/themeStore';
 import useAuthStore from './store/authStore';
 
-// Root route handler - allows public preview with invite link
-function RootRoute() {
-  const theme = useThemeStore((state) => state.theme);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const [searchParams] = useSearchParams();
-  const inviteToken = searchParams.get('invite');
+// Helper to check if user has invite access
+function hasInviteAccess() {
+  const hasInviteInLocalStorage = Object.keys(localStorage || {}).some(key =>
+    key.startsWith('invite_')
+  );
+  return hasInviteInLocalStorage;
+}
 
-  // Allow viewing without authentication if there's an invite link
-  if (!isAuthenticated && !inviteToken) {
+// Route wrapper for protected routes - allow access with invite token
+function ProtectedUserRoute({ Component }: { Component: React.ComponentType }) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasInvite = hasInviteAccess();
+
+  if (!isAuthenticated && !hasInvite) {
     return <Navigate to="/login" />;
   }
 
-  return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-      <Navbar />
-      <RoadmapPage />
-      <Toaster position="top-right" />
-    </div>
-  );
+  return <Component />;
 }
 
 function App() {
@@ -76,19 +75,27 @@ function App() {
         <Route path="/invite/:token" element={<InvitePage />} />
 
         {/* User Routes */}
-        <Route path="/" element={<RootRoute />} />
+        <Route path="/" element={
+          isAuthenticated ? (
+            <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+              <Navbar />
+              <RoadmapPage />
+              <Toaster position="top-right" />
+            </div>
+          ) : (
+            <Navigate to="/login" />
+          )
+        } />
 
         <Route
           path="/board/:slug"
           element={
             isAuthenticated ? (
-              <>
-                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                  <Navbar />
-                  <BoardPage />
-                  <Toaster position="top-right" />
-                </div>
-              </>
+              <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                <Navbar />
+                <BoardPage />
+                <Toaster position="top-right" />
+              </div>
             ) : (
               <Navigate to="/login" />
             )
@@ -99,13 +106,11 @@ function App() {
           path="/post/:slug"
           element={
             isAuthenticated ? (
-              <>
-                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                  <Navbar />
-                  <PostDetailPage />
-                  <Toaster position="top-right" />
-                </div>
-              </>
+              <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                <Navbar />
+                <PostDetailPage />
+                <Toaster position="top-right" />
+              </div>
             ) : (
               <Navigate to="/login" />
             )
@@ -116,13 +121,11 @@ function App() {
           path="/roadmap"
           element={
             isAuthenticated ? (
-              <>
-                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                  <Navbar />
-                  <RoadmapPage />
-                  <Toaster position="top-right" />
-                </div>
-              </>
+              <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                <Navbar />
+                <RoadmapPage />
+                <Toaster position="top-right" />
+              </div>
             ) : (
               <Navigate to="/login" />
             )
@@ -133,13 +136,11 @@ function App() {
           path="/profile"
           element={
             isAuthenticated ? (
-              <>
-                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                  <Navbar />
-                  <ProfilePage />
-                  <Toaster position="top-right" />
-                </div>
-              </>
+              <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                <Navbar />
+                <ProfilePage />
+                <Toaster position="top-right" />
+              </div>
             ) : (
               <Navigate to="/login" />
             )
@@ -177,11 +178,11 @@ function App() {
           }
         />
 
-        {/* User Routes */}
+        {/* User Protected Routes - Allow with invite access */}
         <Route
           path="/user/boards"
           element={
-            isAuthenticated ? (
+            isAuthenticated || hasInviteAccess() ? (
               <>
                 <UserBoardsPage />
                 <Toaster position="top-right" />
@@ -195,7 +196,7 @@ function App() {
         <Route
           path="/user/roadmap"
           element={
-            isAuthenticated ? (
+            isAuthenticated || hasInviteAccess() ? (
               <>
                 <UserRoadmapPage />
                 <Toaster position="top-right" />
@@ -209,7 +210,7 @@ function App() {
         <Route
           path="/user/boards/:boardId"
           element={
-            isAuthenticated ? (
+            isAuthenticated || hasInviteAccess() ? (
               <>
                 <UserBoardDetail />
                 <Toaster position="top-right" />
@@ -223,7 +224,7 @@ function App() {
         <Route
           path="/user/posts/:slug"
           element={
-            isAuthenticated ? (
+            isAuthenticated || hasInviteAccess() ? (
               <>
                 <UserPostDetail />
                 <Toaster position="top-right" />
