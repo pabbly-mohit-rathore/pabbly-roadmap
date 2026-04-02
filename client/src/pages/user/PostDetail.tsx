@@ -76,6 +76,11 @@ export default function UserPostDetail() {
   const [replyText, setReplyText] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
 
+  // Helper to check if user is in invite-only mode
+  const hasInviteAccess = () => {
+    return Object.keys(localStorage || {}).some(key => key.startsWith('invite_'));
+  };
+
   // Refresh timestamps every minute
   useEffect(() => {
     const interval = setInterval(() => {
@@ -133,7 +138,8 @@ export default function UserPostDetail() {
   };
 
   const handleVote = async () => {
-    if (!isAuthenticated) {
+    // Show modal for unauthenticated users or users with only invite access
+    if (!isAuthenticated && hasInviteAccess()) {
       setShowLoginModal(true);
       return;
     }
@@ -158,7 +164,8 @@ export default function UserPostDetail() {
   };
 
   const handleAddComment = async () => {
-    if (!isAuthenticated) {
+    // Show modal for unauthenticated users or users with only invite access
+    if (!isAuthenticated && hasInviteAccess()) {
       setShowLoginModal(true);
       return;
     }
@@ -232,7 +239,8 @@ export default function UserPostDetail() {
   };
 
   const handleLikeComment = async (commentId: string) => {
-    if (!isAuthenticated) {
+    // Show modal for unauthenticated users or users with only invite access
+    if (!isAuthenticated && hasInviteAccess()) {
       setShowLoginModal(true);
       return;
     }
@@ -256,7 +264,8 @@ export default function UserPostDetail() {
   };
 
   const handleReply = async (parentId: string) => {
-    if (!isAuthenticated) {
+    // Show modal for unauthenticated users or users with only invite access
+    if (!isAuthenticated && hasInviteAccess()) {
       setShowLoginModal(true);
       return;
     }
