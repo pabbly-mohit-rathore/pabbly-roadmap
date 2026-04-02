@@ -215,7 +215,7 @@ function App() {
         />
 
         <Route
-          path="/user/posts/:postId"
+          path="/user/posts/:slug"
           element={
             isAuthenticated ? (
               <>

@@ -281,7 +281,7 @@ export default function UserBoardDetail() {
                     posts.map((post) => (
                       <tr
                         key={post.id}
-                        onClick={() => navigate(`/user/posts/${post.id}`, { state: { post } })}
+                        onClick={() => navigate(`/user/posts/${post.slug}`, { state: { post } })}
                         className={`border-t cursor-pointer ${
                           theme === 'dark'
                             ? 'border-gray-700 hover:bg-gray-700'

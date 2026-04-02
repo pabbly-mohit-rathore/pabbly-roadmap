@@ -60,7 +60,7 @@ export default function UserPostDetail() {
   const theme = useThemeStore((state) => state.theme);
   const { user: currentUser } = useAuthStore();
   const navigate = useNavigate();
-  const { postId } = useParams<{ postId: string }>();
+  const { slug } = useParams<{ slug: string }>();
 
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -85,7 +85,7 @@ export default function UserPostDetail() {
 
   useEffect(() => {
     fetchPost();
-  }, [postId]);
+  }, [slug]);
 
   useEffect(() => {
     if (post) {
@@ -96,7 +96,7 @@ export default function UserPostDetail() {
   const fetchPost = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/posts/${postId}`);
+      const response = await api.get(`/posts/${slug}`);
       if (response.data.success) {
         setPost(response.data.data.post);
       }
