@@ -34,13 +34,14 @@ export default function LoginPage() {
       // Check if there's a redirect URL (from invite link flow)
       const redirectUrl = searchParams.get('redirect');
 
-      // Admin → admin page, User → home page or redirect URL
+      // Admin → admin page, User → redirect URL or user boards page
       if (user.role === 'admin') {
-        navigate('/admin');
+        navigate('/admin/dashboard');
       } else if (redirectUrl) {
         navigate(redirectUrl);
       } else {
-        navigate('/');
+        // Default to /user/boards for regular users (not admin)
+        navigate('/user/boards');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
