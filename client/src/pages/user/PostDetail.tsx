@@ -974,43 +974,36 @@ export default function UserPostDetail() {
 
         {/* Login Required Modal */}
         {showLoginModal && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className={`max-w-md w-full mx-4 p-8 rounded-xl border shadow-2xl ${
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className={`max-w-md w-full rounded-2xl ${
               theme === 'dark'
-                ? 'bg-gray-900 border-gray-700'
-                : 'bg-white border-gray-100'
+                ? 'bg-gray-900'
+                : 'bg-white'
             }`}>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className={`text-2xl font-bold ${
+              <div className="text-center py-12 px-6">
+                <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center mx-auto mb-6">
+                  <X className="w-6 h-6 text-white" />
+                </div>
+
+                <h2 className={`text-3xl font-bold mb-2 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
                   Login Required
                 </h2>
-                <button
-                  onClick={() => setShowLoginModal(false)}
-                  className={`p-2 rounded-lg transition ${
-                    theme === 'dark'
-                      ? 'hover:bg-gray-800 text-gray-400'
-                      : 'hover:bg-gray-100 text-gray-500'
-                  }`}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
 
-              <p className={`mb-8 text-center ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`}>
-                Sign in to vote or comment on this post
-              </p>
+                <p className={`text-sm mb-8 ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  Sign in to vote or comment on this post
+                </p>
 
-              <div className="flex flex-col gap-3">
                 <button
                   onClick={() => navigate('/login')}
-                  className="w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition font-semibold"
+                  className="w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition font-semibold mb-3"
                 >
                   Sign In
                 </button>
+
                 <button
                   onClick={() => setShowLoginModal(false)}
                   className={`w-full px-4 py-3 rounded-lg border transition font-medium ${
