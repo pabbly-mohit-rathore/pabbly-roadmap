@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { SquareCheckBig } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -10,7 +10,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const login = useAuthStore((state) => state.login);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -31,13 +30,14 @@ export default function LoginPage() {
         .filter(key => key.startsWith('invite_'))
         .forEach(key => localStorage.removeItem(key));
 
-      // Check if there's a redirect URL (from invite link flow)
-      const redirectUrl = searchParams.get('redirect');
+      // Check if there's a redirect URL stored in localStorage
+      const redirectUrl = localStorage.getItem('loginRedirect');
 
       // Admin → admin page, User → redirect URL or user boards page
       if (user.role === 'admin') {
         navigate('/admin/dashboard');
       } else if (redirectUrl) {
+        localStorage.removeItem('loginRedirect');
         navigate(redirectUrl);
       } else {
         // Default to /user/boards for regular users (not admin)

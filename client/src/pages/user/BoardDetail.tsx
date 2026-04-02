@@ -685,7 +685,10 @@ export default function UserBoardDetail() {
                 </p>
 
                 <button
-                  onClick={() => navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)}
+                  onClick={() => {
+                    localStorage.setItem('loginRedirect', window.location.pathname);
+                    navigate('/login');
+                  }}
                   className="w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition font-semibold mb-3"
                 >
                   Sign In
