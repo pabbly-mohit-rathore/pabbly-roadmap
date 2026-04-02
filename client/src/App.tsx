@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useEffect } from 'react';
 import Navbar from './components/layout/Navbar';
@@ -31,6 +31,27 @@ import UserPostDetail from './pages/user/PostDetail';
 import useThemeStore from './store/themeStore';
 import useAuthStore from './store/authStore';
 
+// Root route handler - allows public preview with invite link
+function RootRoute() {
+  const theme = useThemeStore((state) => state.theme);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite');
+
+  // Allow viewing without authentication if there's an invite link
+  if (!isAuthenticated && !inviteToken) {
+    return <Navigate to="/login" />;
+  }
+
+  return (
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+      <Navbar />
+      <RoadmapPage />
+      <Toaster position="top-right" />
+    </div>
+  );
+}
+
 function App() {
   const theme = useThemeStore((state) => state.theme);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -55,22 +76,7 @@ function App() {
         <Route path="/invite/:token" element={<InvitePage />} />
 
         {/* User Routes */}
-        <Route
-          path="/"
-          element={
-            isAuthenticated ? (
-              <>
-                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                  <Navbar />
-                  <RoadmapPage />
-                  <Toaster position="top-right" />
-                </div>
-              </>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+        <Route path="/" element={<RootRoute />} />
 
         <Route
           path="/board/:slug"
