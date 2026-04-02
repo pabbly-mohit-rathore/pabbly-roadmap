@@ -36,7 +36,7 @@ interface Board {
 
 export default function UserBoardDetail() {
   const theme = useThemeStore((state) => state.theme);
-  const user = useAuthStore((state) => state.user);
+  const { user, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const { boardId } = useParams<{ boardId: string }>();
 
@@ -45,6 +45,7 @@ export default function UserBoardDetail() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [votedPostIds, setVotedPostIds] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -146,6 +147,11 @@ export default function UserBoardDetail() {
   };
 
   const handleVote = async (postId: string) => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
     try {
       const isVoted = votedPostIds.has(postId);
 
@@ -634,6 +640,56 @@ export default function UserBoardDetail() {
                     Create Post
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Login Required Modal */}
+        {showLoginModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className={`max-w-md w-full mx-4 p-8 rounded-lg ${
+              theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+            }`}>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className={`text-xl font-bold ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>
+                  Login Required
+                </h2>
+                <button
+                  onClick={() => setShowLoginModal(false)}
+                  className={`p-1 hover:bg-gray-200 rounded transition ${
+                    theme === 'dark' ? 'hover:bg-gray-700' : ''
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className={`mb-6 ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                To vote on this post, please log in to your account.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLoginModal(false)}
+                  className={`flex-1 px-4 py-2 rounded border transition ${
+                    theme === 'dark'
+                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="flex-1 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition font-medium"
+                >
+                  Sign In
+                </button>
               </div>
             </div>
           </div>
