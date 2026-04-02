@@ -70,10 +70,14 @@ const getComments = async (req, res, next) => {
 
     // Spam comments - only admin/manager can see, BUT users can see their own spam comments
     if (!isAdminOrManager) {
-      where.OR = [
-        { isSpam: false },
-        { authorId: userId } // Allow users to see their own comments even if spam
-      ];
+      if (userId) {
+        where.OR = [
+          { isSpam: false },
+          { authorId: userId } // Allow users to see their own comments even if spam
+        ];
+      } else {
+        where.isSpam = false; // For unauthenticated users, only show non-spam
+      }
     }
 
     const total = await prisma.comment.count({ where });
@@ -95,12 +99,14 @@ const getComments = async (req, res, next) => {
           select: { userId: true },
         },
         replies: {
-          where: !isAdminOrManager ? {
-            OR: [
-              { isSpam: false },
-              { authorId: userId } // Allow users to see their own replies even if spam
-            ]
-          } : undefined,
+          where: !isAdminOrManager ? (
+            userId ? {
+              OR: [
+                { isSpam: false },
+                { authorId: userId } // Allow users to see their own replies even if spam
+              ]
+            } : { isSpam: false } // For unauthenticated users, only show non-spam
+          ) : undefined,
           orderBy: { createdAt: 'asc' },
           include: {
             author: {
