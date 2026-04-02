@@ -59,6 +59,23 @@ export default function UserBoardsPage() {
           .filter(Boolean);
 
         setBoards(invitedBoards);
+
+        // Auto-redeem invite link to get board access for commenting
+        const inviteToken = Object.keys(localStorage)
+          .find(key => key.startsWith('invite_token_'))
+          ?.replace('invite_token_', '');
+
+        if (inviteToken) {
+          try {
+            await api.post('/invite-links/redeem', { token: inviteToken });
+            // Clear invite data from localStorage after redemption
+            Object.keys(localStorage)
+              .filter(key => key.startsWith('invite_'))
+              .forEach(key => localStorage.removeItem(key));
+          } catch (error) {
+            console.error('Error redeeming invite link:', error);
+          }
+        }
       } else {
         // Otherwise fetch user's accessible boards from API
         const response = await api.get('/boards');
