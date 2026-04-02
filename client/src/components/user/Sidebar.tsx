@@ -1,22 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, MapPin, Users, History, BarChart3, Grid3x3, Link2, Tags, Settings } from 'lucide-react';
+import { Grid3x3, MapPin } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 
-export default function AdminSidebar() {
+export default function UserSidebar() {
   const location = useLocation();
   const theme = useThemeStore((state) => state.theme);
 
   const menuItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { label: 'Feedback', icon: MessageSquare, path: '/admin/feedback' },
-    { label: 'Roadmap', icon: MapPin, path: '/admin/roadmap' },
-    { label: 'Boards', icon: Grid3x3, path: '/admin/boards' },
-    { label: 'Invite Links', icon: Link2, path: '/admin/invite-links' },
-    { label: 'Tags', icon: Tags, path: '/admin/tags' },
-    { label: 'Users', icon: Users, path: '/admin/users' },
-    { label: 'Change Log', icon: History, path: '/admin/changelog' },
-    { label: 'Reporting', icon: BarChart3, path: '/admin/reporting' },
-    { label: 'Settings', icon: Settings, path: '/admin/settings' },
+    { label: 'Boards', icon: Grid3x3, path: '/user/boards' },
+    { label: 'Roadmap', icon: MapPin, path: '/user/roadmap' },
   ];
 
   const isActive = (path: string) => location.pathname === path;

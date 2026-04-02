@@ -19,6 +19,7 @@ const { authenticate } = require('../middleware/auth');
 const {
   generateInviteLink,
   listInviteLinks,
+  validateInviteLink,
   revokeInviteLink,
   reactivateInviteLink,
   deleteInviteLink,
@@ -65,6 +66,12 @@ const redeemInviteLinkRules = [
 // ──────────────────────────────────────
 // Routes
 // ──────────────────────────────────────
+
+// GET /invite-links/:token — Validate invite link (PUBLIC - no auth required)
+router.get('/invite-links/:token', validateInviteLink);
+
+// GET /invite-links — List all invite links (authenticated, admin)
+router.get('/invite-links', authenticate, listInviteLinks);
 
 // POST /invite-links — Generate invite link (authenticated, admin/manager)
 router.post('/invite-links', authenticate, generateInviteLinkRules, validate, generateInviteLink);

@@ -124,12 +124,16 @@ const assignManager = async (req, res, next) => {
       });
     }
 
-    // Manager assign karo
+    // Manager assign karo with permissions
     const boardMember = await prisma.boardMember.create({
       data: {
         userId,
         boardId,
         role: 'manager',
+        canEditPost: req.body.canEditPost || false,
+        canDeletePost: req.body.canDeletePost || false,
+        canEditComment: req.body.canEditComment || false,
+        canDeleteComment: req.body.canDeleteComment || false,
       },
       include: {
         user: {

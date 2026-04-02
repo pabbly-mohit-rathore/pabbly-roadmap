@@ -37,6 +37,7 @@ model User {
   posts                Post[]
   votes                Vote[]
   comments             Comment[]
+  commentLikes         CommentLike[] @relation("CommentLikes")
   subscriptions        Subscription[]
   activities           Activity[]
   notifications        Notification[]
@@ -93,6 +94,13 @@ model BoardMember {
   userId    String
   boardId   String
   role      String   @default("manager")  // Abhi sirf "manager" hoga
+
+  // Permissions
+  canEditPost      Boolean @default(false)
+  canDeletePost    Boolean @default(false)
+  canEditComment   Boolean @default(false)
+  canDeleteComment Boolean @default(false)
+
   createdAt DateTime @default(now())
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -292,6 +300,9 @@ model Comment {
   content    String   @db.Text
   isOfficial Boolean  @default(false)  // Admin/Manager ka official response
   isInternal Boolean  @default(false)  // Sirf admin/manager dekh sakte hain
+  isSpam     Boolean  @default(false)  // User comments = spam by default, admin approves
+  isPinned   Boolean  @default(false)  // Pinned comments show at top
+  likeCount  Int      @default(0)      // Cache for like count
   authorId   String
   postId     String
   parentId   String?  // Nested reply — kisi comment ka reply
@@ -303,9 +314,28 @@ model Comment {
   post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
   parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies Comment[] @relation("CommentReplies")
+  likes   CommentLike[]
 
   @@index([postId])
   @@map("comments")
+}
+
+// ============================================================
+// MODEL 10B: CommentLike
+// Users ko comments like karne ka feature
+// ============================================================
+
+model CommentLike {
+  id        String   @id @default(uuid())
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation("CommentLikes", fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])  // Ek user ek comment ko sirf ek baar like kar sakta hai
+  @@map("comment_likes")
 }
 
 // ============================================================

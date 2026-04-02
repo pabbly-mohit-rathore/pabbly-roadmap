@@ -66,7 +66,10 @@ const authenticate = async (req, res, next) => {
 
     // Step 4: User ko request mein attach karo
     // Ab controller mein req.user se user ki info mil jayegi
-    req.user = user;
+    req.user = {
+      ...user,
+      userId: user.id, // userId ke liye id use karo
+    };
 
     // Aage jaao — controller tak
     next();
@@ -102,7 +105,7 @@ const optionalAuth = async (req, res, next) => {
       where: { id: decoded.userId },
     });
 
-    req.user = user || null;
+    req.user = user ? { ...user, userId: user.id } : null;
     next();
   } catch (error) {
     // Token galat hai — ignore karo, bina login jaane do

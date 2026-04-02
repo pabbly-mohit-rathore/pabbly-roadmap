@@ -6,12 +6,26 @@ import AdminLayout from './components/admin/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
+import BoardPage from './pages/BoardPage';
+import PostDetailPage from './pages/PostDetailPage';
+import RoadmapPage from './pages/RoadmapPage';
+import ProfilePage from './pages/ProfilePage';
+import InvitePage from './pages/InvitePage';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminFeedback from './pages/admin/Feedback';
 import AdminRoadmap from './pages/admin/Roadmap';
+import AdminBoards from './pages/admin/Boards';
+import AdminBoardDetail from './pages/admin/BoardDetail';
+import AdminPostDetail from './pages/admin/PostDetail';
+import AdminBoardMembers from './pages/admin/BoardMembers';
+import AdminInviteLinks from './pages/admin/InviteLinks';
+import AdminTags from './pages/admin/Tags';
+import AdminSettings from './pages/admin/Settings';
 import AdminUsers from './pages/admin/Users';
 import AdminChangeLog from './pages/admin/ChangeLog';
 import AdminReporting from './pages/admin/Reporting';
+import UserBoardsPage from './pages/user/BoardsPage';
+import UserRoadmapPage from './pages/user/RoadmapPage';
 import useThemeStore from './store/themeStore';
 import useAuthStore from './store/authStore';
 
@@ -36,6 +50,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/login" element={!isAuthenticated ? <LoginPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/" />} />
         <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/" />} />
+        <Route path="/invite/:token" element={<InvitePage />} />
 
         {/* User Routes */}
         <Route
@@ -45,7 +60,75 @@ function App() {
               <>
                 <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
                   <Navbar />
-                  <HomePage />
+                  <RoadmapPage />
+                  <Toaster position="top-right" />
+                </div>
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="/board/:slug"
+          element={
+            isAuthenticated ? (
+              <>
+                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                  <Navbar />
+                  <BoardPage />
+                  <Toaster position="top-right" />
+                </div>
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="/post/:slug"
+          element={
+            isAuthenticated ? (
+              <>
+                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                  <Navbar />
+                  <PostDetailPage />
+                  <Toaster position="top-right" />
+                </div>
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="/roadmap"
+          element={
+            isAuthenticated ? (
+              <>
+                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                  <Navbar />
+                  <RoadmapPage />
+                  <Toaster position="top-right" />
+                </div>
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            isAuthenticated ? (
+              <>
+                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                  <Navbar />
+                  <ProfilePage />
                   <Toaster position="top-right" />
                 </div>
               </>
@@ -66,11 +149,47 @@ function App() {
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="feedback" element={<AdminFeedback />} />
                     <Route path="roadmap" element={<AdminRoadmap />} />
+                    <Route path="boards" element={<AdminBoards />} />
+                    <Route path="boards/:boardId" element={<AdminBoardDetail />} />
+                    <Route path="boards/:id/members" element={<AdminBoardMembers />} />
+                    <Route path="posts/:postId" element={<AdminPostDetail />} />
+                    <Route path="invite-links" element={<AdminInviteLinks />} />
+                    <Route path="tags" element={<AdminTags />} />
                     <Route path="users" element={<AdminUsers />} />
                     <Route path="changelog" element={<AdminChangeLog />} />
                     <Route path="reporting" element={<AdminReporting />} />
+                    <Route path="settings" element={<AdminSettings />} />
                   </Routes>
                 </AdminLayout>
+                <Toaster position="top-right" />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        {/* User Routes */}
+        <Route
+          path="/user/boards"
+          element={
+            isAuthenticated ? (
+              <>
+                <UserBoardsPage />
+                <Toaster position="top-right" />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="/user/roadmap"
+          element={
+            isAuthenticated ? (
+              <>
+                <UserRoadmapPage />
                 <Toaster position="top-right" />
               </>
             ) : (

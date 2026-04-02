@@ -23,6 +23,9 @@ const {
   deleteComment,
   markAsOfficial,
   markAsInternal,
+  toggleCommentSpam,
+  toggleCommentPin,
+  toggleCommentLike,
 } = require('../controllers/comment.controller');
 
 // ──────────────────────────────────────
@@ -102,6 +105,33 @@ router.put(
   commentIdParamRules,
   validate,
   markAsInternal
+);
+
+// PUT /:id/spam — Toggle spam status (admin/manager)
+router.put(
+  '/:id/spam',
+  authenticate,
+  commentIdParamRules,
+  validate,
+  toggleCommentSpam
+);
+
+// PUT /:id/pin — Toggle pin status (admin/manager)
+router.put(
+  '/:id/pin',
+  authenticate,
+  commentIdParamRules,
+  validate,
+  toggleCommentPin
+);
+
+// POST /:id/like — Like/unlike comment (authenticated)
+router.post(
+  '/:id/like',
+  authenticate,
+  commentIdParamRules,
+  validate,
+  toggleCommentLike
 );
 
 module.exports = router;

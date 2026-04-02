@@ -37,7 +37,11 @@ const getPosts = async (req, res, next) => {
 
     const where = {};
     if (boardId) where.boardId = boardId;
-    if (status) where.status = status;
+    if (status) {
+      where.status = {
+        in: status.split(',')
+      };
+    }
     if (type) where.type = type;
     if (search) {
       where.OR = [
@@ -130,7 +134,7 @@ const getPostBySlug = async (req, res, next) => {
 // ============================================================
 const createPost = async (req, res, next) => {
   try {
-    const { title, description, type = 'feature', boardId } = req.body;
+    const { title, description, type = 'feature', boardId, tagIds = [] } = req.body;
     const { userId } = req.user;
 
     const hasAccess = await prisma.userBoardAccess.findUnique({
@@ -147,10 +151,21 @@ const createPost = async (req, res, next) => {
     const slug = title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
 
     const post = await prisma.post.create({
-      data: { title, slug, description, type, boardId, authorId: userId },
+      data: {
+        title,
+        slug,
+        description,
+        type,
+        boardId,
+        authorId: userId,
+        tags: {
+          create: tagIds.map(tagId => ({ tagId }))
+        }
+      },
       include: {
         author: { select: { id: true, name: true, avatar: true } },
         board: { select: { id: true, name: true, slug: true } },
+        tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
       },
     });
 
@@ -180,7 +195,7 @@ const createPost = async (req, res, next) => {
 const updatePost = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, type } = req.body;
+    const { title, description, type, tagIds = [] } = req.body;
     const { userId } = req.user;
 
     const post = await prisma.post.findUnique({ where: { id } });
@@ -193,14 +208,23 @@ const updatePost = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'You do not have permission to edit this post.' });
     }
 
+    // Delete existing tags
+    await prisma.postTag.deleteMany({ where: { postId: id } });
+
     const updatedPost = await prisma.post.update({
       where: { id },
       data: {
         ...(title && { title }),
         ...(description && { description }),
         ...(type && { type }),
+        tags: {
+          create: tagIds.map(tagId => ({ tagId }))
+        }
       },
-      include: { author: { select: { id: true, name: true, avatar: true } } },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+        tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
+      },
     });
 
     await prisma.activity.create({

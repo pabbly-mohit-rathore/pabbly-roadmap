@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquareText, Eye, Bell, LogOut, Sun, Moon, Settings, LayoutGrid, Plus, ChevronDown, Layout } from 'lucide-react';
+import { MessageSquareText, Eye, Bell, LogOut, Sun, Moon, Settings, MapPin, ChevronDown, Layout } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
 export default function Navbar() {
@@ -55,6 +55,19 @@ export default function Navbar() {
                 title="Public View"
               >
                 <Eye className="w-5 h-5" />
+              </Link>
+
+              {/* Roadmap */}
+              <Link
+                to="/roadmap"
+                className={`p-2.5 rounded-lg transition-colors duration-200 ${
+                  theme === 'dark'
+                    ? 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+                title="Roadmap"
+              >
+                <MapPin className="w-5 h-5" />
               </Link>
 
               {/* Notifications */}
@@ -153,30 +166,18 @@ export default function Navbar() {
                     </div>
 
                     {/* Menu Items */}
-                    <button className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-b ${
-                      theme === 'dark'
-                        ? 'text-gray-300 hover:bg-gray-700 border-gray-700'
-                        : 'text-gray-700 hover:bg-gray-50 border-gray-200'
-                    }`}>
+                    <Link
+                      to="/profile"
+                      onClick={() => setProfileOpen(false)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-b ${
+                        theme === 'dark'
+                          ? 'text-gray-300 hover:bg-gray-700 border-gray-700'
+                          : 'text-gray-700 hover:bg-gray-50 border-gray-200'
+                      }`}
+                    >
                       <Settings className="w-4 h-4" />
                       Profile Settings
-                    </button>
-                    <button className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-b ${
-                      theme === 'dark'
-                        ? 'text-gray-300 hover:bg-gray-700 border-gray-700'
-                        : 'text-gray-700 hover:bg-gray-50 border-gray-200'
-                    }`}>
-                      <LayoutGrid className="w-4 h-4" />
-                      Board Settings
-                    </button>
-                    <button className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-b ${
-                      theme === 'dark'
-                        ? 'text-gray-300 hover:bg-gray-700 border-gray-700'
-                        : 'text-gray-700 hover:bg-gray-50 border-gray-200'
-                    }`}>
-                      <Plus className="w-4 h-4" />
-                      Create Board
-                    </button>
+                    </Link>
                     <button
                       onClick={() => {
                         logout();

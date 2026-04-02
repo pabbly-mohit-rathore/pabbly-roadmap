@@ -49,8 +49,9 @@ const getComments = async (req, res, next) => {
       parentId: null, // Only top-level comments
     };
 
-    // Internal comments - only admin/manager can see
-    if (role !== 'admin' && userId) {
+    // Determine if user is admin or board manager
+    let isAdminOrManager = role === 'admin';
+    if (!isAdminOrManager && userId) {
       const isBoardManager = await prisma.boardMember.findUnique({
         where: {
           userId_boardId: {
@@ -59,18 +60,24 @@ const getComments = async (req, res, next) => {
           },
         },
       });
-      if (!isBoardManager) {
-        where.isInternal = false;
-      }
-    } else if (!userId) {
+      isAdminOrManager = !!isBoardManager;
+    }
+
+    // Internal comments - only admin/manager can see
+    if (!isAdminOrManager) {
       where.isInternal = false;
+    }
+
+    // Spam comments - only admin/manager can see (users should not see spam comments)
+    if (!isAdminOrManager) {
+      where.isSpam = false;
     }
 
     const total = await prisma.comment.count({ where });
 
     const comments = await prisma.comment.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }], // Pinned first, then newest
       skip,
       take,
       include: {
@@ -81,6 +88,9 @@ const getComments = async (req, res, next) => {
             avatar: true,
           },
         },
+        likes: {
+          select: { userId: true },
+        },
         replies: {
           orderBy: { createdAt: 'asc' },
           include: {
@@ -90,6 +100,9 @@ const getComments = async (req, res, next) => {
                 name: true,
                 avatar: true,
               },
+            },
+            likes: {
+              select: { userId: true },
             },
           },
         },
@@ -168,12 +181,16 @@ const addComment = async (req, res, next) => {
     }
 
     // Comment banao
+    // User comments = SPAM by default, Admin/Manager comments = NOT spam
+    const isSpam = req.user.role === 'user';
+
     const comment = await prisma.comment.create({
       data: {
         content,
         authorId: userId,
         postId,
         parentId: parentId || null,
+        isSpam, // User comments = true, admin/manager = false
       },
       include: {
         author: {
@@ -517,6 +534,216 @@ const markAsInternal = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// 7. TOGGLE COMMENT SPAM (Admin/Manager only)
+//
+// User comments are spam by default
+// Admin/Manager can mark as "not spam" to approve
+// ============================================================
+const toggleCommentSpam = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { userId, role } = req.user;
+
+    const comment = await prisma.comment.findUnique({
+      where: { id },
+      include: { post: { select: { id: true, boardId: true } } },
+    });
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found.',
+      });
+    }
+
+    // Check: Admin or board manager only
+    if (role !== 'admin') {
+      const isBoardManager = await prisma.boardMember.findUnique({
+        where: {
+          userId_boardId: {
+            userId,
+            boardId: comment.post.boardId,
+          },
+        },
+      });
+      if (!isBoardManager) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only admins and board managers can moderate spam.',
+        });
+      }
+    }
+
+    // Toggle spam status
+    const updatedComment = await prisma.comment.update({
+      where: { id },
+      data: { isSpam: !comment.isSpam },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+        likes: { select: { userId: true } },
+      },
+    });
+
+    // Activity log
+    await prisma.activity.create({
+      data: {
+        action: 'updated',
+        description: `Comment marked as ${updatedComment.isSpam ? 'spam' : 'approved'}`,
+        userId,
+        postId: comment.post.id,
+        boardId: comment.post.boardId,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `Comment ${updatedComment.isSpam ? 'marked as spam' : 'approved'} successfully.`,
+      data: { comment: updatedComment },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// 8. TOGGLE COMMENT PIN (Admin/Manager only)
+// ============================================================
+const toggleCommentPin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { userId, role } = req.user;
+
+    const comment = await prisma.comment.findUnique({
+      where: { id },
+      include: { post: { select: { id: true, boardId: true } } },
+    });
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found.',
+      });
+    }
+
+    // Check: Admin or board manager only
+    if (role !== 'admin') {
+      const isBoardManager = await prisma.boardMember.findUnique({
+        where: {
+          userId_boardId: {
+            userId,
+            boardId: comment.post.boardId,
+          },
+        },
+      });
+      if (!isBoardManager) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only admins and board managers can pin comments.',
+        });
+      }
+    }
+
+    // Toggle pin status
+    const updatedComment = await prisma.comment.update({
+      where: { id },
+      data: { isPinned: !comment.isPinned },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+        likes: { select: { userId: true } },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `Comment ${updatedComment.isPinned ? 'pinned' : 'unpinned'} successfully.`,
+      data: { comment: updatedComment },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// 9. TOGGLE COMMENT LIKE
+//
+// Any authenticated user can like/unlike comments
+// ============================================================
+const toggleCommentLike = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.user;
+
+    // Comment dhundho
+    const comment = await prisma.comment.findUnique({
+      where: { id },
+    });
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found.',
+      });
+    }
+
+    // Check if user already liked this comment
+    const existingLike = await prisma.commentLike.findUnique({
+      where: {
+        userId_commentId: {
+          userId,
+          commentId: id,
+        },
+      },
+    });
+
+    let hasLiked = false;
+    let likeCount = comment.likeCount;
+
+    if (existingLike) {
+      // Unlike - delete the like
+      await prisma.commentLike.delete({
+        where: {
+          userId_commentId: {
+            userId,
+            commentId: id,
+          },
+        },
+      });
+      likeCount = Math.max(0, likeCount - 1);
+    } else {
+      // Like - create new like
+      await prisma.commentLike.create({
+        data: {
+          userId,
+          commentId: id,
+        },
+      });
+      likeCount = likeCount + 1;
+      hasLiked = true;
+    }
+
+    // Update comment like count
+    const updatedComment = await prisma.comment.update({
+      where: { id },
+      data: { likeCount },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+        likes: { select: { userId: true } },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        comment: updatedComment,
+        hasLiked: !existingLike, // If we're returning, hasLiked is the opposite of existingLike
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getComments,
   addComment,
@@ -524,4 +751,7 @@ module.exports = {
   deleteComment,
   markAsOfficial,
   markAsInternal,
+  toggleCommentSpam,
+  toggleCommentPin,
+  toggleCommentLike,
 };

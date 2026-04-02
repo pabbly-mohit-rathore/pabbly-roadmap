@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Eye, MessageSquare, Users, TrendingUp, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, MessageSquare, Activity, Target } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 
@@ -11,90 +11,71 @@ interface DashboardStats {
   activeUsers: number;
   engagementRate: number;
   avgPostsPerBoard: number;
+  totalComments?: number;
 }
+
+interface Post {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  _count: {
+    votes: number;
+    comments: number;
+  };
+}
+
 
 export default function AdminDashboard() {
   const theme = useThemeStore((state) => state.theme);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [topPosts, setTopPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardStats();
+    fetchDashboardData();
   }, []);
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const response = await api.get('/admin/dashboard/stats');
-      if (response.data.success) {
-        setStats(response.data.data.stats);
+      const [statsResponse, postsResponse] = await Promise.all([
+        api.get('/admin/dashboard/stats'),
+        api.get('/admin/dashboard/top-posts?limit=5'),
+      ]);
+
+      if (statsResponse.data.success) {
+        setStats(statsResponse.data.data.stats);
+      }
+      if (postsResponse.data.success) {
+        setTopPosts(postsResponse.data.data.posts);
       }
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const statCards = [
-    {
-      icon: Eye,
-      label: 'Total Posts',
-      value: stats?.totalPosts || 0,
-      change: '+12%',
-      trend: 'up',
-      color: 'teal',
-    },
-    {
-      icon: MessageSquare,
-      label: 'Total Votes',
-      value: stats?.totalVotes || 0,
-      change: '+8%',
-      trend: 'up',
-      color: 'blue',
-    },
-    {
-      icon: Users,
-      label: 'Active Users',
-      value: stats?.activeUsers || 0,
-      change: '+5%',
-      trend: 'up',
-      color: 'green',
-    },
-    {
-      icon: TrendingUp,
-      label: 'Engagement Rate',
-      value: stats?.engagementRate.toFixed(2) || '0',
-      change: '+3%',
-      trend: 'up',
-      color: 'purple',
-      suffix: 'x',
-    },
+  const statsCards = [
+    { label: 'Total Posts', value: stats?.totalPosts, icon: MessageSquare, color: 'bg-blue-500' },
+    { label: 'Total Votes', value: stats?.totalVotes, icon: TrendingUp, color: 'bg-green-500' },
+    { label: 'Total Users', value: stats?.totalUsers, icon: Users, color: 'bg-purple-500' },
+    { label: 'Active Users', value: stats?.activeUsers, icon: Activity, color: 'bg-orange-500' },
+    { label: 'Total Boards', value: stats?.totalBoards, icon: Target, color: 'bg-red-500' },
+    { label: 'Total Comments', value: stats?.totalComments || 0, icon: BarChart3, color: 'bg-indigo-500' },
   ];
 
-  const getColorClasses = (color: string, isDark: boolean) => {
-    const colors: { [key: string]: { bg: string; text: string; border: string } } = {
-      teal: {
-        bg: isDark ? 'bg-teal-500/10' : 'bg-teal-50',
-        text: isDark ? 'text-teal-400' : 'text-teal-600',
-        border: isDark ? 'border-teal-500/20' : 'border-teal-200',
-      },
-      blue: {
-        bg: isDark ? 'bg-blue-500/10' : 'bg-blue-50',
-        text: isDark ? 'text-blue-400' : 'text-blue-600',
-        border: isDark ? 'border-blue-500/20' : 'border-blue-200',
-      },
-      purple: {
-        bg: isDark ? 'bg-purple-500/10' : 'bg-purple-50',
-        text: isDark ? 'text-purple-400' : 'text-purple-600',
-        border: isDark ? 'border-purple-500/20' : 'border-purple-200',
-      },
-      green: {
-        bg: isDark ? 'bg-green-500/10' : 'bg-green-50',
-        text: isDark ? 'text-green-400' : 'text-green-600',
-        border: isDark ? 'border-green-500/20' : 'border-green-200',
-      },
+  const getStatusColor = (status: string) => {
+    const colors: { [key: string]: string } = {
+      open: 'bg-blue-100 text-blue-800',
+      under_review: 'bg-yellow-100 text-yellow-800',
+      planned: 'bg-purple-100 text-purple-800',
+      in_progress: 'bg-orange-100 text-orange-800',
+      live: 'bg-green-100 text-green-800',
+      closed: 'bg-gray-100 text-gray-800',
+      hold: 'bg-red-100 text-red-800',
     };
-    return colors[color] || colors.teal;
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -113,124 +94,108 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          const colors = getColorClasses(stat.color, theme === 'dark');
-          const TrendIcon = stat.trend === 'up' ? ArrowUpRight : ArrowDownRight;
-          const trendColor = stat.trend === 'up' ? 'text-green-500' : 'text-red-500';
-
-          return (
-            <div
-              key={stat.label}
-              className={`p-6 rounded-xl border transition-colors ${
-                theme === 'dark'
-                  ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
-                  : 'bg-white border-gray-200 hover:border-gray-300'
-              } hover:shadow-lg`}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-lg border ${colors.bg} ${colors.border}`}>
-                  <Icon className={`w-6 h-6 ${colors.text}`} />
-                </div>
-                <div className={`flex items-center gap-1 text-xs font-semibold ${trendColor}`}>
-                  <TrendIcon className="w-4 h-4" />
-                  {stat.change}
-                </div>
-              </div>
-              <p className={`text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                {stat.label}
-              </p>
-              <h3 className={`text-3xl font-bold mb-1 ${
-                theme === 'dark' ? 'text-white' : 'text-gray-900'
-              }`}>
-                {stat.value}{stat.suffix || ''}
-              </h3>
-              <p className={`text-xs ${
-                theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-              }`}>
-                From last month
-              </p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Charts & Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Voted Posts */}
-        <div className={`lg:col-span-2 p-6 rounded-xl border ${
-          theme === 'dark'
-            ? 'bg-gray-800 border-gray-700'
-            : 'bg-white border-gray-200'
-        }`}>
-          <h2 className={`text-lg font-bold mb-4 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>
-            Top Voted Posts
-          </h2>
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className={`p-3 rounded-lg flex justify-between items-center ${
-                  theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
-                }`}
-              >
-                <div>
-                  <p className={`text-sm font-medium ${
+      {loading ? (
+        <div className="text-center py-8">Loading dashboard...</div>
+      ) : (
+        <>
+          {/* Stats Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {statsCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.label}
+                  className={`p-6 rounded-lg border overflow-hidden relative ${
+                    theme === 'dark'
+                      ? 'bg-gray-800 border-gray-700'
+                      : 'bg-white border-gray-200'
+                  }`}
+                >
+                  <div className={`absolute top-0 right-0 w-16 h-16 ${card.color} opacity-10 rounded-full -mr-4 -mt-4`} />
+                  <div className="flex items-center justify-between mb-4 relative z-10">
+                    <p className={`text-sm font-medium ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    }`}>
+                      {card.label}
+                    </p>
+                    <Icon className={`w-5 h-5 ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+                    }`} />
+                  </div>
+                  <p className={`text-3xl font-bold ${
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    Post Title #{i}
-                  </p>
-                  <p className={`text-xs ${
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                  }`}>
-                    Posted on {new Date().toLocaleDateString()}
+                  } relative z-10`}>
+                    {card.value ?? 0}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className={`text-sm font-bold ${
-                    theme === 'dark' ? 'text-teal-400' : 'text-teal-600'
-                  }`}>
-                    {100 - i * 10} votes
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </div>
 
-        {/* Recent Activity */}
-        <div className={`p-6 rounded-xl border ${
-          theme === 'dark'
-            ? 'bg-gray-800 border-gray-700'
-            : 'bg-white border-gray-200'
-        }`}>
-          <h2 className={`text-lg font-bold mb-4 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
+          {/* Top Posts Section */}
+          <div className={`p-6 rounded-lg border mb-12 ${
+            theme === 'dark'
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-200'
           }`}>
-            Recent Activity
-          </h2>
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className={`text-xs ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                <p className={`font-medium ${
-                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+            <h2 className={`text-xl font-bold mb-6 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
+              Top Posts (Most Voted)
+            </h2>
+            <div className="space-y-4">
+              {topPosts.map((post, index) => (
+                <div
+                  key={post.id}
+                  className={`p-4 rounded-lg flex items-start justify-between ${
+                    theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'
+                  } transition-colors cursor-pointer`}
+                >
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                      theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {post.title}
+                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(post.status)}`}>
+                          {post.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className={`text-sm font-bold ${
+                      theme === 'dark' ? 'text-teal-400' : 'text-teal-600'
+                    }`}>
+                      👍 {post._count.votes}
+                    </div>
+                    <div className={`text-xs ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    }`}>
+                      💬 {post._count.comments}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {topPosts.length === 0 && (
+                <div className={`text-center py-8 ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                  User posted feedback
-                </p>
-                <p>2 hours ago</p>
-              </div>
-            ))}
+                  No posts yet
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+
+        </>
+      )}
     </div>
   );
 }

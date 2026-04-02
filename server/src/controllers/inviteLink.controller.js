@@ -92,10 +92,16 @@ const generateInviteLink = async (req, res, next) => {
       },
     });
 
+    // Parse boardIds for response
+    const parsedInviteLink = {
+      ...inviteLink,
+      boardIds: JSON.parse(inviteLink.boardIds || '[]'),
+    };
+
     res.status(201).json({
       success: true,
       message: 'Invite link created successfully.',
-      data: { inviteLink },
+      data: { inviteLink: parsedInviteLink },
     });
   } catch (error) {
     next(error);
@@ -113,6 +119,39 @@ const listInviteLinks = async (req, res, next) => {
   try {
     const { boardId } = req.params;
     const { userId, role } = req.user;
+
+    // Admin only ke liye - sab links
+    if (!boardId) {
+      if (role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only admins can view all invite links.',
+        });
+      }
+
+      const inviteLinks = await prisma.boardInviteLink.findMany({
+        include: {
+          createdBy: {
+            select: { id: true, name: true, email: true },
+          },
+          usedBy: {
+            select: { id: true, userId: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Parse boardIds JSON string to array
+      const parsedLinks = inviteLinks.map(link => ({
+        ...link,
+        boardIds: JSON.parse(link.boardIds || '[]'),
+      }));
+
+      return res.json({
+        success: true,
+        data: { links: parsedLinks },
+      });
+    }
 
     // Board dhundho
     const board = await prisma.board.findUnique({
@@ -163,9 +202,15 @@ const listInviteLinks = async (req, res, next) => {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Parse boardIds JSON string to array
+    const parsedLinks = inviteLinks.map(link => ({
+      ...link,
+      boardIds: JSON.parse(link.boardIds || '[]'),
+    }));
+
     res.json({
       success: true,
-      data: { inviteLinks },
+      data: { links: parsedLinks },
     });
   } catch (error) {
     next(error);
@@ -525,9 +570,97 @@ const redeemInviteLink = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// 7. VALIDATE INVITE LINK (PUBLIC - no auth required)
+//
+// Public endpoint to validate invite link token
+// Shows board info without requiring login
+// Params:
+//   - token: Invite link token
+// ============================================================
+const validateInviteLink = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invite link token is required.',
+      });
+    }
+
+    // Find the invite link
+    const inviteLink = await prisma.boardInviteLink.findUnique({
+      where: { token },
+      select: {
+        id: true,
+        token: true,
+        name: true,
+        boardIds: true,
+        isActive: true,
+        expiresAt: true,
+        maxUses: true,
+        usedCount: true,
+      },
+    });
+
+    if (!inviteLink) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invalid invite link.',
+      });
+    }
+
+    // Check if link is active
+    if (!inviteLink.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'This invite link has been revoked.',
+      });
+    }
+
+    // Check if link has expired
+    if (inviteLink.expiresAt && new Date() > new Date(inviteLink.expiresAt)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This invite link has expired.',
+      });
+    }
+
+    // Check if link has max uses limit
+    if (inviteLink.maxUses && inviteLink.usedCount >= inviteLink.maxUses) {
+      return res.status(400).json({
+        success: false,
+        message: 'This invite link has reached its maximum uses.',
+      });
+    }
+
+    // Parse board IDs and fetch board details
+    const boardIds = JSON.parse(inviteLink.boardIds || '[]');
+    const boards = await prisma.board.findMany({
+      where: { id: { in: boardIds } },
+      select: { id: true, name: true, slug: true },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        token: inviteLink.token,
+        boards,
+        expiresAt: inviteLink.expiresAt,
+        maxUses: inviteLink.maxUses,
+        usedCount: inviteLink.usedCount,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   generateInviteLink,
   listInviteLinks,
+  validateInviteLink,
   revokeInviteLink,
   reactivateInviteLink,
   deleteInviteLink,

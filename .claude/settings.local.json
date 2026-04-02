@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(npx prisma:*)",
-      "Bash(ls -1 *.js)"
+      "Bash(ls -1 *.js)",
+      "Bash(pkill -f \"node.*server\")",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }
