@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
+import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
 
 interface Board {
@@ -14,13 +15,14 @@ interface Board {
 
 export default function UserBoardsPage() {
   const theme = useThemeStore((state) => state.theme);
+  const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchUserBoards();
-  }, []);
+  }, [isAuthenticated]);
 
   const fetchUserBoards = async () => {
     try {
@@ -60,20 +62,22 @@ export default function UserBoardsPage() {
 
         setBoards(invitedBoards);
 
-        // Auto-redeem invite link to get board access for commenting
-        const inviteToken = Object.keys(localStorage)
-          .find(key => key.startsWith('invite_token_'))
-          ?.replace('invite_token_', '');
+        // Auto-redeem invite link only if not already authenticated
+        if (!isAuthenticated) {
+          const inviteToken = Object.keys(localStorage)
+            .find(key => key.startsWith('invite_token_'))
+            ?.replace('invite_token_', '');
 
-        if (inviteToken) {
-          try {
-            await api.post('/invite-links/redeem', { token: inviteToken });
-            // Clear invite data from localStorage after redemption
-            Object.keys(localStorage)
-              .filter(key => key.startsWith('invite_'))
-              .forEach(key => localStorage.removeItem(key));
-          } catch (error) {
-            console.error('Error redeeming invite link:', error);
+          if (inviteToken) {
+            try {
+              await api.post('/invite-links/redeem', { token: inviteToken });
+              // Clear invite data from localStorage after redemption
+              Object.keys(localStorage)
+                .filter(key => key.startsWith('invite_'))
+                .forEach(key => localStorage.removeItem(key));
+            } catch (error) {
+              console.error('Error redeeming invite link:', error);
+            }
           }
         }
       } else {
