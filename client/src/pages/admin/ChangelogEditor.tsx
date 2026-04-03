@@ -59,9 +59,10 @@ const FontSize = Extension.create({
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
-// Resizable Image Component
+// Resizable Image Component with alignment
 function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewProps) {
   const imgRef = useRef<HTMLImageElement>(null);
+  const align = node.attrs.align || 'left';
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -82,23 +83,46 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
     document.addEventListener('mouseup', onMouseUp);
   };
 
+  const alignClass = align === 'center' ? 'mx-auto' : align === 'right' ? 'ml-auto' : '';
+
   return (
-    <NodeViewWrapper className="relative inline-block my-2" data-drag-handle>
-      <div className={`relative inline-block ${selected ? 'ring-2 ring-blue-500 rounded' : ''}`}>
+    <NodeViewWrapper className="my-2" data-drag-handle>
+      <div className={`relative inline-block ${alignClass} ${selected ? 'ring-2 ring-blue-500 rounded' : ''}`}
+        style={{ display: 'block', textAlign: align }}>
         <img
           ref={imgRef}
           src={node.attrs.src}
           alt={node.attrs.alt || ''}
-          style={{ width: node.attrs.width ? `${node.attrs.width}px` : 'auto', maxWidth: '100%' }}
-          className="rounded-lg block"
+          style={{
+            width: node.attrs.width ? `${node.attrs.width}px` : 'auto',
+            maxWidth: '100%',
+            display: 'inline-block',
+          }}
+          className="rounded-lg"
           draggable={false}
         />
         {selected && (
-          <div
-            onMouseDown={handleMouseDown}
-            className="absolute right-0 bottom-0 w-4 h-4 bg-blue-500 rounded-tl"
-            style={{ cursor: 'se-resize' }}
-          />
+          <>
+            {/* Resize handle */}
+            <div onMouseDown={handleMouseDown}
+              className="absolute right-0 bottom-0 w-4 h-4 bg-blue-500 rounded-tl"
+              style={{ cursor: 'se-resize' }} />
+            {/* Alignment buttons */}
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex gap-1 bg-white border border-gray-200 rounded-lg shadow-lg p-1">
+              <button onClick={() => updateAttributes({ align: 'left' })} title="Align Left"
+                className={`p-1 rounded ${align === 'left' ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-500'}`}>
+                <AlignLeft className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => updateAttributes({ align: 'center' })} title="Align Center"
+                className={`p-1 rounded ${align === 'center' ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-500'}`}>
+                <AlignCenter className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => updateAttributes({ align: 'right' })} title="Align Right"
+                className={`p-1 rounded ${align === 'right' ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-500'}`}>
+                <AlignRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </>
         )}
       </div>
     </NodeViewWrapper>
@@ -115,11 +139,15 @@ const ResizableImage = Node.create({
       src: { default: null },
       alt: { default: null },
       width: { default: null },
+      align: { default: 'left' },
     };
   },
   parseHTML() { return [{ tag: 'img[src]' }]; },
   renderHTML({ HTMLAttributes }) {
-    const style = HTMLAttributes.width ? `width: ${HTMLAttributes.width}px; max-width: 100%;` : 'max-width: 100%;';
+    const w = HTMLAttributes.width ? `width: ${HTMLAttributes.width}px; max-width: 100%;` : 'max-width: 100%;';
+    const a = HTMLAttributes.align || 'left';
+    const margin = a === 'center' ? 'margin-left: auto; margin-right: auto;' : a === 'right' ? 'margin-left: auto;' : '';
+    const style = `${w} ${margin} display: block;`;
     return ['img', mergeAttributes(HTMLAttributes, { style, class: 'rounded-lg' })];
   },
   addNodeView() { return ReactNodeViewRenderer(ResizableImageComponent); },
