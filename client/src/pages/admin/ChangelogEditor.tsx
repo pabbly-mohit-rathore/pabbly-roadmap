@@ -408,7 +408,7 @@ export default function ChangelogEditor() {
                   <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: fontColor }} />
                 </button>
                 {showColorPicker && (
-                  <div className={`absolute top-full left-0 mt-1 p-3 rounded-lg shadow-xl border z-50 ${
+                  <div className={`absolute bottom-full left-0 mb-2 p-3 rounded-lg shadow-2xl border z-[999] ${
                     theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
                   }`}
                     onMouseDown={(e) => e.stopPropagation()}
@@ -457,7 +457,7 @@ export default function ChangelogEditor() {
                   <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: highlightColor }} />
                 </button>
                 {showHighlightPicker && (
-                  <div className={`absolute top-full left-0 mt-1 p-3 rounded-lg shadow-xl border z-50 ${
+                  <div className={`absolute bottom-full left-0 mb-2 p-3 rounded-lg shadow-2xl border z-[999] ${
                     theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
                   }`}
                     onMouseDown={(e) => e.stopPropagation()}
