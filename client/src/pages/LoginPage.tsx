@@ -25,7 +25,18 @@ export default function LoginPage() {
 
       toast.success('Login successful!');
 
-      // Clear invite data from localStorage after successful login
+      // Redeem any pending invite tokens BEFORE clearing localStorage
+      const inviteTokenKeys = Object.keys(localStorage).filter(key => key.startsWith('invite_token_'));
+      if (inviteTokenKeys.length > 0) {
+        const inviteToken = inviteTokenKeys[0].replace('invite_token_', '');
+        try {
+          await api.post('/invite-links/redeem', { token: inviteToken });
+        } catch (error) {
+          console.error('Error redeeming invite:', error);
+        }
+      }
+
+      // Clear invite data from localStorage after redemption
       Object.keys(localStorage)
         .filter(key => key.startsWith('invite_'))
         .forEach(key => localStorage.removeItem(key));
