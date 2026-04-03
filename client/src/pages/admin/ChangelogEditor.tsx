@@ -22,8 +22,35 @@ import TableHeader from '@tiptap/extension-table-header';
 import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
-import { mergeAttributes, Node } from '@tiptap/core';
+import FontFamily from '@tiptap/extension-font-family';
+import { Extension, mergeAttributes, Node } from '@tiptap/core';
 import useThemeStore from '../../store/themeStore';
+
+// FontSize extension (from Pabbly editor)
+const FontSize = Extension.create({
+  name: 'fontSize',
+  addGlobalAttributes() {
+    return [{
+      types: ['textStyle'],
+      attributes: {
+        fontSize: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.style.fontSize || null,
+          renderHTML: (attributes: Record<string, any>) => {
+            if (!attributes.fontSize) return {};
+            return { style: `font-size: ${attributes.fontSize}` };
+          },
+        },
+      },
+    }];
+  },
+  addCommands() {
+    return {
+      setFontSize: (size: string) => ({ chain }: any) =>
+        chain().setMark('textStyle', { fontSize: size }).run(),
+    };
+  },
+});
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -138,6 +165,8 @@ export default function ChangelogEditor() {
       TableCell,
       TableHeader,
       TextStyle,
+      FontSize,
+      FontFamily,
       Color,
       Highlight.configure({ multicolor: true }),
     ],
@@ -322,10 +351,10 @@ export default function ChangelogEditor() {
               <select
                 onChange={(e) => {
                   if (editor) {
-                    editor.chain().focus().setMark('textStyle', { fontSize: e.target.value }).run();
+                    (editor.commands as any).setFontSize(e.target.value);
                   }
                 }}
-                className={`px-1.5 py-1 rounded text-xs border ${
+                className={`px-1.5 py-1 rounded text-xs border cursor-pointer ${
                   theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'
                 }`}
                 defaultValue="16px"
@@ -337,10 +366,10 @@ export default function ChangelogEditor() {
               <select
                 onChange={(e) => {
                   if (editor) {
-                    editor.chain().focus().setMark('textStyle', { fontFamily: e.target.value }).run();
+                    editor.chain().focus().setFontFamily(e.target.value).run();
                   }
                 }}
-                className={`px-1.5 py-1 rounded text-xs border ${
+                className={`px-1.5 py-1 rounded text-xs border cursor-pointer ${
                   theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'
                 }`}
                 defaultValue="Inter"
