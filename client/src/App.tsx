@@ -77,11 +77,15 @@ function App() {
         {/* User Routes */}
         <Route path="/" element={
           isAuthenticated ? (
-            <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-              <Navbar />
-              <RoadmapPage />
-              <Toaster position="top-right" />
-            </div>
+            isAdmin ? (
+              <Navigate to="/admin/dashboard" />
+            ) : (
+              <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                <Navbar />
+                <RoadmapPage />
+                <Toaster position="top-right" />
+              </div>
+            )
           ) : (
             <Navigate to="/login" />
           )
