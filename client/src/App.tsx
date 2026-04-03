@@ -28,6 +28,8 @@ import UserBoardsPage from './pages/user/BoardsPage';
 import UserRoadmapPage from './pages/user/RoadmapPage';
 import UserBoardDetail from './pages/user/BoardDetail';
 import UserPostDetail from './pages/user/PostDetail';
+import UserChangelog from './pages/user/Changelog';
+import UserChangelogDetail from './pages/user/ChangelogDetail';
 import useThemeStore from './store/themeStore';
 import useAuthStore from './store/authStore';
 
@@ -231,6 +233,34 @@ function App() {
             isAuthenticated || hasInviteAccess() ? (
               <>
                 <UserPostDetail />
+                <Toaster position="top-right" />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        {/* User Changelog Routes */}
+        <Route
+          path="/user/changelog"
+          element={
+            isAuthenticated || hasInviteAccess() ? (
+              <>
+                <UserChangelog />
+                <Toaster position="top-right" />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+        <Route
+          path="/user/changelog/:id"
+          element={
+            isAuthenticated || hasInviteAccess() ? (
+              <>
+                <UserChangelogDetail />
                 <Toaster position="top-right" />
               </>
             ) : (

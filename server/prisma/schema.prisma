@@ -45,6 +45,8 @@ model User {
   boardAccess          UserBoardAccess[]   // Boards jahan ye user dekh sakta hai
   createdInviteLinks   BoardInviteLink[]   // Invite links jo isne banaye
   createdQuickResponses QuickResponse[]    // Quick response templates created
+  changelogEntries     ChangelogEntry[]    // Changelog entries created by admin
+  changelogLikes       ChangelogLike[]     // Changelog entries liked by user
 
   @@map("users")  // Database mein table ka naam "users" hoga
 }
@@ -79,6 +81,7 @@ model Board {
   userAccess       UserBoardAccess[] // Users who can see this board
   activities       Activity[]
   quickResponses   QuickResponse[]   // Response templates for this board
+  changelogBoards  ChangelogBoard[]  // Changelog entries visible to this board
 
   @@map("boards")
 }
@@ -473,4 +476,81 @@ model PasswordResetToken {
   @@index([email])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+// ============================================================
+// MODEL 16: ChangelogEntry
+// Product changelog — admin creates entries to announce updates
+// Can be Draft, Scheduled, or Published
+// Visible to users of selected boards or all boards
+// ============================================================
+
+model ChangelogEntry {
+  id          String              @id @default(uuid())
+  title       String
+  content     String              @db.Text          // Markdown content
+  type        ChangelogType       @default(new)     // New, Improved, Fixed
+  status      ChangelogStatus     @default(draft)   // Draft, Scheduled, Published
+  publishedAt DateTime?                             // When published or scheduled
+  scheduledAt DateTime?                             // Scheduled publish time
+  allBoards   Boolean             @default(true)    // Visible to all boards?
+  authorId    String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relations
+  author      User                @relation(fields: [authorId], references: [id])
+  boards      ChangelogBoard[]    // Which boards can see this entry
+  likes       ChangelogLike[]     // User likes
+
+  @@index([status])
+  @@index([publishedAt])
+  @@map("changelog_entries")
+}
+
+enum ChangelogType {
+  new
+  improved
+  fixed
+}
+
+enum ChangelogStatus {
+  draft
+  scheduled
+  published
+}
+
+// ============================================================
+// MODEL 17: ChangelogBoard
+// Many-to-many: which boards can see a changelog entry
+// ============================================================
+
+model ChangelogBoard {
+  id               String         @id @default(uuid())
+  changelogEntryId String
+  boardId          String
+
+  changelogEntry   ChangelogEntry @relation(fields: [changelogEntryId], references: [id], onDelete: Cascade)
+  board            Board          @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([changelogEntryId, boardId])
+  @@map("changelog_boards")
+}
+
+// ============================================================
+// MODEL 18: ChangelogLike
+// Users can like changelog entries
+// ============================================================
+
+model ChangelogLike {
+  id               String         @id @default(uuid())
+  changelogEntryId String
+  userId           String
+  createdAt        DateTime       @default(now())
+
+  changelogEntry   ChangelogEntry @relation(fields: [changelogEntryId], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([changelogEntryId, userId])
+  @@map("changelog_likes")
 }

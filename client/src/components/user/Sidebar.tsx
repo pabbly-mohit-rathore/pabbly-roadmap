@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Grid3x3, MapPin } from 'lucide-react';
+import { Grid3x3, MapPin, History } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 
 export default function UserSidebar() {
@@ -9,6 +9,7 @@ export default function UserSidebar() {
   const menuItems = [
     { label: 'Boards', icon: Grid3x3, path: '/user/boards' },
     { label: 'Roadmap', icon: MapPin, path: '/user/roadmap' },
+    { label: 'Changelog', icon: History, path: '/user/changelog' },
   ];
 
   const isActive = (path: string) => location.pathname === path;

@@ -27,6 +27,7 @@ const userManagementRoutes = require('./routes/userManagement.routes');
 const quickResponseRoutes = require('./routes/quickResponse.routes');
 const roadmapRoutes = require('./routes/roadmap.routes');
 const activityLogRoutes = require('./routes/activityLog.routes');
+const changelogRoutes = require('./routes/changelog.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -88,6 +89,9 @@ app.use('/api', roadmapRoutes);
 
 // Activity Log routes — /api/activity-log, etc.
 app.use('/api', activityLogRoutes);
+
+// Changelog routes — /api/changelog, /api/changelog/public, etc.
+app.use('/api', changelogRoutes);
 
 // ──────────────────────────────────────
 // ERROR HANDLER (sabse last mein lagta hai)

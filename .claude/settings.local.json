@@ -5,7 +5,18 @@
       "Bash(ls -1 *.js)",
       "Bash(pkill -f \"node.*server\")",
       "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(npm run:*)",
+      "Bash(git commit -m 'Add login/signup modals to UserPostDetail for vote and comment actions:*)",
+      "Bash(git commit -m 'Add login required modal to upvote in UserBoardDetail:*)",
+      "Bash(git commit -m 'Improve login modal logic for invite-only users:*)",
+      "Bash(git commit -m 'Fix event propagation on upvote button in board table:*)",
+      "Bash(git commit -m 'Improve login modal styling with blur background and better card design:*)",
+      "Bash(git commit -m 'Match login modal styling with login page card design:*)",
+      "Bash(git commit -m 'Add redirect back to board/post after login from invite link:*)",
+      "Bash(git commit -m 'Fix UI refresh after login from invite link - clear localStorage and re-fetch data:*)",
+      "Bash(git commit -m 'Fix redirect after login - default to /user/boards instead of /:*)",
+      "Bash(git commit -m 'Fix UserBoardsPage re-fetch and invite redemption logic:*)"
     ]
   }
 }
