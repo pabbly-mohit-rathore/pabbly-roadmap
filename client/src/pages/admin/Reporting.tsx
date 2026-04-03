@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, ThumbsUp, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, ThumbsUp, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
@@ -42,6 +42,16 @@ interface AdminData {
   _count: { votes: number; posts: number; comments: number };
 }
 
+interface ActivityLog {
+  id: string;
+  action: string;
+  description: string;
+  createdAt: string;
+  user: { name: string; email: string };
+  post?: { title: string } | null;
+  board?: { name: string } | null;
+}
+
 export default function AdminReporting() {
   const theme = useThemeStore((state) => state.theme);
   const [period, setPeriod] = useState('week');
@@ -50,11 +60,19 @@ export default function AdminReporting() {
   const [stalePosts, setStalePosts] = useState<StalePost[]>([]);
   const [boardData, setBoardData] = useState<{ boards: BoardData[]; total: number }>({ boards: [], total: 0 });
   const [admins, setAdmins] = useState<AdminData[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [logTotal, setLogTotal] = useState(0);
+  const [logPage, setLogPage] = useState(0);
+  const [logRowsPerPage, setLogRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchAll();
   }, [period]);
+
+  useEffect(() => {
+    fetchActivityLogs();
+  }, [logPage, logRowsPerPage]);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -71,12 +89,45 @@ export default function AdminReporting() {
       if (staleRes.data.success) setStalePosts(staleRes.data.data.posts);
       if (boardRes.data.success) setBoardData(boardRes.data.data);
       if (adminRes.data.success) setAdmins(adminRes.data.data.admins);
+      fetchActivityLogs();
     } catch (error) {
       console.error('Error fetching reporting:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchActivityLogs = async () => {
+    try {
+      const res = await api.get('/activity-log', {
+        params: { limit: logRowsPerPage, offset: logPage * logRowsPerPage },
+      });
+      if (res.data.success) {
+        setActivityLogs(res.data.data.activities);
+        setLogTotal(res.data.data.pagination?.total || res.data.data.activities.length);
+      }
+    } catch (error) {
+      console.error('Error fetching activity logs:', error);
+    }
+  };
+
+  const getActionBadge = (action: string) => {
+    const config: Record<string, string> = {
+      created: 'bg-green-100 text-green-700',
+      updated: 'bg-blue-100 text-blue-700',
+      status_changed: 'bg-purple-100 text-purple-700',
+      commented: 'bg-yellow-100 text-yellow-700',
+      voted: 'bg-pink-100 text-pink-700',
+      merged: 'bg-indigo-100 text-indigo-700',
+      member_added: 'bg-teal-100 text-teal-700',
+      member_removed: 'bg-red-100 text-red-700',
+      user_banned: 'bg-red-100 text-red-700',
+      user_unbanned: 'bg-green-100 text-green-700',
+    };
+    return config[action] || 'bg-gray-100 text-gray-700';
+  };
+
+  const totalLogPages = Math.ceil(logTotal / logRowsPerPage);
 
   const StatCard = ({ label, count, change }: { label: string; count: number; change: number }) => (
     <div className={`p-5 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
@@ -308,6 +359,112 @@ export default function AdminReporting() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Activity Log Table */}
+      <div className={`p-6 rounded-lg border mt-6 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <h2 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Activity Log</h2>
+        <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <table className="w-full">
+            <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-semibold">User</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Action</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Description</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Post</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Board</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activityLogs.length > 0 ? (
+                activityLogs.map((log) => (
+                  <tr key={log.id} className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-teal-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                          {log.user.name[0].toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`text-xs font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{log.user.name}</p>
+                          <p className={`text-[10px] truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{log.user.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${getActionBadge(log.action)}`}>
+                        {log.action.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className={`px-4 py-3 text-xs max-w-[200px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {log.description}
+                    </td>
+                    <td className={`px-4 py-3 text-xs truncate max-w-[150px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {log.post?.title || '—'}
+                    </td>
+                    <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {log.board?.name || '—'}
+                    </td>
+                    <td className={`px-4 py-3 text-xs whitespace-nowrap ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {new Date(log.createdAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className={`px-4 py-8 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    No activity logs
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center gap-2">
+            <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Rows per page:</span>
+            <select
+              value={logRowsPerPage}
+              onChange={(e) => { setLogRowsPerPage(Number(e.target.value)); setLogPage(0); }}
+              className={`px-2 py-1 rounded border text-xs ${
+                theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'
+              }`}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              {logPage * logRowsPerPage + 1}–{Math.min((logPage + 1) * logRowsPerPage, logTotal)} of {logTotal}
+            </span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setLogPage(Math.max(0, logPage - 1))}
+                disabled={logPage === 0}
+                className={`p-1.5 rounded transition disabled:opacity-30 ${
+                  theme === 'dark' ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
+                }`}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setLogPage(Math.min(totalLogPages - 1, logPage + 1))}
+                disabled={logPage >= totalLogPages - 1}
+                className={`p-1.5 rounded transition disabled:opacity-30 ${
+                  theme === 'dark' ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
+                }`}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
