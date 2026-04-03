@@ -23,10 +23,10 @@ export default function AdminSidebar() {
 
   return (
     <aside
-      className={`h-screen sticky top-16 border-r border-b transition-colors overflow-y-auto ${
+      className={`sticky top-[57px] border-r border-b transition-colors overflow-y-auto ${
         theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'
       }`}
-      style={{ width: '207px' }}
+      style={{ width: '207px', height: 'calc(100vh - 57px)' }}
     >
       {/* Top underline/border */}
       <div className={`h-px w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`} />
