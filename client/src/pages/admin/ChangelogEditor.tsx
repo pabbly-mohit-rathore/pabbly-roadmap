@@ -276,6 +276,32 @@ export default function ChangelogEditor() {
     e.target.value = '';
   };
 
+  const setAlign = (alignment: string) => {
+    if (!editor) return;
+    // Check if a resizableImage node is selected
+    const { state } = editor;
+    const { from } = state.selection;
+    const node = state.doc.nodeAt(from);
+    if (node?.type.name === 'resizableImage') {
+      // Update image alignment
+      editor.chain().focus().updateAttributes('resizableImage', { align: alignment }).run();
+    } else {
+      // Normal text alignment
+      editor.chain().focus().setTextAlign(alignment).run();
+    }
+  };
+
+  const getAlignActive = (alignment: string) => {
+    if (!editor) return false;
+    const { state } = editor;
+    const { from } = state.selection;
+    const node = state.doc.nodeAt(from);
+    if (node?.type.name === 'resizableImage') {
+      return (node.attrs.align || 'left') === alignment;
+    }
+    return editor.isActive({ textAlign: alignment });
+  };
+
   const insertTable = () => {
     editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   };
@@ -444,9 +470,9 @@ export default function ChangelogEditor() {
 
               <Sep />
 
-              <TB icon={AlignLeft} title="Align Left" action={() => editor?.chain().focus().setTextAlign('left').run()} active={editor?.isActive({ textAlign: 'left' })} />
-              <TB icon={AlignCenter} title="Align Center" action={() => editor?.chain().focus().setTextAlign('center').run()} active={editor?.isActive({ textAlign: 'center' })} />
-              <TB icon={AlignRight} title="Align Right" action={() => editor?.chain().focus().setTextAlign('right').run()} active={editor?.isActive({ textAlign: 'right' })} />
+              <TB icon={AlignLeft} title="Align Left" action={() => setAlign('left')} active={getAlignActive('left')} />
+              <TB icon={AlignCenter} title="Align Center" action={() => setAlign('center')} active={getAlignActive('center')} />
+              <TB icon={AlignRight} title="Align Right" action={() => setAlign('right')} active={getAlignActive('right')} />
               <TB icon={AlignJustify} title="Justify" action={() => editor?.chain().focus().setTextAlign('justify').run()} active={editor?.isActive({ textAlign: 'justify' })} />
 
               <Sep />
