@@ -142,13 +142,8 @@ export default function UserChangelogDetail() {
         </div>
 
         {/* Content */}
-        <div className={`prose max-w-none ${theme === 'dark' ? 'prose-invert' : ''}`}>
-          <div className={`whitespace-pre-wrap text-base leading-relaxed ${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-          }`}>
-            {entry.content}
-          </div>
-        </div>
+        <div className={`tiptap-preview ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}
+          dangerouslySetInnerHTML={{ __html: entry.content }} />
       </div>
     </UserLayout>
   );
