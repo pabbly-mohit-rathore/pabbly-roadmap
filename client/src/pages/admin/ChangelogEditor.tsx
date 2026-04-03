@@ -239,101 +239,110 @@ export default function ChangelogEditor() {
         </div>
       </div>
 
-      {/* Title Input */}
-      <div className={`px-6 py-4 border-b shrink-0 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-          placeholder="Entry title"
-          className={`w-full text-2xl font-bold outline-none bg-transparent ${
-            theme === 'dark' ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-300'
-          }`} />
-      </div>
-
-      {/* Toolbar */}
-      <div className={`flex items-center gap-0.5 px-4 py-2 border-b overflow-x-auto shrink-0 ${
-        theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-[#f8f9fa] border-gray-200'
+      {/* Content Area */}
+      <div className={`flex-1 overflow-y-auto p-6 ${
+        theme === 'dark' ? 'bg-gray-950' : 'bg-[#f5f5f5]'
       }`}>
-        <ToolbarButton icon={Heading1} title="Heading 1"
-          action={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
-          active={editor?.isActive('heading', { level: 1 })} />
-        <ToolbarButton icon={Heading2} title="Heading 2"
-          action={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
-          active={editor?.isActive('heading', { level: 2 })} />
-        <Separator />
-        <ToolbarButton icon={Bold} title="Bold"
-          action={() => editor?.chain().focus().toggleBold().run()}
-          active={editor?.isActive('bold')} />
-        <ToolbarButton icon={Italic} title="Italic"
-          action={() => editor?.chain().focus().toggleItalic().run()}
-          active={editor?.isActive('italic')} />
-        <ToolbarButton icon={UnderlineIcon} title="Underline"
-          action={() => editor?.chain().focus().toggleUnderline().run()}
-          active={editor?.isActive('underline')} />
-        <ToolbarButton icon={Strikethrough} title="Strikethrough"
-          action={() => editor?.chain().focus().toggleStrike().run()}
-          active={editor?.isActive('strike')} />
-        <Separator />
-        <ToolbarButton icon={List} title="Bullet List"
-          action={() => editor?.chain().focus().toggleBulletList().run()}
-          active={editor?.isActive('bulletList')} />
-        <ToolbarButton icon={ListOrdered} title="Numbered List"
-          action={() => editor?.chain().focus().toggleOrderedList().run()}
-          active={editor?.isActive('orderedList')} />
-        <ToolbarButton icon={Quote} title="Blockquote"
-          action={() => editor?.chain().focus().toggleBlockquote().run()}
-          active={editor?.isActive('blockquote')} />
-        <ToolbarButton icon={Minus} title="Horizontal Rule"
-          action={() => editor?.chain().focus().setHorizontalRule().run()} />
-        <Separator />
-        <ToolbarButton icon={LinkIcon} title="Link" action={addLink}
-          active={editor?.isActive('link')} />
-        <ToolbarButton icon={ImageIcon} title="Image" action={addImage} />
-        <ToolbarButton icon={Code} title="Inline Code"
-          action={() => editor?.chain().focus().toggleCode().run()}
-          active={editor?.isActive('code')} />
-        <ToolbarButton icon={Code2} title="Code Block"
-          action={() => editor?.chain().focus().toggleCodeBlock().run()}
-          active={editor?.isActive('codeBlock')} />
-        <Separator />
-        <ToolbarButton icon={Undo2} title="Undo"
-          action={() => editor?.chain().focus().undo().run()} />
-        <ToolbarButton icon={Redo2} title="Redo"
-          action={() => editor?.chain().focus().redo().run()} />
-      </div>
+        <div className="flex gap-6 max-w-7xl mx-auto h-full">
+          {/* Left: Editor Card */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Title Input */}
+            <div className={`px-5 py-4 rounded-t-xl border border-b-0 ${
+              theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
+            }`}>
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                placeholder="Entry title"
+                className={`w-full text-xl font-bold outline-none bg-transparent ${
+                  theme === 'dark' ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-300'
+                }`} />
+            </div>
 
-      {/* Editor + Live Preview */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left: Editor */}
-        <div className={`flex-1 overflow-y-auto border-r ${
-          theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
-        }`}>
-          <EditorContent editor={editor} className="h-full" />
-        </div>
+            {/* Toolbar */}
+            <div className={`flex items-center gap-0.5 px-3 py-2 border-x overflow-x-auto ${
+              theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-[#f8f9fa] border-gray-200'
+            }`}>
+              <ToolbarButton icon={Heading1} title="Heading 1"
+                action={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+                active={editor?.isActive('heading', { level: 1 })} />
+              <ToolbarButton icon={Heading2} title="Heading 2"
+                action={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+                active={editor?.isActive('heading', { level: 2 })} />
+              <Separator />
+              <ToolbarButton icon={Bold} title="Bold"
+                action={() => editor?.chain().focus().toggleBold().run()}
+                active={editor?.isActive('bold')} />
+              <ToolbarButton icon={Italic} title="Italic"
+                action={() => editor?.chain().focus().toggleItalic().run()}
+                active={editor?.isActive('italic')} />
+              <ToolbarButton icon={UnderlineIcon} title="Underline"
+                action={() => editor?.chain().focus().toggleUnderline().run()}
+                active={editor?.isActive('underline')} />
+              <ToolbarButton icon={Strikethrough} title="Strikethrough"
+                action={() => editor?.chain().focus().toggleStrike().run()}
+                active={editor?.isActive('strike')} />
+              <Separator />
+              <ToolbarButton icon={List} title="Bullet List"
+                action={() => editor?.chain().focus().toggleBulletList().run()}
+                active={editor?.isActive('bulletList')} />
+              <ToolbarButton icon={ListOrdered} title="Numbered List"
+                action={() => editor?.chain().focus().toggleOrderedList().run()}
+                active={editor?.isActive('orderedList')} />
+              <ToolbarButton icon={Quote} title="Blockquote"
+                action={() => editor?.chain().focus().toggleBlockquote().run()}
+                active={editor?.isActive('blockquote')} />
+              <ToolbarButton icon={Minus} title="Horizontal Rule"
+                action={() => editor?.chain().focus().setHorizontalRule().run()} />
+              <Separator />
+              <ToolbarButton icon={LinkIcon} title="Link" action={addLink}
+                active={editor?.isActive('link')} />
+              <ToolbarButton icon={ImageIcon} title="Image" action={addImage} />
+              <ToolbarButton icon={Code} title="Inline Code"
+                action={() => editor?.chain().focus().toggleCode().run()}
+                active={editor?.isActive('code')} />
+              <ToolbarButton icon={Code2} title="Code Block"
+                action={() => editor?.chain().focus().toggleCodeBlock().run()}
+                active={editor?.isActive('codeBlock')} />
+              <Separator />
+              <ToolbarButton icon={Undo2} title="Undo"
+                action={() => editor?.chain().focus().undo().run()} />
+              <ToolbarButton icon={Redo2} title="Redo"
+                action={() => editor?.chain().focus().redo().run()} />
+            </div>
 
-        {/* Right: Live Preview */}
-        <div className={`flex-1 overflow-y-auto flex flex-col ${
-          theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'
-        }`}>
-          <div className={`px-4 py-2 border-b text-xs font-semibold uppercase tracking-wider shrink-0 ${
-            theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-400'
-          }`}>
-            Live Preview
+            {/* Editor Box */}
+            <div className={`flex-1 rounded-b-xl border overflow-y-auto ${
+              theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
+            }`}>
+              <EditorContent editor={editor} className="h-full" />
+            </div>
           </div>
-          <div className="p-6 flex-1">
-            {title && (
-              <h1 className={`text-2xl font-bold mb-4 ${
-                theme === 'dark' ? 'text-white' : 'text-gray-900'
-              }`}>{title}</h1>
-            )}
-            {previewHtml && previewHtml !== '<p></p>' ? (
-              <div
-                className={`tiptap ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-              />
-            ) : (
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Start writing to see a live preview...
-              </p>
-            )}
+
+          {/* Right: Live Preview Card */}
+          <div className={`flex-1 flex flex-col rounded-xl border overflow-hidden min-w-0 ${
+            theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
+          }`}>
+            <div className={`px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider shrink-0 ${
+              theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'
+            }`}>
+              Live Preview
+            </div>
+            <div className="p-6 flex-1 overflow-y-auto">
+              {title && (
+                <h1 className={`text-2xl font-bold mb-4 ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>{title}</h1>
+              )}
+              {previewHtml && previewHtml !== '<p></p>' ? (
+                <div
+                  className={`tiptap ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                />
+              ) : (
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                  Start writing to see a live preview...
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
