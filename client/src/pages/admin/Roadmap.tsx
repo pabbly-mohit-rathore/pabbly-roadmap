@@ -44,13 +44,6 @@ const STATUS_CONFIG: Record<string, { label: string; dotColor: string; borderCol
   hold: { label: 'On Hold', dotColor: 'bg-red-500', borderColor: 'border-t-red-500' },
 };
 
-const TYPE_CONFIG: Record<string, string> = {
-  feature: 'bg-indigo-100 text-indigo-700',
-  bug: 'bg-red-100 text-red-700',
-  improvement: 'bg-blue-100 text-blue-700',
-  integration: 'bg-green-100 text-green-700',
-};
-
 export default function AdminRoadmap() {
   const theme = useThemeStore((state) => state.theme);
   const [roadmap, setRoadmap] = useState<RoadmapData>({});
@@ -139,17 +132,6 @@ export default function AdminRoadmap() {
       console.error('Error changing status:', error);
     } finally {
       setDraggedPost(null);
-    }
-  };
-
-  const handleChangeStatus = async (postId: string, newStatus: string) => {
-    try {
-      const response = await api.put(`/posts/${postId}/status`, { status: newStatus });
-      if (response.data.success) {
-        fetchRoadmap();
-      }
-    } catch (error) {
-      console.error('Error changing status:', error);
     }
   };
 
@@ -374,7 +356,7 @@ export default function AdminRoadmap() {
                           key={post.id}
                           draggable
                           onDragStart={() => handleDragStart(post)}
-                          className={`p-3 rounded-lg border cursor-move transition-all hover:shadow-md ${
+                          className={`p-4 rounded-lg border cursor-move transition-all hover:shadow-md ${
                             draggedPost?.id === post.id ? 'opacity-50 scale-95' : ''
                           } ${
                             theme === 'dark'
@@ -382,74 +364,60 @@ export default function AdminRoadmap() {
                               : 'bg-white border-gray-200 hover:border-gray-300'
                           }`}
                         >
-                          {/* Type Badge */}
-                          {post.type && (
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase mb-2 ${
-                              TYPE_CONFIG[post.type] || 'bg-gray-100 text-gray-700'
-                            }`}>
-                              {post.type}
+                          {/* ID Badge */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                              {post.slug?.substring(0, 12).toUpperCase() || post.id.substring(0, 8)}
                             </span>
-                          )}
+                          </div>
 
                           {/* Title */}
-                          <p className={`text-sm font-medium mb-2 line-clamp-2 ${
+                          <p className={`text-sm font-medium mb-4 line-clamp-2 leading-snug ${
                             theme === 'dark' ? 'text-white' : 'text-gray-900'
                           }`}>
                             {post.title}
                           </p>
 
-                          {/* Tags */}
-                          {post.tags && post.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mb-2">
-                              {post.tags.map((postTag) => (
-                                <span
-                                  key={postTag.tag.id}
-                                  className="px-1.5 py-0.5 rounded text-[10px] font-medium"
-                                  style={{
-                                    backgroundColor: postTag.tag.color + '20',
-                                    color: postTag.tag.color,
-                                  }}
-                                >
-                                  {postTag.tag.name}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          {/* Separator */}
+                          <div className={`border-t mb-3 ${
+                            theme === 'dark' ? 'border-gray-600' : 'border-gray-100'
+                          }`} />
 
-                          {/* Footer: Stats + Status Dropdown */}
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-600">
-                            <div className={`flex gap-2.5 text-xs ${
-                              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                            }`}>
-                              <span className="flex items-center gap-1">👍 {post._count?.votes || 0}</span>
-                              <span className="flex items-center gap-1">💬 {post._count?.comments || 0}</span>
-                            </div>
+                          {/* Footer */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-orange-500">
+                              {new Date(post.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                            </span>
 
-                            <select
-                              value={post.status}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                handleChangeStatus(post.id, e.target.value);
-                              }}
-                              className={`px-1.5 py-0.5 text-[10px] rounded border-0 cursor-pointer font-semibold ${
-                                theme === 'dark'
-                                  ? 'bg-gray-600 text-gray-300'
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}
-                            >
-                              <option value="under_review">Under Review</option>
-                              <option value="planned">Planned</option>
-                              <option value="in_progress">In Progress</option>
-                              <option value="live">Live</option>
-                              <option value="hold">On Hold</option>
-                            </select>
+                            <div className="flex items-center gap-2">
+                              {/* Vote/Comment counts */}
+                              <div className={`flex gap-2 text-[10px] mr-1 ${
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                              }`}>
+                                <span>👍{post._count?.votes || 0}</span>
+                                <span>💬{post._count?.comments || 0}</span>
+                              </div>
+
+                              {/* Author Avatar */}
+                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[10px] font-bold">
+                                {post.author?.name?.charAt(0)?.toUpperCase() || '?'}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className={`text-center py-8 text-xs ${
+                      <div className={`text-center py-12 text-xs ${
                         theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                       }`}>
+                        <div className={`w-10 h-10 mx-auto mb-2 rounded-lg flex items-center justify-center ${
+                          theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
+                        }`}>
+                          <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
                         Drop tasks here
                       </div>
                     )}
