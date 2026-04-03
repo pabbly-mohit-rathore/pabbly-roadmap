@@ -26,7 +26,7 @@ const STATUS_ORDER = ['open', 'under_review', 'planned', 'in_progress', 'live', 
 
 export default function RoadmapPage() {
   const theme = useThemeStore((state) => state.theme);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -38,6 +38,13 @@ export default function RoadmapPage() {
   const boardId = searchParams.get('board');
   const inviteToken = searchParams.get('invite');
   const isInviteMode = !!inviteToken && !isAuthenticated;
+
+  // Redirect admin users to dashboard
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin') {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const fetchPosts = useCallback(async () => {
     try {
