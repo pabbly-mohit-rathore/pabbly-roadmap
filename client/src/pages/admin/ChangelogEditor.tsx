@@ -337,7 +337,7 @@ export default function ChangelogEditor() {
       <div className={`flex-1 overflow-y-auto p-6 ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#f5f5f5]'}`}>
         <div className="flex gap-6 h-full">
           {/* Left: Editor Card */}
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 overflow-visible">
             {/* Title Input */}
             <div className={`px-5 py-4 rounded-t-xl border border-b-0 ${
               theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
@@ -400,53 +400,18 @@ export default function ChangelogEditor() {
               <Sep />
 
               {/* Font Color */}
-              <div className="relative">
-                <button onClick={() => { setShowColorPicker(!showColorPicker); setShowHighlightPicker(false); }}
+              <div>
+                <button id="fontColorBtn" onClick={() => { setShowColorPicker(!showColorPicker); setShowHighlightPicker(false); }}
                   title="Font Color"
                   className={`p-1.5 rounded transition flex items-center gap-1 ${theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-200'}`}>
                   <Palette className="w-4 h-4" />
                   <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: fontColor }} />
                 </button>
-                {showColorPicker && (
-                  <div className={`absolute bottom-full left-0 mb-2 p-3 rounded-lg shadow-2xl border z-[999] ${
-                    theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
-                  }`}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    <HexColorPicker
-                      color={fontColor}
-                      onChange={(color) => {
-                        setFontColor(color);
-                        editor?.chain().focus().setColor(color).run();
-                      }}
-                      style={{ width: '180px', height: '150px' }}
-                    />
-                    <div className="flex items-center gap-2 mt-2">
-                      <input
-                        type="text"
-                        value={fontColor}
-                        onChange={(e) => {
-                          setFontColor(e.target.value);
-                          if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
-                            editor?.chain().focus().setColor(e.target.value).run();
-                          }
-                        }}
-                        className={`flex-1 px-2 py-1 rounded text-xs border font-mono ${
-                          theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
-                        }`}
-                      />
-                      <button onClick={() => setShowColorPicker(false)}
-                        className="px-2 py-1 text-xs bg-black text-white rounded hover:bg-gray-800">
-                        Done
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Highlight Color */}
-              <div className="relative">
-                <button onClick={() => { setShowHighlightPicker(!showHighlightPicker); setShowColorPicker(false); }}
+              <div>
+                <button id="highlightColorBtn" onClick={() => { setShowHighlightPicker(!showHighlightPicker); setShowColorPicker(false); }}
                   title="Highlight"
                   className={`p-1.5 rounded transition flex items-center gap-1 ${
                     editor?.isActive('highlight')
@@ -456,41 +421,6 @@ export default function ChangelogEditor() {
                   <Highlighter className="w-4 h-4" />
                   <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: highlightColor }} />
                 </button>
-                {showHighlightPicker && (
-                  <div className={`absolute bottom-full left-0 mb-2 p-3 rounded-lg shadow-2xl border z-[999] ${
-                    theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
-                  }`}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    <HexColorPicker
-                      color={highlightColor}
-                      onChange={(color) => {
-                        setHighlightColor(color);
-                        editor?.chain().focus().toggleHighlight({ color }).run();
-                      }}
-                      style={{ width: '180px', height: '150px' }}
-                    />
-                    <div className="flex items-center gap-2 mt-2">
-                      <input
-                        type="text"
-                        value={highlightColor}
-                        onChange={(e) => {
-                          setHighlightColor(e.target.value);
-                          if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
-                            editor?.chain().focus().toggleHighlight({ color: e.target.value }).run();
-                          }
-                        }}
-                        className={`flex-1 px-2 py-1 rounded text-xs border font-mono ${
-                          theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
-                        }`}
-                      />
-                      <button onClick={() => setShowHighlightPicker(false)}
-                        className="px-2 py-1 text-xs bg-black text-white rounded hover:bg-gray-800">
-                        Done
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <Sep />
@@ -565,6 +495,62 @@ export default function ChangelogEditor() {
           </div>
         </div>
       </div>
+
+      {/* Font Color Picker - Fixed overlay */}
+      {showColorPicker && (
+        <>
+          <div className="fixed inset-0 z-[998]" onClick={() => setShowColorPicker(false)} />
+          <div
+            className={`fixed z-[999] p-3 rounded-lg shadow-2xl border ${
+              theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
+            }`}
+            style={{
+              top: (document.getElementById('fontColorBtn')?.getBoundingClientRect().bottom ?? 200) + 8,
+              left: document.getElementById('fontColorBtn')?.getBoundingClientRect().left ?? 200,
+            }}
+          >
+            <HexColorPicker color={fontColor} onChange={(c) => { setFontColor(c); editor?.chain().focus().setColor(c).run(); }}
+              style={{ width: '200px', height: '160px' }} />
+            <div className="flex items-center gap-2 mt-2">
+              <input type="text" value={fontColor}
+                onChange={(e) => { setFontColor(e.target.value); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) editor?.chain().focus().setColor(e.target.value).run(); }}
+                className={`flex-1 px-2 py-1 rounded text-xs border font-mono ${
+                  theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
+                }`} />
+              <button onClick={() => setShowColorPicker(false)}
+                className="px-2 py-1 text-xs bg-black text-white rounded hover:bg-gray-800">Done</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Highlight Color Picker - Fixed overlay */}
+      {showHighlightPicker && (
+        <>
+          <div className="fixed inset-0 z-[998]" onClick={() => setShowHighlightPicker(false)} />
+          <div
+            className={`fixed z-[999] p-3 rounded-lg shadow-2xl border ${
+              theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
+            }`}
+            style={{
+              top: (document.getElementById('highlightColorBtn')?.getBoundingClientRect().bottom ?? 200) + 8,
+              left: document.getElementById('highlightColorBtn')?.getBoundingClientRect().left ?? 200,
+            }}
+          >
+            <HexColorPicker color={highlightColor} onChange={(c) => { setHighlightColor(c); editor?.chain().focus().toggleHighlight({ color: c }).run(); }}
+              style={{ width: '200px', height: '160px' }} />
+            <div className="flex items-center gap-2 mt-2">
+              <input type="text" value={highlightColor}
+                onChange={(e) => { setHighlightColor(e.target.value); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) editor?.chain().focus().toggleHighlight({ color: e.target.value }).run(); }}
+                className={`flex-1 px-2 py-1 rounded text-xs border font-mono ${
+                  theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
+                }`} />
+              <button onClick={() => setShowHighlightPicker(false)}
+                className="px-2 py-1 text-xs bg-black text-white rounded hover:bg-gray-800">Done</button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Hidden file input */}
       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
