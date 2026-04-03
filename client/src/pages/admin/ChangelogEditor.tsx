@@ -122,13 +122,24 @@ const ResizableImage = Node.create({
       align: { default: 'left' },
     };
   },
-  parseHTML() { return [{ tag: 'img[src]' }]; },
+  parseHTML() {
+    return [
+      { tag: 'div[data-type="resizable-image"] img', priority: 60 },
+      { tag: 'img[src]' },
+    ];
+  },
   renderHTML({ HTMLAttributes }) {
     const w = HTMLAttributes.width ? `width: ${HTMLAttributes.width}px; max-width: 100%;` : 'max-width: 100%;';
     const a = HTMLAttributes.align || 'left';
+    const textAlign = a === 'center' ? 'center' : a === 'right' ? 'right' : 'left';
     const margin = a === 'center' ? 'margin-left: auto; margin-right: auto;' : a === 'right' ? 'margin-left: auto;' : '';
-    const style = `${w} ${margin} display: block;`;
-    return ['img', mergeAttributes(HTMLAttributes, { style, class: 'rounded-lg' })];
+    return ['div', { 'data-type': 'resizable-image', style: `text-align: ${textAlign}; margin: 0.5rem 0; clear: both;` },
+      ['img', mergeAttributes(HTMLAttributes, {
+        style: `${w} ${margin} display: block;`,
+        class: 'rounded-lg',
+        align: null,
+      })]
+    ];
   },
   addNodeView() { return ReactNodeViewRenderer(ResizableImageComponent); },
 });
