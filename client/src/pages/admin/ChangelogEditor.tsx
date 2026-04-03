@@ -240,14 +240,14 @@ export default function ChangelogEditor() {
       </div>
 
       {/* Content Area */}
-      <div className={`flex-1 overflow-y-auto p-6 ${
+      <div className={`flex-1 overflow-hidden ${
         theme === 'dark' ? 'bg-gray-950' : 'bg-[#f5f5f5]'
       }`}>
-        <div className="flex gap-6 max-w-7xl mx-auto h-full">
+        <div className="flex gap-0 h-full">
           {/* Left: Editor Card */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Title Input */}
-            <div className={`px-5 py-4 rounded-t-xl border border-b-0 ${
+            <div className={`px-5 py-4 border-b ${
               theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
             }`}>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
@@ -258,7 +258,7 @@ export default function ChangelogEditor() {
             </div>
 
             {/* Toolbar */}
-            <div className={`flex items-center gap-0.5 px-3 py-2 border-x overflow-x-auto ${
+            <div className={`flex items-center gap-0.5 px-3 py-2 border-b overflow-x-auto ${
               theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-[#f8f9fa] border-gray-200'
             }`}>
               <ToolbarButton icon={Heading1} title="Heading 1"
@@ -310,15 +310,15 @@ export default function ChangelogEditor() {
             </div>
 
             {/* Editor Box */}
-            <div className={`flex-1 rounded-b-xl border overflow-y-auto ${
-              theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
+            <div className={`flex-1 overflow-y-auto ${
+              theme === 'dark' ? 'bg-gray-900' : 'bg-white'
             }`}>
               <EditorContent editor={editor} className="h-full" />
             </div>
           </div>
 
           {/* Right: Live Preview Card */}
-          <div className={`flex-1 flex flex-col rounded-xl border overflow-hidden min-w-0 ${
+          <div className={`flex-1 flex flex-col border-l overflow-hidden min-w-0 ${
             theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
           }`}>
             <div className={`px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider shrink-0 ${
