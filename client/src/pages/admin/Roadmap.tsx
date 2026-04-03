@@ -294,9 +294,10 @@ export default function AdminRoadmap() {
       {loading ? (
         <div className="text-center py-12">Loading roadmap...</div>
       ) : (
-        <div className="overflow-x-auto pb-4">
-          <div className="grid gap-4" style={{
+        <div className="overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 320px)' }}>
+          <div className="grid gap-4 h-full" style={{
             gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
+            minHeight: 'calc(100vh - 320px)',
           }}>
             {STATUS_ORDER.map((status) => {
               const posts = getFilteredPosts(status);
@@ -305,7 +306,7 @@ export default function AdminRoadmap() {
               return (
                 <div
                   key={status}
-                  className={`rounded-lg border border-t-[3px] ${config.borderColor} min-h-[400px] flex flex-col overflow-hidden ${
+                  className={`rounded-lg border border-t-[3px] ${config.borderColor} flex flex-col overflow-hidden ${
                     theme === 'dark'
                       ? 'border-gray-700'
                       : 'border-gray-200'
