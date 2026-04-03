@@ -460,6 +460,34 @@ export default function ChangelogEditor() {
               <TB icon={Code} title="Inline Code" action={() => editor?.chain().focus().toggleCode().run()} active={editor?.isActive('code')} />
               <TB icon={Code2} title="Code Block" action={() => editor?.chain().focus().toggleCodeBlock().run()} active={editor?.isActive('codeBlock')} />
               <TB icon={TableIcon} title="Insert Table" action={insertTable} />
+
+              {/* Table Controls - show when cursor is in a table */}
+              {editor?.isActive('table') && (
+                <>
+                  <Sep />
+                  <button onClick={() => editor?.chain().focus().addColumnAfter().run()} title="Add Column"
+                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
+                      theme === 'dark' ? 'text-green-400 hover:bg-gray-700' : 'text-green-700 bg-green-50 hover:bg-green-100'
+                    }`}>+ Col</button>
+                  <button onClick={() => editor?.chain().focus().deleteColumn().run()} title="Remove Column"
+                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
+                      theme === 'dark' ? 'text-red-400 hover:bg-gray-700' : 'text-red-700 bg-red-50 hover:bg-red-100'
+                    }`}>- Col</button>
+                  <button onClick={() => editor?.chain().focus().addRowAfter().run()} title="Add Row"
+                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
+                      theme === 'dark' ? 'text-green-400 hover:bg-gray-700' : 'text-green-700 bg-green-50 hover:bg-green-100'
+                    }`}>+ Row</button>
+                  <button onClick={() => editor?.chain().focus().deleteRow().run()} title="Remove Row"
+                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
+                      theme === 'dark' ? 'text-red-400 hover:bg-gray-700' : 'text-red-700 bg-red-50 hover:bg-red-100'
+                    }`}>- Row</button>
+                  <button onClick={() => editor?.chain().focus().deleteTable().run()} title="Delete Table"
+                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
+                      theme === 'dark' ? 'text-red-400 hover:bg-gray-700' : 'text-red-700 bg-red-50 hover:bg-red-100'
+                    }`}>Del Table</button>
+                </>
+              )}
+
               <TB icon={RemoveFormatting} title="Clear Formatting" action={() => editor?.chain().focus().clearNodes().unsetAllMarks().run()} />
 
               <Sep />
