@@ -205,13 +205,18 @@ const getPublicEntries = async (req, res, next) => {
       userBoardIds = access.map((a) => a.boardId);
     }
 
+    // Build filter: only show entries for boards user has access to
+    const whereConditions = [{ allBoards: true }];
+    if (userBoardIds.length > 0) {
+      whereConditions.push({ allBoards: false, boards: { some: { boardId: { in: userBoardIds } } } });
+    }
+
+    console.log('User:', userId, 'Board access:', userBoardIds);
+
     const entries = await prisma.changelogEntry.findMany({
       where: {
         status: 'published',
-        OR: [
-          { allBoards: true },
-          { boards: { some: { boardId: { in: userBoardIds } } } },
-        ],
+        OR: whereConditions,
       },
       include: {
         author: { select: { id: true, name: true } },
