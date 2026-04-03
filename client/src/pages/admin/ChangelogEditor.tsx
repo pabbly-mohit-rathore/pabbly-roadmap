@@ -99,27 +99,9 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
           draggable={false}
         />
         {selected && (
-          <>
-            {/* Resize handle */}
-            <div onMouseDown={handleMouseDown}
-              className="absolute right-0 bottom-0 w-4 h-4 bg-blue-500 rounded-tl"
-              style={{ cursor: 'se-resize' }} />
-            {/* Alignment buttons */}
-            <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex gap-1 bg-white border border-gray-200 rounded-lg shadow-lg p-1">
-              <button onClick={() => updateAttributes({ align: 'left' })} title="Align Left"
-                className={`p-1 rounded ${align === 'left' ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-500'}`}>
-                <AlignLeft className="w-3.5 h-3.5" />
-              </button>
-              <button onClick={() => updateAttributes({ align: 'center' })} title="Align Center"
-                className={`p-1 rounded ${align === 'center' ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-500'}`}>
-                <AlignCenter className="w-3.5 h-3.5" />
-              </button>
-              <button onClick={() => updateAttributes({ align: 'right' })} title="Align Right"
-                className={`p-1 rounded ${align === 'right' ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-500'}`}>
-                <AlignRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </>
+          <div onMouseDown={handleMouseDown}
+            className="absolute right-0 bottom-0 w-4 h-4 bg-blue-500 rounded-tl"
+            style={{ cursor: 'se-resize' }} />
         )}
       </div>
     </NodeViewWrapper>
