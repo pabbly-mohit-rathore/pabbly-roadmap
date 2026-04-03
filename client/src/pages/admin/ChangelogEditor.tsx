@@ -166,6 +166,8 @@ export default function ChangelogEditor() {
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const [fontColor, setFontColor] = useState('#000000');
   const [highlightColor, setHighlightColor] = useState('#fef08a');
+  const [lastSaved, setLastSaved] = useState('');
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -185,7 +187,10 @@ export default function ChangelogEditor() {
       Color,
       Highlight.configure({ multicolor: true }),
     ],
-    onUpdate: ({ editor: e }) => setPreviewHtml(e.getHTML()),
+    onUpdate: ({ editor: e }) => {
+      setPreviewHtml(e.getHTML());
+      triggerAutoSave();
+    },
     editorProps: {
       attributes: {
         class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-6 py-4 ' +
@@ -217,6 +222,37 @@ export default function ChangelogEditor() {
       setLoading(false);
     }
   };
+
+  // Auto-save: debounced 3s after last change
+  const triggerAutoSave = () => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSave();
+    }, 3000);
+  };
+
+  const autoSave = async () => {
+    if (!id || !editor) return;
+    const content = editor.getHTML();
+    try {
+      await api.put(`/changelog/${id}`, { title, content });
+      setLastSaved(new Date().toLocaleTimeString());
+    } catch {
+      // silent fail for auto-save
+    }
+  };
+
+  // Auto-save on title change too
+  useEffect(() => {
+    if (entry) triggerAutoSave();
+  }, [title]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, []);
 
   const getEditorContent = () => previewHtml || editor?.getHTML() || '';
 
@@ -351,6 +387,11 @@ export default function ChangelogEditor() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {lastSaved && (
+            <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+              Auto-saved {lastSaved}
+            </span>
+          )}
           <button onClick={handleSaveDraft} disabled={saving}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition ${
               theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
