@@ -17,6 +17,7 @@ interface User {
     votes: number;
     comments: number;
     boardMemberships: number;
+    boardAccess: number;
   };
 }
 
@@ -201,7 +202,7 @@ export default function AdminUsers() {
                   <td className={`px-6 py-4 text-sm ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
-                    {user._count.boardMemberships}
+                    {user._count.boardAccess}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -410,10 +411,10 @@ export default function AdminUsers() {
                 <div>
                   <p className={`text-xs mb-1 ${
                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                  }`}>Board Memberships</p>
+                  }`}>Board Access</p>
                   <p className={`text-sm font-semibold ${
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
-                  }`}>{selectedUser._count.boardMemberships}</p>
+                  }`}>{selectedUser._count.boardAccess}</p>
                 </div>
               </div>
 

@@ -77,6 +77,7 @@ const listUsers = async (req, res, next) => {
             votes: true,
             comments: true,
             boardMemberships: true,
+            boardAccess: true,
           },
         },
       },
