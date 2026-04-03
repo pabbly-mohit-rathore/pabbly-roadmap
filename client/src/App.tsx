@@ -17,6 +17,7 @@ import AdminRoadmap from './pages/admin/Roadmap';
 import AdminBoards from './pages/admin/Boards';
 import AdminBoardDetail from './pages/admin/BoardDetail';
 import AdminPostDetail from './pages/admin/PostDetail';
+import ChangelogEditor from './pages/admin/ChangelogEditor';
 import AdminBoardMembers from './pages/admin/BoardMembers';
 import AdminInviteLinks from './pages/admin/InviteLinks';
 import AdminTags from './pages/admin/Tags';
@@ -145,6 +146,22 @@ function App() {
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
                 <Navbar />
                 <ProfilePage />
+                <Toaster position="top-right" />
+              </div>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        {/* Changelog Editor - Full width, no sidebar */}
+        <Route
+          path="/admin/changelog/:id/edit"
+          element={
+            isAuthenticated && isAdmin ? (
+              <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                <Navbar />
+                <ChangelogEditor />
                 <Toaster position="top-right" />
               </div>
             ) : (

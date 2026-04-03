@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, Send, Clock, X, Search } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
@@ -27,18 +28,17 @@ interface ChangelogEntry {
 
 export default function AdminChangeLog() {
   const theme = useThemeStore((state) => state.theme);
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<ChangelogEntry[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<ChangelogEntry | null>(null);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [form, setForm] = useState({
     title: '',
-    content: '',
     type: 'new',
     allBoards: true,
     boardIds: [] as string[],
@@ -77,43 +77,29 @@ export default function AdminChangeLog() {
     }
   };
 
-  const openCreateModal = () => {
-    setEditingEntry(null);
-    setForm({ title: '', content: '', type: 'new', allBoards: true, boardIds: [] });
-    setShowModal(true);
-  };
-
-  const openEditModal = (entry: ChangelogEntry) => {
-    setEditingEntry(entry);
-    setForm({
-      title: entry.title,
-      content: entry.content,
-      type: entry.type,
-      allBoards: entry.allBoards,
-      boardIds: entry.boards.map((b) => b.board.id),
-    });
-    setShowModal(true);
-  };
-
-  const handleSave = async () => {
-    if (!form.title.trim() || !form.content.trim()) {
-      toast.error('Title and content are required');
+  const handleCreate = async () => {
+    if (!form.title.trim()) {
+      toast.error('Title is required');
       return;
     }
 
     try {
-      if (editingEntry) {
-        await api.put(`/changelog/${editingEntry.id}`, form);
-        toast.success('Entry updated');
-      } else {
-        await api.post('/changelog', form);
-        toast.success('Entry created');
+      const response = await api.post('/changelog', {
+        title: form.title,
+        content: '',
+        type: form.type,
+        allBoards: form.allBoards,
+        boardIds: form.boardIds,
+      });
+
+      if (response.data.success) {
+        setShowModal(false);
+        // Navigate to editor page
+        navigate(`/admin/changelog/${response.data.data.entry.id}/edit`);
       }
-      setShowModal(false);
-      fetchEntries();
     } catch (error) {
-      console.error('Error saving entry:', error);
-      toast.error('Failed to save entry');
+      console.error('Error creating entry:', error);
+      toast.error('Failed to create entry');
     }
   };
 
@@ -124,32 +110,7 @@ export default function AdminChangeLog() {
       toast.success('Entry deleted');
       fetchEntries();
     } catch (error) {
-      console.error('Error deleting entry:', error);
       toast.error('Failed to delete');
-    }
-  };
-
-  const handlePublish = async (id: string) => {
-    try {
-      await api.post(`/changelog/${id}/publish`);
-      toast.success('Entry published!');
-      fetchEntries();
-    } catch (error) {
-      console.error('Error publishing:', error);
-      toast.error('Failed to publish');
-    }
-  };
-
-  const handleSchedule = async (id: string) => {
-    const dateStr = prompt('Schedule date (YYYY-MM-DD HH:mm):');
-    if (!dateStr) return;
-    try {
-      await api.post(`/changelog/${id}/publish`, { scheduledAt: dateStr });
-      toast.success('Entry scheduled!');
-      fetchEntries();
-    } catch (error) {
-      console.error('Error scheduling:', error);
-      toast.error('Failed to schedule');
     }
   };
 
@@ -189,7 +150,10 @@ export default function AdminChangeLog() {
             </p>
           </div>
           <button
-            onClick={openCreateModal}
+            onClick={() => {
+              setForm({ title: '', type: 'new', allBoards: true, boardIds: [] });
+              setShowModal(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -217,27 +181,19 @@ export default function AdminChangeLog() {
               }`}
             />
           </div>
-
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
             className={`px-3 py-2 rounded-lg border text-sm ${
               theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
-            }`}
-          >
+            }`}>
             <option value="">All Status</option>
             <option value="draft">Draft</option>
             <option value="scheduled">Scheduled</option>
             <option value="published">Published</option>
           </select>
-
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+          <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
             className={`px-3 py-2 rounded-lg border text-sm ${
               theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
-            }`}
-          >
+            }`}>
             <option value="">All Types</option>
             <option value="new">New</option>
             <option value="improved">Improved</option>
@@ -268,15 +224,13 @@ export default function AdminChangeLog() {
             <tbody>
               {filteredEntries.length > 0 ? (
                 filteredEntries.map((entry) => (
-                  <tr
-                    key={entry.id}
-                    className={`border-t ${
+                  <tr key={entry.id}
+                    className={`border-t cursor-pointer ${
                       theme === 'dark' ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'
                     }`}
+                    onClick={() => navigate(`/admin/changelog/${entry.id}/edit`)}
                   >
-                    <td className={`px-6 py-4 text-sm font-medium ${
-                      theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    }`}>
+                    <td className={`px-6 py-4 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {entry.title}
                     </td>
                     <td className="px-6 py-4">
@@ -298,40 +252,15 @@ export default function AdminChangeLog() {
                     <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                       {new Date(entry.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
-                        {entry.status === 'draft' && (
-                          <>
-                            <button
-                              onClick={() => handlePublish(entry.id)}
-                              className="p-1.5 rounded-lg hover:bg-green-100 text-green-600 transition"
-                              title="Publish Now"
-                            >
-                              <Send className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleSchedule(entry.id)}
-                              className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition"
-                              title="Schedule"
-                            >
-                              <Clock className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => openEditModal(entry)}
-                          className={`p-1.5 rounded-lg transition ${
-                            theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
-                          }`}
-                          title="Edit"
-                        >
+                        <button onClick={() => navigate(`/admin/changelog/${entry.id}/edit`)}
+                          className={`p-1.5 rounded-lg transition ${theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}
+                          title="Edit">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(entry.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-100 text-red-500 transition"
-                          title="Delete"
-                        >
+                        <button onClick={() => handleDelete(entry.id)}
+                          className="p-1.5 rounded-lg hover:bg-red-100 text-red-500 transition" title="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -352,17 +281,15 @@ export default function AdminChangeLog() {
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Create Modal - Simple */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`max-w-2xl w-full rounded-xl max-h-[90vh] overflow-y-auto ${
-            theme === 'dark' ? 'bg-gray-900' : 'bg-white'
-          }`}>
+          <div className={`max-w-lg w-full rounded-xl ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
             <div className={`flex items-center justify-between p-6 border-b ${
               theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
             }`}>
               <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {editingEntry ? 'Edit Entry' : 'Create Entry'}
+                Create Changelog Entry
               </h2>
               <button onClick={() => setShowModal(false)} className={`p-2 rounded-lg ${
                 theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
@@ -376,28 +303,12 @@ export default function AdminChangeLog() {
               <div>
                 <label className={`block text-sm font-medium mb-1.5 ${
                   theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>Title</label>
+                }`}>Entry Title</label>
                 <input
                   type="text"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="Entry title..."
-                  className={`w-full px-4 py-2.5 rounded-lg border ${
-                    theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'
-                  }`}
-                />
-              </div>
-
-              {/* Content */}
-              <div>
-                <label className={`block text-sm font-medium mb-1.5 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>Content (Markdown supported)</label>
-                <textarea
-                  value={form.content}
-                  onChange={(e) => setForm({ ...form, content: e.target.value })}
-                  placeholder="Share recent product changes..."
-                  rows={8}
+                  placeholder="What's new?"
                   className={`w-full px-4 py-2.5 rounded-lg border ${
                     theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'
                   }`}
@@ -409,72 +320,52 @@ export default function AdminChangeLog() {
                 <label className={`block text-sm font-medium mb-2 ${
                   theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                 }`}>Type</label>
-                <div className="flex gap-4">
+                <div className="flex gap-3">
                   {['new', 'improved', 'fixed'].map((t) => (
-                    <label key={t} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="type"
-                        value={t}
-                        checked={form.type === t}
-                        onChange={(e) => setForm({ ...form, type: e.target.value })}
-                      />
-                      <span className={`text-sm capitalize ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>{t}</span>
-                    </label>
+                    <button key={t}
+                      onClick={() => setForm({ ...form, type: t })}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                        form.type === t
+                          ? t === 'new' ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
+                            : t === 'improved' ? 'bg-blue-100 text-blue-700 border-blue-300'
+                            : 'bg-orange-100 text-orange-700 border-orange-300'
+                          : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:bg-gray-800'
+                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </button>
                   ))}
                 </div>
               </div>
 
-              {/* Board Visibility */}
+              {/* Visibility */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${
                   theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                 }`}>Visible to</label>
                 <div className="space-y-3">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="visibility"
-                      checked={form.allBoards}
-                      onChange={() => setForm({ ...form, allBoards: true, boardIds: [] })}
-                    />
-                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      All Boards
-                    </span>
+                    <input type="radio" name="visibility" checked={form.allBoards}
+                      onChange={() => setForm({ ...form, allBoards: true, boardIds: [] })} />
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>All Boards</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="visibility"
-                      checked={!form.allBoards}
-                      onChange={() => setForm({ ...form, allBoards: false })}
-                    />
-                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Selected Boards
-                    </span>
+                    <input type="radio" name="visibility" checked={!form.allBoards}
+                      onChange={() => setForm({ ...form, allBoards: false })} />
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Selected Boards</span>
                   </label>
-
                   {!form.allBoards && (
-                    <div className="pl-6 space-y-2">
+                    <div className="pl-6 space-y-2 max-h-40 overflow-y-auto">
                       {boards.map((board) => (
                         <label key={board.id} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={form.boardIds.includes(board.id)}
+                          <input type="checkbox" checked={form.boardIds.includes(board.id)}
                             onChange={(e) => {
-                              if (e.target.checked) {
-                                setForm({ ...form, boardIds: [...form.boardIds, board.id] });
-                              } else {
-                                setForm({ ...form, boardIds: form.boardIds.filter((id) => id !== board.id) });
-                              }
-                            }}
-                          />
+                              if (e.target.checked) setForm({ ...form, boardIds: [...form.boardIds, board.id] });
+                              else setForm({ ...form, boardIds: form.boardIds.filter((id) => id !== board.id) });
+                            }} />
                           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: board.color }} />
-                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                            {board.name}
-                          </span>
+                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{board.name}</span>
                         </label>
                       ))}
                     </div>
@@ -482,23 +373,11 @@ export default function AdminChangeLog() {
                 </div>
               </div>
 
-              {/* Buttons */}
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className={`flex-1 px-4 py-2.5 rounded-lg border font-medium ${
-                    theme === 'dark' ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="flex-1 px-4 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 font-semibold"
-                >
-                  {editingEntry ? 'Update' : 'Save as Draft'}
-                </button>
-              </div>
+              {/* Create Button */}
+              <button onClick={handleCreate}
+                className="w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 font-semibold transition">
+                Create Changelog Post
+              </button>
             </div>
           </div>
         </div>
