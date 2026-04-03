@@ -12,16 +12,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
       <Navbar />
-      <div className="flex">
-        <AdminSidebar />
-        <main className="flex-1">
-          <div className={`min-h-screen p-6 ${
-            theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'
-          }`}>
-            {children}
-          </div>
-        </main>
-      </div>
+      <AdminSidebar />
+      <main style={{ marginLeft: '207px' }}>
+        <div className={`min-h-screen p-6 ${
+          theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'
+        }`}>
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

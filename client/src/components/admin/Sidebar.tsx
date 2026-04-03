@@ -23,7 +23,7 @@ export default function AdminSidebar() {
 
   return (
     <aside
-      className={`sticky top-16 shrink-0 border-r transition-colors overflow-y-auto ${
+      className={`fixed top-16 left-0 z-40 border-r transition-colors overflow-y-auto ${
         theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'
       }`}
       style={{ width: '207px', height: 'calc(100vh - 64px)' }}
