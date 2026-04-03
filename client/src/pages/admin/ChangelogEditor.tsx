@@ -274,11 +274,12 @@ export default function ChangelogEditor() {
 
   const getEditorContent = () => previewHtml || editor?.getHTML() || '';
 
-  const handleSaveDraft = async () => {
+  const handleSave = async () => {
     try {
       setSaving(true);
       await api.put(`/changelog/${id}`, { title, content: getEditorContent() });
-      toast.success('Saved as draft');
+      setLastSaved(new Date().toLocaleTimeString());
+      toast.success('Saved successfully!');
     } catch { toast.error('Failed to save'); }
     finally { setSaving(false); }
   };
@@ -410,11 +411,11 @@ export default function ChangelogEditor() {
               Auto-saved {lastSaved}
             </span>
           )}
-          <button onClick={handleSaveDraft} disabled={saving}
+          <button onClick={handleSave} disabled={saving}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition ${
               theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
             }`}>
-            <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save as Draft'}
+            <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save'}
           </button>
           <button onClick={() => setShowScheduleModal(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition">
