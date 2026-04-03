@@ -84,11 +84,32 @@ export default function AdminPostDetail() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch post if not passed via navigation state
+  useEffect(() => {
+    if (!post && postId) {
+      fetchPost();
+    }
+  }, [postId]);
+
   useEffect(() => {
     if (post) {
       fetchComments();
     }
   }, [post?.id]);
+
+  const fetchPost = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/posts/${postId}`);
+      if (response.data.success) {
+        setPost(response.data.data.post);
+      }
+    } catch (error) {
+      console.error('Error fetching post:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchComments = async () => {
     try {

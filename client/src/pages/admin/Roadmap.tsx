@@ -364,7 +364,7 @@ export default function AdminRoadmap() {
                           onDragStart={() => handleDragStart(post)}
                           onClick={() => {
                             if (!draggedPost) {
-                              navigate(`/admin/posts/${post.id}`);
+                              navigate(`/admin/posts/${post.slug}`);
                             }
                           }}
                           className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
