@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
@@ -46,6 +47,7 @@ const STATUS_CONFIG: Record<string, { label: string; dotColor: string; borderCol
 
 export default function AdminRoadmap() {
   const theme = useThemeStore((state) => state.theme);
+  const navigate = useNavigate();
   const [roadmap, setRoadmap] = useState<RoadmapData>({});
   const [loading, setLoading] = useState(true);
   const [selectedBoard, setSelectedBoard] = useState('');
@@ -360,7 +362,12 @@ export default function AdminRoadmap() {
                           key={post.id}
                           draggable
                           onDragStart={() => handleDragStart(post)}
-                          className={`p-4 rounded-lg border cursor-move transition-all hover:shadow-md ${
+                          onClick={() => {
+                            if (!draggedPost) {
+                              navigate(`/admin/posts/${post.id}`);
+                            }
+                          }}
+                          className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
                             draggedPost?.id === post.id ? 'opacity-50 scale-95' : ''
                           } ${
                             theme === 'dark'
