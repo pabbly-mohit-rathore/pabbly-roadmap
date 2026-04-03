@@ -35,7 +35,7 @@ const FontSize = Extension.create({
       attributes: {
         fontSize: {
           default: null,
-          parseHTML: (element: HTMLElement) => element.style.fontSize || null,
+          parseHTML: (element: HTMLElement) => element.style.fontSize?.replace(/['"]+/g, '') || null,
           renderHTML: (attributes: Record<string, any>) => {
             if (!attributes.fontSize) return {};
             return { style: `font-size: ${attributes.fontSize}` };
@@ -46,8 +46,12 @@ const FontSize = Extension.create({
   },
   addCommands() {
     return {
-      setFontSize: (size: string) => ({ chain }: any) =>
-        chain().setMark('textStyle', { fontSize: size }).run(),
+      setFontSize: (size: string) => ({ commands }: any) => {
+        return commands.setMark('textStyle', { fontSize: size });
+      },
+      unsetFontSize: () => ({ chain }: any) => {
+        return chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle().run();
+      },
     };
   },
 });
@@ -349,32 +353,46 @@ export default function ChangelogEditor() {
             }`}>
               {/* Font Size */}
               <select
+                value=""
                 onChange={(e) => {
-                  if (editor) {
-                    (editor.commands as any).setFontSize(e.target.value);
+                  const val = e.target.value;
+                  if (!val || !editor) return;
+                  // If no selection, select all text in current node
+                  const { from, to } = editor.state.selection;
+                  if (from === to) {
+                    // No selection - apply to current line/paragraph
+                    editor.chain().focus().selectParentNode().setMark('textStyle', { fontSize: val }).run();
+                  } else {
+                    editor.chain().focus().setMark('textStyle', { fontSize: val }).run();
                   }
                 }}
                 className={`px-1.5 py-1 rounded text-xs border cursor-pointer ${
                   theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'
                 }`}
-                defaultValue="16px"
               >
+                <option value="" disabled>Size</option>
                 {FONT_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
 
               {/* Font Family */}
               <select
+                value=""
                 onChange={(e) => {
-                  if (editor) {
-                    editor.chain().focus().setFontFamily(e.target.value).run();
+                  const val = e.target.value;
+                  if (!val || !editor) return;
+                  const { from, to } = editor.state.selection;
+                  if (from === to) {
+                    editor.chain().focus().selectParentNode().setFontFamily(val).run();
+                  } else {
+                    editor.chain().focus().setFontFamily(val).run();
                   }
                 }}
                 className={`px-1.5 py-1 rounded text-xs border cursor-pointer ${
                   theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'
                 }`}
-                defaultValue="Inter"
               >
-                {FONT_FAMILIES.map(f => <option key={f} value={f}>{f}</option>)}
+                <option value="" disabled>Font</option>
+                {FONT_FAMILIES.map(f => <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>)}
               </select>
 
               <Sep />
