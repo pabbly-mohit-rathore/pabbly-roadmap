@@ -83,12 +83,9 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
     document.addEventListener('mouseup', onMouseUp);
   };
 
-  const alignClass = align === 'center' ? 'mx-auto' : align === 'right' ? 'ml-auto' : '';
-
   return (
-    <NodeViewWrapper className="my-2" data-drag-handle>
-      <div className={`relative inline-block ${alignClass} ${selected ? 'ring-2 ring-blue-500 rounded' : ''}`}
-        style={{ display: 'block', textAlign: align }}>
+    <NodeViewWrapper className="my-2" data-drag-handle style={{ textAlign: align }}>
+      <div className={`relative inline-block ${selected ? 'ring-2 ring-blue-500 rounded' : ''}`}>
         <img
           ref={imgRef}
           src={node.attrs.src}
@@ -96,7 +93,7 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
           style={{
             width: node.attrs.width ? `${node.attrs.width}px` : 'auto',
             maxWidth: '100%',
-            display: 'inline-block',
+            display: 'block',
           }}
           className="rounded-lg"
           draggable={false}
