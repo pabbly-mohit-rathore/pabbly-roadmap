@@ -546,13 +546,15 @@ export default function ChangelogEditor() {
             <div className={`px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider shrink-0 ${
               theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'
             }`}>Live Preview</div>
-            <div className="p-6 flex-1 overflow-y-auto">
-              {title && <h1 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{title}</h1>}
+            <div className="px-6 py-5 flex-1 overflow-y-auto">
+              {title && (
+                <h1 className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{title}</h1>
+              )}
               {previewHtml && previewHtml !== '<p></p>' ? (
                 <div className={`tiptap ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
                   dangerouslySetInnerHTML={{ __html: previewHtml }} />
               ) : (
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>Start writing to see a live preview...</p>
+                <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>Start writing to see a live preview...</p>
               )}
             </div>
           </div>
