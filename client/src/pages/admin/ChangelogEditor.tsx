@@ -1,17 +1,97 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Save, Send, Clock, ChevronLeft,
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, Link as LinkIcon, Image as ImageIcon,
-  Code, Heading1, Heading2, Quote, Minus, Undo2, Redo2, Code2
+  Code, Heading1, Heading2, Quote, Minus, Undo2, Redo2, Code2,
+  Upload
 } from 'lucide-react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, NodeViewWrapper, NodeViewProps, ReactNodeViewRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExt from '@tiptap/extension-underline';
 import LinkExt from '@tiptap/extension-link';
 import ImageExt from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
+import { mergeAttributes, Node } from '@tiptap/core';
+
+// Resizable Image Component
+function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewProps) {
+  const [resizing, setResizing] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setResizing(true);
+    const startX = e.clientX;
+    const startWidth = imgRef.current?.offsetWidth || 300;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const newWidth = Math.max(100, startWidth + (ev.clientX - startX));
+      updateAttributes({ width: newWidth });
+    };
+
+    const onMouseUp = () => {
+      setResizing(false);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  return (
+    <NodeViewWrapper className="relative inline-block my-2" data-drag-handle>
+      <div className={`relative inline-block ${selected ? 'ring-2 ring-blue-500 rounded' : ''}`}>
+        <img
+          ref={imgRef}
+          src={node.attrs.src}
+          alt={node.attrs.alt || ''}
+          style={{ width: node.attrs.width ? `${node.attrs.width}px` : 'auto', maxWidth: '100%' }}
+          className="rounded-lg block"
+          draggable={false}
+        />
+        {selected && (
+          <div
+            onMouseDown={handleMouseDown}
+            className="absolute right-0 bottom-0 w-4 h-4 bg-blue-500 rounded-tl cursor-se-resize"
+            style={{ cursor: 'se-resize' }}
+          />
+        )}
+      </div>
+    </NodeViewWrapper>
+  );
+}
+
+// Custom Resizable Image Extension
+const ResizableImage = Node.create({
+  name: 'resizableImage',
+  group: 'block',
+  atom: true,
+  draggable: true,
+
+  addAttributes() {
+    return {
+      src: { default: null },
+      alt: { default: null },
+      width: { default: null },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'img[src]' }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    const style = HTMLAttributes.width ? `width: ${HTMLAttributes.width}px; max-width: 100%;` : 'max-width: 100%;';
+    return ['img', mergeAttributes(HTMLAttributes, { style, class: 'rounded-lg' })];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(ResizableImageComponent);
+  },
+});
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -33,6 +113,7 @@ export default function ChangelogEditor() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [entry, setEntry] = useState<ChangelogEntry | null>(null);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(true);
@@ -51,9 +132,7 @@ export default function ChangelogEditor() {
         openOnClick: false,
         HTMLAttributes: { class: 'text-blue-600 underline cursor-pointer' },
       }),
-      ImageExt.configure({
-        HTMLAttributes: { class: 'max-w-full rounded-lg' },
-      }),
+      ResizableImage,
       Placeholder.configure({
         placeholder: 'Write your changelog content here...',
       }),
@@ -150,11 +229,46 @@ export default function ChangelogEditor() {
     }
   };
 
-  const addImage = () => {
+  const addImageFromUrl = () => {
     const url = prompt('Enter image URL:');
     if (url && editor) {
-      editor.chain().focus().setImage({ src: url }).run();
+      editor.chain().focus().insertContent({
+        type: 'resizableImage',
+        attrs: { src: url },
+      }).run();
     }
+  };
+
+  const addImageFromFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editor) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      editor.chain().focus().insertContent({
+        type: 'resizableImage',
+        attrs: { src: base64 },
+      }).run();
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input
+    e.target.value = '';
   };
 
   const getTypeBadge = (type: string) => {
@@ -295,7 +409,8 @@ export default function ChangelogEditor() {
               <Separator />
               <ToolbarButton icon={LinkIcon} title="Link" action={addLink}
                 active={editor?.isActive('link')} />
-              <ToolbarButton icon={ImageIcon} title="Image" action={addImage} />
+              <ToolbarButton icon={Upload} title="Upload Image" action={addImageFromFile} />
+              <ToolbarButton icon={ImageIcon} title="Image URL" action={addImageFromUrl} />
               <ToolbarButton icon={Code} title="Inline Code"
                 action={() => editor?.chain().focus().toggleCode().run()}
                 active={editor?.isActive('code')} />
@@ -346,6 +461,15 @@ export default function ChangelogEditor() {
           </div>
         </div>
       </div>
+
+      {/* Hidden file input for image upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept="image/*"
+        className="hidden"
+      />
 
       {/* Schedule Modal */}
       {showScheduleModal && (

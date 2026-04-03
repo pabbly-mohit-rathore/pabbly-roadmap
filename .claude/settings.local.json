@@ -16,7 +16,8 @@
       "Bash(git commit -m 'Add redirect back to board/post after login from invite link:*)",
       "Bash(git commit -m 'Fix UI refresh after login from invite link - clear localStorage and re-fetch data:*)",
       "Bash(git commit -m 'Fix redirect after login - default to /user/boards instead of /:*)",
-      "Bash(git commit -m 'Fix UserBoardsPage re-fetch and invite redemption logic:*)"
+      "Bash(git commit -m 'Fix UserBoardsPage re-fetch and invite redemption logic:*)",
+      "Bash(npm install:*)"
     ]
   }
 }
