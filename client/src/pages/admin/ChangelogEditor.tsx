@@ -592,7 +592,7 @@ export default function ChangelogEditor() {
                 <h1 className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{title}</h1>
               )}
               {previewHtml && previewHtml !== '<p></p>' ? (
-                <div className={`tiptap ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
+                <div className={`tiptap-preview ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
                   dangerouslySetInnerHTML={{ __html: previewHtml }} />
               ) : (
                 <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>Start writing to see a live preview...</p>
