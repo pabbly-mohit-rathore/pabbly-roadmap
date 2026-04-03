@@ -229,7 +229,9 @@ export default function AdminChangeLog() {
                     className={`border-t cursor-pointer ${
                       theme === 'dark' ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'
                     }`}
-                    onClick={() => navigate(`/admin/changelog/${entry.id}/edit`)}
+                    onClick={() => navigate(
+                      entry.status === 'draft' ? `/admin/changelog/${entry.id}/edit` : `/admin/changelog/${entry.id}/view`
+                    )}
                   >
                     <td className={`px-6 py-4 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {entry.title}

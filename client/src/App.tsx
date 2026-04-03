@@ -18,6 +18,7 @@ import AdminBoards from './pages/admin/Boards';
 import AdminBoardDetail from './pages/admin/BoardDetail';
 import AdminPostDetail from './pages/admin/PostDetail';
 import ChangelogEditor from './pages/admin/ChangelogEditor';
+import ChangelogView from './pages/admin/ChangelogView';
 import AdminBoardMembers from './pages/admin/BoardMembers';
 import AdminInviteLinks from './pages/admin/InviteLinks';
 import AdminTags from './pages/admin/Tags';
@@ -164,6 +165,23 @@ function App() {
                 <ChangelogEditor />
                 <Toaster position="top-right" />
               </div>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        {/* Changelog View - Full width with AdminLayout */}
+        <Route
+          path="/admin/changelog/:id/view"
+          element={
+            isAuthenticated && isAdmin ? (
+              <>
+                <AdminLayout>
+                  <ChangelogView />
+                </AdminLayout>
+                <Toaster position="top-right" />
+              </>
             ) : (
               <Navigate to="/login" />
             )
