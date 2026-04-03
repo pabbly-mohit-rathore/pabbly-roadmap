@@ -1,0 +1,77 @@
+/* Emoji Picker React Styles */
+/* emoji-picker-react uses 'epr-' prefixed classes */
+
+/* Customize scrollbar appearance */
+.EmojiPickerReact {
+  --epr-scrollbar-color: rgba(0, 0, 0, 0.2) !important;
+  --epr-scrollbar-bg-color: transparent !important;
+  --epr-scrollbar-width: 6px !important;
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+.EmojiPickerReact ::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.EmojiPickerReact ::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.EmojiPickerReact ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2) !important;
+  border-radius: 3px !important;
+}
+
+.EmojiPickerReact ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Firefox */
+.EmojiPickerReact * {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent !important;
+}
+
+.epr-emoji-category-label {
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.epr-search-container input {
+  font-size: 14px !important;
+}
+
+.epr-emoji {
+  transition: background-color 0.2s ease !important;
+}
+
+/* Ensure consistent border radius */
+.epr-preview,
+.epr-emoji-category-label,
+.epr-search-container input {
+  border-radius: 4px !important;
+}
+
+/* Dark theme support - emoji-picker-react handles this via theme prop, but we can add customizations */
+[data-mui-color-scheme="dark"] .epr-emoji-category-label {
+  color: #bdbdbd !important;
+}
+
+/* Dark theme scrollbar */
+[data-mui-color-scheme="dark"] .EmojiPickerReact {
+  --epr-scrollbar-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-mui-color-scheme="dark"] .EmojiPickerReact ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-mui-color-scheme="dark"] .EmojiPickerReact ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-mui-color-scheme="dark"] .EmojiPickerReact * {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent !important;
+} 

@@ -5,24 +5,34 @@ import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, Link as LinkIcon, Image as ImageIcon,
   Code, Heading1, Heading2, Quote, Minus, Undo2, Redo2, Code2,
-  Upload
+  Upload, AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  Table as TableIcon, RemoveFormatting, Palette, Highlighter
 } from 'lucide-react';
-import { useEditor, EditorContent, NodeViewWrapper, NodeViewProps, ReactNodeViewRenderer } from '@tiptap/react';
+import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
+import type { NodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExt from '@tiptap/extension-underline';
 import LinkExt from '@tiptap/extension-link';
-import ImageExt from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
+import TextAlign from '@tiptap/extension-text-align';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import { Color } from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
+import Highlight from '@tiptap/extension-highlight';
 import { mergeAttributes, Node } from '@tiptap/core';
+import useThemeStore from '../../store/themeStore';
+import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 // Resizable Image Component
 function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewProps) {
-  const [resizing, setResizing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    setResizing(true);
     const startX = e.clientX;
     const startWidth = imgRef.current?.offsetWidth || 300;
 
@@ -32,7 +42,6 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
     };
 
     const onMouseUp = () => {
-      setResizing(false);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
@@ -55,7 +64,7 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
         {selected && (
           <div
             onMouseDown={handleMouseDown}
-            className="absolute right-0 bottom-0 w-4 h-4 bg-blue-500 rounded-tl cursor-se-resize"
+            className="absolute right-0 bottom-0 w-4 h-4 bg-blue-500 rounded-tl"
             style={{ cursor: 'se-resize' }}
           />
         )}
@@ -64,13 +73,11 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
   );
 }
 
-// Custom Resizable Image Extension
 const ResizableImage = Node.create({
   name: 'resizableImage',
   group: 'block',
   atom: true,
   draggable: true,
-
   addAttributes() {
     return {
       src: { default: null },
@@ -78,23 +85,13 @@ const ResizableImage = Node.create({
       width: { default: null },
     };
   },
-
-  parseHTML() {
-    return [{ tag: 'img[src]' }];
-  },
-
+  parseHTML() { return [{ tag: 'img[src]' }]; },
   renderHTML({ HTMLAttributes }) {
     const style = HTMLAttributes.width ? `width: ${HTMLAttributes.width}px; max-width: 100%;` : 'max-width: 100%;';
     return ['img', mergeAttributes(HTMLAttributes, { style, class: 'rounded-lg' })];
   },
-
-  addNodeView() {
-    return ReactNodeViewRenderer(ResizableImageComponent);
-  },
+  addNodeView() { return ReactNodeViewRenderer(ResizableImageComponent); },
 });
-import useThemeStore from '../../store/themeStore';
-import api from '../../services/api';
-import toast from 'react-hot-toast';
 
 interface ChangelogEntry {
   id: string;
@@ -108,12 +105,16 @@ interface ChangelogEntry {
   boards: { board: { id: string; name: string; color: string } }[];
 }
 
+const FONT_SIZES = ['12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px'];
+const FONT_FAMILIES = ['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Courier New', 'Verdana'];
+const COLORS = ['#000000', '#434343', '#666666', '#999999', '#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
+
 export default function ChangelogEditor() {
   const theme = useThemeStore((state) => state.theme);
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [entry, setEntry] = useState<ChangelogEntry | null>(null);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(true);
@@ -121,25 +122,26 @@ export default function ChangelogEditor() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
   const [previewHtml, setPreviewHtml] = useState('');
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showHighlightPicker, setShowHighlightPicker] = useState(false);
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-      }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
       UnderlineExt,
-      LinkExt.configure({
-        openOnClick: false,
-        HTMLAttributes: { class: 'text-blue-600 underline cursor-pointer' },
-      }),
+      LinkExt.configure({ openOnClick: false, HTMLAttributes: { class: 'text-blue-600 underline' } }),
       ResizableImage,
-      Placeholder.configure({
-        placeholder: 'Write your changelog content here...',
-      }),
+      Placeholder.configure({ placeholder: 'Write your changelog content here...' }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableCell,
+      TableHeader,
+      TextStyle,
+      Color,
+      Highlight.configure({ multicolor: true }),
     ],
-    onUpdate: ({ editor: e }) => {
-      setPreviewHtml(e.getHTML());
-    },
+    onUpdate: ({ editor: e }) => setPreviewHtml(e.getHTML()),
     editorProps: {
       attributes: {
         class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-6 py-4 ' +
@@ -148,11 +150,7 @@ export default function ChangelogEditor() {
     },
   });
 
-  useEffect(() => {
-    fetchEntry();
-  }, [id]);
-
-  // Set editor content when entry loads
+  useEffect(() => { fetchEntry(); }, [id]);
   useEffect(() => {
     if (editor && entry?.content) {
       editor.commands.setContent(entry.content);
@@ -170,7 +168,6 @@ export default function ChangelogEditor() {
         setTitle(data.title);
       }
     } catch (error) {
-      console.error('Error fetching entry:', error);
       toast.error('Failed to load entry');
     } finally {
       setLoading(false);
@@ -184,16 +181,13 @@ export default function ChangelogEditor() {
       setSaving(true);
       await api.put(`/changelog/${id}`, { title, content: getEditorContent() });
       toast.success('Saved as draft');
-    } catch (error) {
-      toast.error('Failed to save');
-    } finally {
-      setSaving(false);
-    }
+    } catch { toast.error('Failed to save'); }
+    finally { setSaving(false); }
   };
 
   const handlePublish = async () => {
     if (!title.trim() || !getEditorContent().trim()) {
-      toast.error('Title and content are required to publish');
+      toast.error('Title and content are required');
       return;
     }
     try {
@@ -201,114 +195,72 @@ export default function ChangelogEditor() {
       await api.post(`/changelog/${id}/publish`);
       toast.success('Published!');
       navigate('/admin/changelog');
-    } catch (error) {
-      toast.error('Failed to publish');
-    }
+    } catch { toast.error('Failed to publish'); }
   };
 
   const handleSchedule = async () => {
-    if (!scheduleDate) {
-      toast.error('Select a date');
-      return;
-    }
+    if (!scheduleDate) { toast.error('Select a date'); return; }
     try {
       await api.put(`/changelog/${id}`, { title, content: getEditorContent() });
       await api.post(`/changelog/${id}/publish`, { scheduledAt: scheduleDate });
       toast.success('Scheduled!');
       setShowScheduleModal(false);
       navigate('/admin/changelog');
-    } catch (error) {
-      toast.error('Failed to schedule');
-    }
+    } catch { toast.error('Failed to schedule'); }
   };
 
   const addLink = () => {
     const url = prompt('Enter URL:');
-    if (url && editor) {
-      editor.chain().focus().setLink({ href: url }).run();
-    }
+    if (url && editor) editor.chain().focus().setLink({ href: url }).run();
   };
 
   const addImageFromUrl = () => {
     const url = prompt('Enter image URL:');
-    if (url && editor) {
-      editor.chain().focus().insertContent({
-        type: 'resizableImage',
-        attrs: { src: url },
-      }).run();
-    }
+    if (url && editor) editor.chain().focus().insertContent({ type: 'resizableImage', attrs: { src: url } }).run();
   };
 
-  const addImageFromFile = () => {
-    fileInputRef.current?.click();
-  };
+  const addImageFromFile = () => fileInputRef.current?.click();
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editor) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5MB');
-      return;
-    }
-
+    if (!file.type.startsWith('image/')) { toast.error('Select an image file'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Max 5MB'); return; }
     const reader = new FileReader();
     reader.onload = () => {
-      const base64 = reader.result as string;
-      editor.chain().focus().insertContent({
-        type: 'resizableImage',
-        attrs: { src: base64 },
-      }).run();
+      editor.chain().focus().insertContent({ type: 'resizableImage', attrs: { src: reader.result as string } }).run();
     };
     reader.readAsDataURL(file);
-
-    // Reset input
     e.target.value = '';
   };
 
+  const insertTable = () => {
+    editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  };
+
   const getTypeBadge = (type: string) => {
-    const config: Record<string, string> = {
-      new: 'bg-emerald-100 text-emerald-700',
-      improved: 'bg-blue-100 text-blue-700',
-      fixed: 'bg-orange-100 text-orange-700',
-    };
-    return config[type] || 'bg-gray-100 text-gray-700';
+    const c: Record<string, string> = { new: 'bg-emerald-100 text-emerald-700', improved: 'bg-blue-100 text-blue-700', fixed: 'bg-orange-100 text-orange-700' };
+    return c[type] || 'bg-gray-100 text-gray-700';
   };
-
   const getStatusBadge = (status: string) => {
-    const config: Record<string, string> = {
-      draft: 'bg-yellow-100 text-yellow-700',
-      scheduled: 'bg-blue-100 text-blue-700',
-      published: 'bg-green-100 text-green-700',
-    };
-    return config[status] || 'bg-gray-100 text-gray-700';
+    const c: Record<string, string> = { draft: 'bg-yellow-100 text-yellow-700', scheduled: 'bg-blue-100 text-blue-700', published: 'bg-green-100 text-green-700' };
+    return c[status] || 'bg-gray-100 text-gray-700';
   };
 
-  if (loading) {
-    return <div className="text-center py-12">Loading editor...</div>;
-  }
+  if (loading) return <div className="text-center py-12">Loading editor...</div>;
 
-  const ToolbarButton = ({ icon: Icon, action, active, title: btnTitle }: {
-    icon: any; action: () => void; active?: boolean; title: string;
-  }) => (
-    <button onClick={action} title={btnTitle}
-      className={`p-2 rounded transition ${
+  const TB = ({ icon: Icon, action, active, title: t }: { icon: any; action: () => void; active?: boolean; title: string }) => (
+    <button onClick={action} title={t}
+      className={`p-1.5 rounded transition ${
         active
           ? theme === 'dark' ? 'bg-gray-600 text-white' : 'bg-gray-300 text-gray-900'
-          : theme === 'dark' ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+          : theme === 'dark' ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-900'
       }`}>
       <Icon className="w-4 h-4" />
     </button>
   );
 
-  const Separator = () => (
-    <div className={`w-px h-6 mx-1 ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'}`} />
-  );
+  const Sep = () => <div className={`w-px h-5 mx-0.5 ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'}`} />;
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
@@ -318,23 +270,16 @@ export default function ChangelogEditor() {
       }`}>
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/admin/changelog')}
-            className={`flex items-center gap-1 text-sm ${
-              theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
-            }`}>
+            className={`flex items-center gap-1 text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
           {entry && (
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-xs font-bold capitalize ${getStatusBadge(entry.status)}`}>
-                {entry.status}
-              </span>
-              <span className={`px-2 py-0.5 rounded text-xs font-bold capitalize ${getTypeBadge(entry.type)}`}>
-                {entry.type}
-              </span>
+              <span className={`px-2 py-0.5 rounded text-xs font-bold capitalize ${getStatusBadge(entry.status)}`}>{entry.status}</span>
+              <span className={`px-2 py-0.5 rounded text-xs font-bold capitalize ${getTypeBadge(entry.type)}`}>{entry.type}</span>
             </div>
           )}
         </div>
-
         <div className="flex items-center gap-2">
           <button onClick={handleSaveDraft} disabled={saving}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition ${
@@ -354,9 +299,7 @@ export default function ChangelogEditor() {
       </div>
 
       {/* Content Area */}
-      <div className={`flex-1 overflow-y-auto p-6 ${
-        theme === 'dark' ? 'bg-gray-950' : 'bg-[#f5f5f5]'
-      }`}>
+      <div className={`flex-1 overflow-y-auto p-6 ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#f5f5f5]'}`}>
         <div className="flex gap-6 h-full">
           {/* Left: Editor Card */}
           <div className="flex-1 flex flex-col min-w-0">
@@ -372,56 +315,128 @@ export default function ChangelogEditor() {
             </div>
 
             {/* Toolbar */}
-            <div className={`flex items-center gap-0.5 px-3 py-2 border-x border-b overflow-x-auto ${
+            <div className={`flex items-center gap-0.5 px-3 py-1.5 border-x border-b overflow-x-auto flex-wrap ${
               theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-[#f8f9fa] border-gray-200'
             }`}>
-              <ToolbarButton icon={Heading1} title="Heading 1"
-                action={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
-                active={editor?.isActive('heading', { level: 1 })} />
-              <ToolbarButton icon={Heading2} title="Heading 2"
-                action={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
-                active={editor?.isActive('heading', { level: 2 })} />
-              <Separator />
-              <ToolbarButton icon={Bold} title="Bold"
-                action={() => editor?.chain().focus().toggleBold().run()}
-                active={editor?.isActive('bold')} />
-              <ToolbarButton icon={Italic} title="Italic"
-                action={() => editor?.chain().focus().toggleItalic().run()}
-                active={editor?.isActive('italic')} />
-              <ToolbarButton icon={UnderlineIcon} title="Underline"
-                action={() => editor?.chain().focus().toggleUnderline().run()}
-                active={editor?.isActive('underline')} />
-              <ToolbarButton icon={Strikethrough} title="Strikethrough"
-                action={() => editor?.chain().focus().toggleStrike().run()}
-                active={editor?.isActive('strike')} />
-              <Separator />
-              <ToolbarButton icon={List} title="Bullet List"
-                action={() => editor?.chain().focus().toggleBulletList().run()}
-                active={editor?.isActive('bulletList')} />
-              <ToolbarButton icon={ListOrdered} title="Numbered List"
-                action={() => editor?.chain().focus().toggleOrderedList().run()}
-                active={editor?.isActive('orderedList')} />
-              <ToolbarButton icon={Quote} title="Blockquote"
-                action={() => editor?.chain().focus().toggleBlockquote().run()}
-                active={editor?.isActive('blockquote')} />
-              <ToolbarButton icon={Minus} title="Horizontal Rule"
-                action={() => editor?.chain().focus().setHorizontalRule().run()} />
-              <Separator />
-              <ToolbarButton icon={LinkIcon} title="Link" action={addLink}
-                active={editor?.isActive('link')} />
-              <ToolbarButton icon={Upload} title="Upload Image" action={addImageFromFile} />
-              <ToolbarButton icon={ImageIcon} title="Image URL" action={addImageFromUrl} />
-              <ToolbarButton icon={Code} title="Inline Code"
-                action={() => editor?.chain().focus().toggleCode().run()}
-                active={editor?.isActive('code')} />
-              <ToolbarButton icon={Code2} title="Code Block"
-                action={() => editor?.chain().focus().toggleCodeBlock().run()}
-                active={editor?.isActive('codeBlock')} />
-              <Separator />
-              <ToolbarButton icon={Undo2} title="Undo"
-                action={() => editor?.chain().focus().undo().run()} />
-              <ToolbarButton icon={Redo2} title="Redo"
-                action={() => editor?.chain().focus().redo().run()} />
+              {/* Font Size */}
+              <select
+                onChange={(e) => {
+                  if (editor) {
+                    editor.chain().focus().setMark('textStyle', { fontSize: e.target.value }).run();
+                  }
+                }}
+                className={`px-1.5 py-1 rounded text-xs border ${
+                  theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'
+                }`}
+                defaultValue="16px"
+              >
+                {FONT_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+
+              {/* Font Family */}
+              <select
+                onChange={(e) => {
+                  if (editor) {
+                    editor.chain().focus().setMark('textStyle', { fontFamily: e.target.value }).run();
+                  }
+                }}
+                className={`px-1.5 py-1 rounded text-xs border ${
+                  theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'
+                }`}
+                defaultValue="Inter"
+              >
+                {FONT_FAMILIES.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+
+              <Sep />
+
+              {/* Font Color */}
+              <div className="relative">
+                <button onClick={() => { setShowColorPicker(!showColorPicker); setShowHighlightPicker(false); }}
+                  title="Font Color"
+                  className={`p-1.5 rounded transition ${theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-200'}`}>
+                  <Palette className="w-4 h-4" />
+                </button>
+                {showColorPicker && (
+                  <div className={`absolute top-full left-0 mt-1 p-2 rounded-lg shadow-xl border z-50 flex gap-1 flex-wrap w-[140px] ${
+                    theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
+                  }`}>
+                    {COLORS.map(c => (
+                      <button key={c} onClick={() => { editor?.chain().focus().setColor(c).run(); setShowColorPicker(false); }}
+                        className="w-5 h-5 rounded-full border border-gray-300 hover:scale-125 transition"
+                        style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Highlight Color */}
+              <div className="relative">
+                <button onClick={() => { setShowHighlightPicker(!showHighlightPicker); setShowColorPicker(false); }}
+                  title="Highlight"
+                  className={`p-1.5 rounded transition ${
+                    editor?.isActive('highlight')
+                      ? theme === 'dark' ? 'bg-gray-600 text-white' : 'bg-gray-300 text-gray-900'
+                      : theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-200'
+                  }`}>
+                  <Highlighter className="w-4 h-4" />
+                </button>
+                {showHighlightPicker && (
+                  <div className={`absolute top-full left-0 mt-1 p-2 rounded-lg shadow-xl border z-50 flex gap-1 flex-wrap w-[140px] ${
+                    theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
+                  }`}>
+                    {['#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca', '#e9d5ff', '#fed7aa', '#ffffff'].map(c => (
+                      <button key={c} onClick={() => { editor?.chain().focus().toggleHighlight({ color: c }).run(); setShowHighlightPicker(false); }}
+                        className="w-5 h-5 rounded-full border border-gray-300 hover:scale-125 transition"
+                        style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Sep />
+
+              <TB icon={Bold} title="Bold" action={() => editor?.chain().focus().toggleBold().run()} active={editor?.isActive('bold')} />
+              <TB icon={Italic} title="Italic" action={() => editor?.chain().focus().toggleItalic().run()} active={editor?.isActive('italic')} />
+              <TB icon={UnderlineIcon} title="Underline" action={() => editor?.chain().focus().toggleUnderline().run()} active={editor?.isActive('underline')} />
+              <TB icon={Strikethrough} title="Strikethrough" action={() => editor?.chain().focus().toggleStrike().run()} active={editor?.isActive('strike')} />
+
+              <Sep />
+
+              <TB icon={List} title="Bullet List" action={() => editor?.chain().focus().toggleBulletList().run()} active={editor?.isActive('bulletList')} />
+              <TB icon={ListOrdered} title="Numbered List" action={() => editor?.chain().focus().toggleOrderedList().run()} active={editor?.isActive('orderedList')} />
+
+              <Sep />
+
+              <TB icon={AlignLeft} title="Align Left" action={() => editor?.chain().focus().setTextAlign('left').run()} active={editor?.isActive({ textAlign: 'left' })} />
+              <TB icon={AlignCenter} title="Align Center" action={() => editor?.chain().focus().setTextAlign('center').run()} active={editor?.isActive({ textAlign: 'center' })} />
+              <TB icon={AlignRight} title="Align Right" action={() => editor?.chain().focus().setTextAlign('right').run()} active={editor?.isActive({ textAlign: 'right' })} />
+              <TB icon={AlignJustify} title="Justify" action={() => editor?.chain().focus().setTextAlign('justify').run()} active={editor?.isActive({ textAlign: 'justify' })} />
+
+              <Sep />
+
+              <TB icon={Quote} title="Blockquote" action={() => editor?.chain().focus().toggleBlockquote().run()} active={editor?.isActive('blockquote')} />
+              <TB icon={Minus} title="Horizontal Rule" action={() => editor?.chain().focus().setHorizontalRule().run()} />
+
+              <Sep />
+
+              <TB icon={LinkIcon} title="Link" action={addLink} active={editor?.isActive('link')} />
+              <TB icon={Upload} title="Upload Image" action={addImageFromFile} />
+              <TB icon={ImageIcon} title="Image URL" action={addImageFromUrl} />
+
+              <Sep />
+
+              <TB icon={Heading1} title="Heading 1" action={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} active={editor?.isActive('heading', { level: 1 })} />
+              <TB icon={Heading2} title="Heading 2" action={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} active={editor?.isActive('heading', { level: 2 })} />
+              <TB icon={Code} title="Inline Code" action={() => editor?.chain().focus().toggleCode().run()} active={editor?.isActive('code')} />
+              <TB icon={Code2} title="Code Block" action={() => editor?.chain().focus().toggleCodeBlock().run()} active={editor?.isActive('codeBlock')} />
+              <TB icon={TableIcon} title="Insert Table" action={insertTable} />
+              <TB icon={RemoveFormatting} title="Clear Formatting" action={() => editor?.chain().focus().clearNodes().unsetAllMarks().run()} />
+
+              <Sep />
+
+              <TB icon={Undo2} title="Undo" action={() => editor?.chain().focus().undo().run()} />
+              <TB icon={Redo2} title="Redo" action={() => editor?.chain().focus().redo().run()} />
             </div>
 
             {/* Editor Box */}
@@ -432,65 +447,41 @@ export default function ChangelogEditor() {
             </div>
           </div>
 
-          {/* Right: Live Preview Card */}
+          {/* Right: Live Preview */}
           <div className={`flex-1 flex flex-col rounded-xl border overflow-hidden min-w-0 ${
             theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
           }`}>
             <div className={`px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider shrink-0 ${
               theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'
-            }`}>
-              Live Preview
-            </div>
+            }`}>Live Preview</div>
             <div className="p-6 flex-1 overflow-y-auto">
-              {title && (
-                <h1 className={`text-2xl font-bold mb-4 ${
-                  theme === 'dark' ? 'text-white' : 'text-gray-900'
-                }`}>{title}</h1>
-              )}
+              {title && <h1 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{title}</h1>}
               {previewHtml && previewHtml !== '<p></p>' ? (
-                <div
-                  className={`tiptap ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
-                />
+                <div className={`tiptap ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
+                  dangerouslySetInnerHTML={{ __html: previewHtml }} />
               ) : (
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Start writing to see a live preview...
-                </p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>Start writing to see a live preview...</p>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Hidden file input for image upload */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileUpload}
-        accept="image/*"
-        className="hidden"
-      />
+      {/* Hidden file input */}
+      <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
 
       {/* Schedule Modal */}
       {showScheduleModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className={`max-w-sm w-full mx-4 p-6 rounded-xl ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
-            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Schedule Publish
-            </h3>
+            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Schedule Publish</h3>
             <input type="datetime-local" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)}
-              className={`w-full px-4 py-2.5 rounded-lg border mb-4 ${
-                theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'
-              }`} />
+              className={`w-full px-4 py-2.5 rounded-lg border mb-4 ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`} />
             <div className="flex gap-3">
               <button onClick={() => setShowScheduleModal(false)}
-                className={`flex-1 px-4 py-2 rounded-lg border ${
-                  theme === 'dark' ? 'border-gray-700 text-gray-300' : 'border-gray-200'
-                }`}>Cancel</button>
+                className={`flex-1 px-4 py-2 rounded-lg border ${theme === 'dark' ? 'border-gray-700 text-gray-300' : 'border-gray-200'}`}>Cancel</button>
               <button onClick={handleSchedule}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">
-                Schedule
-              </button>
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">Schedule</button>
             </div>
           </div>
         </div>

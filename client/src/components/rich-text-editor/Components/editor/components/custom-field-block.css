@@ -1,0 +1,145 @@
+/* MUI Chip Container Styles */
+.mui-chip-container {
+  display: inline-block !important;
+  margin: 0 2px !important;
+  vertical-align: middle !important;
+}
+
+/* MUI Chip Styles for Custom Fields */
+.mui-chip-container .MuiChip-root {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 4px 8px !important;
+  border-radius: 16px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  outline: none !important;
+  margin: 0 !important;
+}
+
+.mui-chip-container .MuiChip-root:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.mui-chip-container .MuiChip-label {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+  padding: 0 !important;
+}
+
+/* Delete button styles */
+.mui-chip-container .chip-delete {
+  margin-left: 4px !important;
+  cursor: pointer !important;
+  font-weight: bold !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  opacity: 0.8 !important;
+  transition: opacity 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+}
+
+.mui-chip-container .chip-delete:hover {
+  opacity: 1 !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Color variants using MUI theme colors */
+.mui-chip-container .MuiChip-colorprimary {
+  background-color: var(--mui-palette-primary-main) !important;
+  color: var(--mui-palette-primary-contrastText) !important;
+}
+
+.mui-chip-container .MuiChip-colorsecondary {
+  background-color: var(--mui-palette-secondary-main) !important;
+  color: var(--mui-palette-secondary-contrastText) !important;
+}
+
+.mui-chip-container .MuiChip-colorsuccess {
+  background-color: var(--mui-palette-success-main) !important;
+  color: var(--mui-palette-success-contrastText) !important;
+}
+
+.mui-chip-container .MuiChip-colorwarning {
+  background-color: var(--mui-palette-warning-main) !important;
+  color: var(--mui-palette-warning-contrastText) !important;
+}
+
+.mui-chip-container .MuiChip-colorinfo {
+  background-color: var(--mui-palette-info-main) !important;
+  color: var(--mui-palette-info-contrastText) !important;
+}
+
+.mui-chip-container .MuiChip-colorerror {
+  background-color: var(--mui-palette-error-main) !important;
+  color: var(--mui-palette-error-contrastText) !important;
+}
+
+.mui-chip-container .MuiChip-colordefault {
+  background-color: var(--mui-palette-grey-500) !important;
+  color: white !important;
+}
+
+/* Dark mode adjustments */
+[data-mui-color-scheme="dark"] .mui-chip-container .MuiChip-root {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-mui-color-scheme="dark"] .mui-chip-container .MuiChip-root:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Placeholder styles (for initial insertion) */
+.custom-field-placeholder {
+  display: inline-block !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Custom Field Node Styles */
+.custom-field-node {
+  display: inline !important;
+  vertical-align: middle !important;
+  margin: 0 2px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+}
+
+/* Ensure the chip doesn't break the line */
+.custom-field-node .MuiChip-root {
+  display: inline-flex !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+}
+
+.custom-field-node .MuiChip-label {
+  line-height: 1.2 !important;
+}
+
+/* Dark mode adjustments */
+[data-mui-color-scheme="dark"] .custom-field-node .MuiChip-root {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-mui-color-scheme="dark"] .custom-field-node .MuiChip-root:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+} 
