@@ -303,16 +303,18 @@ export default function AdminRoadmap() {
               return (
                 <div
                   key={status}
-                  className={`rounded-lg border border-t-[3px] ${config.borderColor} min-h-[400px] flex flex-col ${
+                  className={`rounded-lg border border-t-[3px] ${config.borderColor} min-h-[400px] flex flex-col overflow-hidden ${
                     theme === 'dark'
-                      ? 'bg-gray-800 border-gray-700'
-                      : 'bg-white border-gray-200'
+                      ? 'border-gray-700'
+                      : 'border-gray-200'
                   }`}
                   onDragOver={handleDragOver}
                   onDrop={() => handleDrop(status)}
                 >
-                  {/* Column Header */}
-                  <div className="px-4 pt-4 pb-3">
+                  {/* Column Header - White bg */}
+                  <div className={`px-4 pt-4 pb-3 ${
+                    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+                  }`}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <div className={`w-2.5 h-2.5 rounded-full ${config.dotColor}`} />
@@ -348,8 +350,10 @@ export default function AdminRoadmap() {
                     </div>
                   </div>
 
-                  {/* Cards */}
-                  <div className="flex-1 px-3 pb-3 space-y-2.5 overflow-y-auto">
+                  {/* Cards - Light gray bg */}
+                  <div className={`flex-1 px-3 pb-3 pt-3 space-y-2.5 overflow-y-auto ${
+                    theme === 'dark' ? 'bg-gray-850' : 'bg-[#f5f5f5]'
+                  }`}>
                     {posts.length > 0 ? (
                       posts.map((post) => (
                         <div
