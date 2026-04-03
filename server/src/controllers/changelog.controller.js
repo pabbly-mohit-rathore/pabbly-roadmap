@@ -215,6 +215,7 @@ const getPublicEntries = async (req, res, next) => {
       },
       include: {
         author: { select: { id: true, name: true } },
+        boards: { include: { board: { select: { id: true, name: true, color: true } } } },
         likes: userId ? { where: { userId }, select: { id: true } } : false,
         _count: { select: { likes: true } },
       },

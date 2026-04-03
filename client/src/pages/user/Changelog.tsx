@@ -13,8 +13,10 @@ interface ChangelogEntry {
   content: string;
   type: string;
   status: string;
+  allBoards: boolean;
   publishedAt: string;
   author: { id: string; name: string };
+  boards: { board: { id: string; name: string; color: string } }[];
   isLiked: boolean;
   _count: { likes: number };
 }
@@ -98,6 +100,7 @@ export default function UserChangelog() {
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-semibold">Title</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold">Type</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold">Board</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold">Published</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold">Likes</th>
                 </tr>
@@ -123,6 +126,20 @@ export default function UserChangelog() {
                         </span>
                       </td>
                       <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {entry.allBoards ? (
+                          <span className="text-xs font-medium">All Boards</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {entry.boards?.map((b) => (
+                              <span key={b.board.id} className="flex items-center gap-1 text-xs">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: b.board.color }} />
+                                {b.board.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {entry.publishedAt ? new Date(entry.publishedAt).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
@@ -144,7 +161,7 @@ export default function UserChangelog() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className={`px-6 py-12 text-center text-sm ${
+                    <td colSpan={5} className={`px-6 py-12 text-center text-sm ${
                       theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                     }`}>
                       No changelog entries yet
