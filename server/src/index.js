@@ -28,6 +28,7 @@ const quickResponseRoutes = require('./routes/quickResponse.routes');
 const roadmapRoutes = require('./routes/roadmap.routes');
 const activityLogRoutes = require('./routes/activityLog.routes');
 const changelogRoutes = require('./routes/changelog.routes');
+const reportingRoutes = require('./routes/reporting.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -92,6 +93,9 @@ app.use('/api', activityLogRoutes);
 
 // Changelog routes — /api/changelog, /api/changelog/public, etc.
 app.use('/api', changelogRoutes);
+
+// Reporting routes — /api/reporting/*, etc.
+app.use('/api', reportingRoutes);
 
 // ──────────────────────────────────────
 // ERROR HANDLER (sabse last mein lagta hai)
