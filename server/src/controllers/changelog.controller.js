@@ -166,11 +166,13 @@ const publishEntry = async (req, res, next) => {
     }
 
     const { id } = req.params;
-    const { scheduledAt } = req.body;
+    const scheduledAt = req.body?.scheduledAt;
 
     const data = scheduledAt
       ? { status: 'scheduled', scheduledAt: new Date(scheduledAt) }
       : { status: 'published', publishedAt: new Date() };
+
+    console.log('Publishing entry:', id, 'data:', data);
 
     const entry = await prisma.changelogEntry.update({
       where: { id },
