@@ -39,6 +39,7 @@ export default function ChangelogEditor() {
   const [saving, setSaving] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
+  const [previewHtml, setPreviewHtml] = useState('');
 
   const editor = useEditor({
     extensions: [
@@ -57,6 +58,9 @@ export default function ChangelogEditor() {
         placeholder: 'Write your changelog content here...',
       }),
     ],
+    onUpdate: ({ editor: e }) => {
+      setPreviewHtml(e.getHTML());
+    },
     editorProps: {
       attributes: {
         class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-6 py-4 ' +
@@ -73,6 +77,7 @@ export default function ChangelogEditor() {
   useEffect(() => {
     if (editor && entry?.content) {
       editor.commands.setContent(entry.content);
+      setPreviewHtml(entry.content);
     }
   }, [editor, entry]);
 
@@ -93,7 +98,7 @@ export default function ChangelogEditor() {
     }
   };
 
-  const getEditorContent = () => editor?.getHTML() || '';
+  const getEditorContent = () => previewHtml || editor?.getHTML() || '';
 
   const handleSaveDraft = async () => {
     try {
@@ -295,11 +300,42 @@ export default function ChangelogEditor() {
           action={() => editor?.chain().focus().redo().run()} />
       </div>
 
-      {/* Editor */}
-      <div className={`flex-1 overflow-y-auto ${
-        theme === 'dark' ? 'bg-gray-900' : 'bg-white'
-      }`}>
-        <EditorContent editor={editor} className="h-full" />
+      {/* Editor + Live Preview */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left: Editor */}
+        <div className={`flex-1 overflow-y-auto border-r ${
+          theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
+        }`}>
+          <EditorContent editor={editor} className="h-full" />
+        </div>
+
+        {/* Right: Live Preview */}
+        <div className={`flex-1 overflow-y-auto flex flex-col ${
+          theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'
+        }`}>
+          <div className={`px-4 py-2 border-b text-xs font-semibold uppercase tracking-wider shrink-0 ${
+            theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-400'
+          }`}>
+            Live Preview
+          </div>
+          <div className="p-6 flex-1">
+            {title && (
+              <h1 className={`text-2xl font-bold mb-4 ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>{title}</h1>
+            )}
+            {previewHtml && previewHtml !== '<p></p>' ? (
+              <div
+                className={`tiptap ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
+                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              />
+            ) : (
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                Start writing to see a live preview...
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Schedule Modal */}
