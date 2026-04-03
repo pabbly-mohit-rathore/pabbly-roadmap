@@ -39,6 +39,7 @@ export default function AdminChangeLog() {
 
   const [form, setForm] = useState({
     title: '',
+    description: '',
     type: 'new',
     allBoards: true,
     boardIds: [] as string[],
@@ -86,7 +87,7 @@ export default function AdminChangeLog() {
     try {
       const response = await api.post('/changelog', {
         title: form.title,
-        content: '',
+        content: form.description,
         type: form.type,
         allBoards: form.allBoards,
         boardIds: form.boardIds,
@@ -151,7 +152,7 @@ export default function AdminChangeLog() {
           </div>
           <button
             onClick={() => {
-              setForm({ title: '', type: 'new', allBoards: true, boardIds: [] });
+              setForm({ title: '', description: '', type: 'new', allBoards: true, boardIds: [] });
               setShowModal(true);
             }}
             className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
@@ -309,6 +310,22 @@ export default function AdminChangeLog() {
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="What's new?"
+                  className={`w-full px-4 py-2.5 rounded-lg border ${
+                    theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'
+                  }`}
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                }`}>Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Brief description of this changelog entry..."
+                  rows={3}
                   className={`w-full px-4 py-2.5 rounded-lg border ${
                     theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'
                   }`}
