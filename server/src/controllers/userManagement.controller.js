@@ -71,6 +71,18 @@ const listUsers = async (req, res, next) => {
         isActive: true,
         emailVerified: true,
         createdAt: true,
+        boardAccess: {
+          select: {
+            board: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                color: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             posts: true,

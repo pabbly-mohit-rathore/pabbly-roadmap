@@ -4,6 +4,15 @@ import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
+interface BoardInfo {
+  board: {
+    id: string;
+    name: string;
+    slug: string;
+    color: string;
+  };
+}
+
 interface User {
   id: string;
   email: string;
@@ -12,6 +21,7 @@ interface User {
   role: string;
   isActive: boolean;
   createdAt: string;
+  boardAccess: BoardInfo[];
   _count: {
     posts: number;
     votes: number;
@@ -411,10 +421,31 @@ export default function AdminUsers() {
                 <div>
                   <p className={`text-xs mb-1 ${
                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                  }`}>Board Access</p>
-                  <p className={`text-sm font-semibold ${
-                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                  }`}>{selectedUser._count.boardAccess}</p>
+                  }`}>Board Access ({selectedUser._count.boardAccess})</p>
+                  {selectedUser.boardAccess && selectedUser.boardAccess.length > 0 ? (
+                    <div className="space-y-2 mt-2">
+                      {selectedUser.boardAccess.map((ba) => (
+                        <div
+                          key={ba.board.id}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg ${
+                            theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'
+                          }`}
+                        >
+                          <div
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: ba.board.color || '#6366f1' }}
+                          />
+                          <span className={`text-sm font-medium ${
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>{ba.board.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className={`text-sm ${
+                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    }`}>No boards</p>
+                  )}
                 </div>
               </div>
 
