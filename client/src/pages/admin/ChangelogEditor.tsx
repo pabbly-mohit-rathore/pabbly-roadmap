@@ -181,7 +181,12 @@ export default function ChangelogEditor() {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        // @ts-ignore - disable if included in StarterKit to avoid duplicates
+        link: false,
+        underline: false,
+      }),
       UnderlineExt,
       LinkExt.configure({ openOnClick: false, HTMLAttributes: { class: 'text-blue-600 underline' } }),
       ResizableImage,
@@ -198,8 +203,11 @@ export default function ChangelogEditor() {
       Highlight.configure({ multicolor: true }),
     ],
     onUpdate: ({ editor: e }) => {
-      setPreviewHtml(e.getHTML());
-      triggerAutoSave();
+      const html = e.getHTML();
+      requestAnimationFrame(() => {
+        setPreviewHtml(html);
+        triggerAutoSave();
+      });
     },
     editorProps: {
       attributes: {
