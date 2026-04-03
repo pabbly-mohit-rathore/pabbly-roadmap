@@ -78,6 +78,8 @@ body {
 :is(.tiptap, .tiptap-preview) img {
   max-width: 100%;
   border-radius: 0.5rem;
+  display: block;
+  margin: 0.5rem 0;
 }
 :is(.tiptap, .tiptap-preview) a {
   color: #2563eb;
