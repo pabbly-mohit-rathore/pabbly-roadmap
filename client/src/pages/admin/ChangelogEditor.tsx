@@ -84,7 +84,8 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
   };
 
   return (
-    <NodeViewWrapper className="my-2" data-drag-handle style={{ textAlign: align }}>
+    <NodeViewWrapper as="span" data-drag-handle
+      style={{ textAlign: align, display: 'block', margin: '0.5rem 0' }}>
       <div className={`relative inline-block ${selected ? 'ring-2 ring-blue-500 rounded' : ''}`}>
         <img
           ref={imgRef}
@@ -110,7 +111,8 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
 
 const ResizableImage = Node.create({
   name: 'resizableImage',
-  group: 'block',
+  group: 'inline',
+  inline: true,
   atom: true,
   draggable: true,
   addAttributes() {
@@ -129,7 +131,7 @@ const ResizableImage = Node.create({
     const style = `${w} ${margin} display: block;`;
     return ['img', mergeAttributes(HTMLAttributes, { style, class: 'rounded-lg' })];
   },
-  addNodeView() { return ReactNodeViewRenderer(ResizableImageComponent); },
+  addNodeView() { return ReactNodeViewRenderer(ResizableImageComponent, { as: 'span' }); },
 });
 
 interface ChangelogEntry {
