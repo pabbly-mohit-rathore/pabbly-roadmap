@@ -33,15 +33,17 @@ export default function LoginPage() {
       // Check if there's a redirect URL stored in localStorage
       const redirectUrl = localStorage.getItem('loginRedirect');
 
-      // Admin → admin page, User → redirect URL or user boards page
+      // Admin → admin page, User → user boards page
       if (user.role === 'admin') {
         navigate('/admin/dashboard');
-      } else if (redirectUrl) {
-        localStorage.removeItem('loginRedirect');
-        navigate(redirectUrl);
       } else {
-        // Default to /user/boards for regular users (not admin)
-        navigate('/user/boards');
+        // Regular users always go to /user/boards
+        // But use redirectUrl if it was set (from invite link flow)
+        const finalUrl = redirectUrl || '/user/boards';
+        if (redirectUrl) {
+          localStorage.removeItem('loginRedirect');
+        }
+        navigate(finalUrl);
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
