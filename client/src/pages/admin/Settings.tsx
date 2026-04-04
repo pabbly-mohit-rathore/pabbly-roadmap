@@ -25,7 +25,7 @@ export default function AdminSettings() {
       </p>
 
       {/* Tabs */}
-      <div className="flex items-center gap-6 mt-4 mb-3">
+      <div className="flex items-center gap-6 mt-5 mb-5">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
