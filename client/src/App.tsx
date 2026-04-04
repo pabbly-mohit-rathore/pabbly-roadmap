@@ -14,18 +14,14 @@ import InvitePage from './pages/InvitePage';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminFeedback from './pages/admin/Feedback';
 import AdminRoadmap from './pages/admin/Roadmap';
-import AdminBoards from './pages/admin/Boards';
 import AdminBoardDetail from './pages/admin/BoardDetail';
 import AdminPostDetail from './pages/admin/PostDetail';
 import ChangelogEditor from './pages/admin/ChangelogEditor';
 import ChangelogView from './pages/admin/ChangelogView';
+import BoardManagement from './pages/admin/BoardManagement';
 import AdminBoardMembers from './pages/admin/BoardMembers';
-import AdminInviteLinks from './pages/admin/InviteLinks';
-import AdminTags from './pages/admin/Tags';
 import AdminSettings from './pages/admin/Settings';
 import AdminUsers from './pages/admin/Users';
-import AdminChangeLog from './pages/admin/ChangeLog';
-import AdminReporting from './pages/admin/Reporting';
 import UserBoardsPage from './pages/user/BoardsPage';
 import UserRoadmapPage from './pages/user/RoadmapPage';
 import UserBoardDetail from './pages/user/BoardDetail';
@@ -199,15 +195,12 @@ function App() {
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="feedback" element={<AdminFeedback />} />
                     <Route path="roadmap" element={<AdminRoadmap />} />
-                    <Route path="boards" element={<AdminBoards />} />
+                    <Route path="board-management" element={<BoardManagement />} />
                     <Route path="boards/:boardId" element={<AdminBoardDetail />} />
                     <Route path="boards/:id/members" element={<AdminBoardMembers />} />
                     <Route path="posts/:postId" element={<AdminPostDetail />} />
-                    <Route path="invite-links" element={<AdminInviteLinks />} />
-                    <Route path="tags" element={<AdminTags />} />
                     <Route path="users" element={<AdminUsers />} />
-                    <Route path="changelog" element={<AdminChangeLog />} />
-                    <Route path="reporting" element={<AdminReporting />} />
+                    <Route path="changelog/:id/view" element={<ChangelogView />} />
                     <Route path="settings" element={<AdminSettings />} />
                   </Routes>
                 </AdminLayout>

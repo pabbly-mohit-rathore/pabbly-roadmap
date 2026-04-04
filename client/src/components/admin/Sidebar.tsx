@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, MapPin, Users, History, BarChart3, Grid3x3, Link2, Tags, Settings } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, MapPin, Users, Grid3x3, Settings } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 
 export default function AdminSidebar() {
@@ -10,16 +10,12 @@ export default function AdminSidebar() {
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
     { label: 'Feedback', icon: MessageSquare, path: '/admin/feedback' },
     { label: 'Roadmap', icon: MapPin, path: '/admin/roadmap' },
-    { label: 'Boards', icon: Grid3x3, path: '/admin/boards' },
-    { label: 'Invite Links', icon: Link2, path: '/admin/invite-links' },
-    { label: 'Tags', icon: Tags, path: '/admin/tags' },
+    { label: 'Board Management', icon: Grid3x3, path: '/admin/board-management' },
     { label: 'Users', icon: Users, path: '/admin/users' },
-    { label: 'Change Log', icon: History, path: '/admin/changelog' },
-    { label: 'Activity Log', icon: BarChart3, path: '/admin/reporting' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
     <aside
@@ -28,7 +24,6 @@ export default function AdminSidebar() {
       }`}
       style={{ width: '207px', height: 'calc(100vh - 64px)' }}
     >
-      {/* Top underline/border */}
       <div className={`h-px w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`} />
 
       <nav className="p-3">
