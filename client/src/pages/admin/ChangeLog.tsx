@@ -213,13 +213,13 @@ export default function AdminChangeLog() {
           <table className="w-full">
             <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Title</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Type</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Boards</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Likes</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Created</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Title</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Boards</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Likes</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Created</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -233,29 +233,29 @@ export default function AdminChangeLog() {
                       entry.status === 'draft' ? `/admin/changelog/${entry.id}/edit` : `/admin/changelog/${entry.id}/view`
                     )}
                   >
-                    <td className={`px-6 py-4 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <td className={`px-4 py-3.5 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {entry.title}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3.5">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${getTypeBadge(entry.type)}`}>
                         {entry.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3.5">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(entry.status)}`}>
                         {entry.status}
                       </span>
                     </td>
-                    <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <td className={`px-4 py-3.5 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                       {entry.allBoards ? 'All Boards' : entry.boards.map((b) => b.board.name).join(', ')}
                     </td>
-                    <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <td className={`px-4 py-3.5 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                       {entry._count.likes}
                     </td>
-                    <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <td className={`px-4 py-3.5 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                       {new Date(entry.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <button onClick={() => navigate(`/admin/changelog/${entry.id}/edit`)}
                           className={`p-1.5 rounded-lg transition ${theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}
@@ -272,7 +272,7 @@ export default function AdminChangeLog() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className={`px-6 py-12 text-center text-sm ${
+                  <td colSpan={7} className={`px-4 py-12 text-center text-sm ${
                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                   }`}>
                     No changelog entries yet. Create your first entry!

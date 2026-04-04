@@ -152,13 +152,13 @@ export default function AdminUsers() {
               theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
             }`}>
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold">User</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Role</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Posts</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Votes</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Boards</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">User</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Role</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Posts</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Votes</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Boards</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -174,7 +174,7 @@ export default function AdminUsers() {
                     theme === 'dark' ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'
                   }`}
                 >
-                  <td className={`px-6 py-4 text-sm font-medium ${
+                  <td className={`px-4 py-3.5 text-sm font-medium ${
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}>
                     <div className="flex items-center gap-3">
@@ -191,7 +191,7 @@ export default function AdminUsers() {
                       </div>
                     </div>
                   </td>
-                  <td className={`px-6 py-4 text-sm ${
+                  <td className={`px-4 py-3.5 text-sm ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     <div className="flex items-center gap-1">
@@ -199,22 +199,22 @@ export default function AdminUsers() {
                       {user.role}
                     </div>
                   </td>
-                  <td className={`px-6 py-4 text-sm ${
+                  <td className={`px-4 py-3.5 text-sm ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     {user._count.posts}
                   </td>
-                  <td className={`px-6 py-4 text-sm ${
+                  <td className={`px-4 py-3.5 text-sm ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     {user._count.votes}
                   </td>
-                  <td className={`px-6 py-4 text-sm ${
+                  <td className={`px-4 py-3.5 text-sm ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     {user._count.boardAccess}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3.5">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       user.isActive
                         ? 'bg-green-100 text-green-800'
@@ -223,7 +223,7 @@ export default function AdminUsers() {
                       {user.isActive ? 'Active' : 'Banned'}
                     </span>
                   </td>
-                  <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                     {user.role !== 'admin' && (
                       <button
                         onClick={() => handleBanUser(user.id, user.isActive ? 'ban' : 'unban')}
