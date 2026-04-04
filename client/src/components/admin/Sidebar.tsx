@@ -15,7 +15,7 @@ export default function AdminSidebar() {
     { label: 'Tags', icon: Tags, path: '/admin/tags' },
     { label: 'Users', icon: Users, path: '/admin/users' },
     { label: 'Change Log', icon: History, path: '/admin/changelog' },
-    { label: 'Reporting', icon: BarChart3, path: '/admin/reporting' },
+    { label: 'Activity Log', icon: BarChart3, path: '/admin/reporting' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
   ];
 

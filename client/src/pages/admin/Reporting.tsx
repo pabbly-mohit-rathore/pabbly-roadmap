@@ -161,7 +161,7 @@ export default function AdminReporting() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className={`text-4xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Reporting</h1>
+          <h1 className={`text-4xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Activity Log</h1>
           <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Platform activity and insights</p>
         </div>
         <div className="flex items-center gap-2">
@@ -177,18 +177,15 @@ export default function AdminReporting() {
         </div>
       </div>
 
-      {/* Activity Overview */}
-      <div className={`p-6 rounded-lg border mb-6 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <h2 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Activity Overview</h2>
-        <div className="grid grid-cols-3 gap-4">
-          {activity && (
-            <>
-              <StatCard label="Posts" count={activity.posts.count} change={activity.posts.change} />
-              <StatCard label="Votes" count={activity.votes.count} change={activity.votes.change} />
-              <StatCard label="Comments" count={activity.comments.count} change={activity.comments.change} />
-            </>
-          )}
-        </div>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {activity && (
+          <>
+            <StatCard label="Posts" count={activity.posts.count} change={activity.posts.change} />
+            <StatCard label="Votes" count={activity.votes.count} change={activity.votes.change} />
+            <StatCard label="Comments" count={activity.comments.count} change={activity.comments.change} />
+          </>
+        )}
       </div>
 
       {/* New Posts + Stale Posts */}
