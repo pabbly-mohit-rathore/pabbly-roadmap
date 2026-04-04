@@ -267,28 +267,28 @@ export default function UserBoardDetail() {
               <table className="w-full">
                 <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                       Upvote
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                       Title
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                       Type
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                       Tags
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                       Comments
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                       Created At
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -305,7 +305,7 @@ export default function UserBoardDetail() {
                             : 'border-gray-200 hover:bg-gray-50'
                         }`}
                       >
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3.5">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -324,13 +324,13 @@ export default function UserBoardDetail() {
                           </button>
                         </td>
                         <td
-                          className={`px-6 py-4 text-sm font-medium ${
+                          className={`px-4 py-3.5 text-sm font-medium ${
                             theme === 'dark' ? 'text-white' : 'text-gray-900'
                           }`}
                         >
                           {post.title}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3.5">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(
                               post.type
@@ -339,7 +339,7 @@ export default function UserBoardDetail() {
                             {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3.5">
                           <div className="flex flex-wrap gap-1">
                             {post.tags && post.tags.length > 0 ? (
                               post.tags.map((postTag) => (
@@ -364,7 +364,7 @@ export default function UserBoardDetail() {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3.5">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
                               post.status
@@ -374,7 +374,7 @@ export default function UserBoardDetail() {
                           </span>
                         </td>
                         <td
-                          className={`px-6 py-4 text-sm ${
+                          className={`px-4 py-3.5 text-sm ${
                             theme === 'dark'
                               ? 'text-gray-400'
                               : 'text-gray-600'
@@ -383,7 +383,7 @@ export default function UserBoardDetail() {
                           {post.commentCount} 💬
                         </td>
                         <td
-                          className={`px-6 py-4 text-sm ${
+                          className={`px-4 py-3.5 text-sm ${
                             theme === 'dark'
                               ? 'text-gray-400'
                               : 'text-gray-600'
@@ -391,7 +391,7 @@ export default function UserBoardDetail() {
                         >
                           {new Date(post.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                           <div className="relative">
                             <button
                               onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}

@@ -326,16 +326,16 @@ export default function AdminReporting() {
           <table className="w-full">
             <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Admin</th>
-                <th className="px-6 py-3 text-center text-sm font-semibold">Votes</th>
-                <th className="px-6 py-3 text-center text-sm font-semibold">Posts</th>
-                <th className="px-6 py-3 text-center text-sm font-semibold">Comments</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Admin</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">Votes</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">Posts</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">Comments</th>
               </tr>
             </thead>
             <tbody>
               {admins.map((admin) => (
                 <tr key={admin.id} className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white text-xs font-bold">
                         {admin.name[0].toUpperCase()}
@@ -346,13 +346,13 @@ export default function AdminReporting() {
                       </div>
                     </div>
                   </td>
-                  <td className={`px-6 py-4 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <td className={`px-4 py-3.5 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     {admin._count.votes || '—'}
                   </td>
-                  <td className={`px-6 py-4 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <td className={`px-4 py-3.5 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     {admin._count.posts || '—'}
                   </td>
-                  <td className={`px-6 py-4 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <td className={`px-4 py-3.5 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     {admin._count.comments || '—'}
                   </td>
                 </tr>

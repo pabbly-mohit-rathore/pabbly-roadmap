@@ -193,10 +193,10 @@ export default function AdminBoardMembers() {
                   theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
                 }`}>
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Name</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Email</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Permissions</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Permissions</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -207,17 +207,17 @@ export default function AdminBoardMembers() {
                         theme === 'dark' ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
-                      <td className={`px-6 py-4 text-sm font-medium ${
+                      <td className={`px-4 py-3.5 text-sm font-medium ${
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
                       }`}>
                         {member.user.name}
                       </td>
-                      <td className={`px-6 py-4 text-sm ${
+                      <td className={`px-4 py-3.5 text-sm ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>
                         {member.user.email}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5">
                         <div className="flex gap-2 flex-wrap">
                           {member.canEditPost && (
                             <span className="px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800">
@@ -253,7 +253,7 @@ export default function AdminBoardMembers() {
                             )}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5">
                         <button
                           onClick={() => handleRemoveMember(member.userId)}
                           className={`p-2 rounded-lg transition-colors ${

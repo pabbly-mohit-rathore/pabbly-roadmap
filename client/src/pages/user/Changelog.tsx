@@ -98,11 +98,11 @@ export default function UserChangelog() {
             <table className="w-full">
               <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold">Title</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold">Type</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold">Board</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold">Published</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold">Likes</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Title</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Board</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Published</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Likes</th>
                 </tr>
               </thead>
               <tbody>
@@ -115,17 +115,17 @@ export default function UserChangelog() {
                         theme === 'dark' ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
-                      <td className={`px-6 py-4 text-sm font-medium ${
+                      <td className={`px-4 py-3.5 text-sm font-medium ${
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
                       }`}>
                         {entry.title}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${getTypeBadge(entry.type)}`}>
                           {entry.type}
                         </span>
                       </td>
-                      <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <td className={`px-4 py-3.5 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {entry.allBoards ? (
                           <span className="text-xs font-medium">All Boards</span>
                         ) : (
@@ -139,10 +139,10 @@ export default function UserChangelog() {
                           </div>
                         )}
                       </td>
-                      <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <td className={`px-4 py-3.5 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {entry.publishedAt ? new Date(entry.publishedAt).toLocaleDateString() : '-'}
                       </td>
-                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleLike(entry.id)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition text-sm ${
@@ -161,7 +161,7 @@ export default function UserChangelog() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className={`px-6 py-12 text-center text-sm ${
+                    <td colSpan={5} className={`px-4 py-12 text-center text-sm ${
                       theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                     }`}>
                       No changelog entries yet
