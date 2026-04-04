@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 
@@ -36,6 +37,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [topPosts, setTopPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const d = theme === 'dark';
 
   useEffect(() => {
@@ -121,7 +123,8 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {topPosts.length > 0 ? topPosts.map((post, index) => (
-                  <tr key={post.id} className={`border-t transition ${d ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
+                  <tr key={post.id} onClick={() => navigate(`/admin/posts/${post.slug}`)}
+                    className={`border-t transition cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
                     <td className="px-4 py-3.5">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                         index === 0 ? 'bg-yellow-100 text-yellow-700'
