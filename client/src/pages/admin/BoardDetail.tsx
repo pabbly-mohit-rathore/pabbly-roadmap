@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, X, ThumbsUp, MoreVertical } from 'lucide-react';
+import { Plus, Trash2, X, ThumbsUp, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -56,6 +56,8 @@ export default function AdminBoardDetail() {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [votedPostIds, setVotedPostIds] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -282,6 +284,9 @@ export default function AdminBoardDetail() {
     return colors[type] || 'bg-gray-100 text-gray-800';
   };
 
+  const totalPages = Math.ceil(posts.length / rowsPerPage);
+  const paginatedPosts = posts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
   return (
     <div>
       {/* Header */}
@@ -422,45 +427,45 @@ export default function AdminBoardDetail() {
             <table className="w-full">
             <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                   Upvote
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                   Title
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                   Tags
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                   Comments
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                   Created At
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody>
-              {posts.length > 0 ? (
-                posts.map((post) => (
+              {paginatedPosts.length > 0 ? (
+                paginatedPosts.map((post) => (
                   <tr
                     key={post.id}
-                    onClick={() => navigate(`/admin/posts/${post.id}`, { state: { post } })}
+                    onClick={() => navigate(`/admin/posts/${post.slug}`)}
                     className={`border-t cursor-pointer ${
                       theme === 'dark'
                         ? 'border-gray-700 hover:bg-gray-700'
                         : 'border-gray-200 hover:bg-gray-50'
                     }`}
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleVote(post.id)}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors font-medium ${
@@ -476,13 +481,13 @@ export default function AdminBoardDetail() {
                       </button>
                     </td>
                     <td
-                      className={`px-6 py-4 text-sm font-medium ${
+                      className={`px-4 py-3.5 text-sm font-medium ${
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
                       }`}
                     >
                       {post.title}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3.5">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(
                           post.type
@@ -491,7 +496,7 @@ export default function AdminBoardDetail() {
                         {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3.5">
                       <div className="flex flex-wrap gap-1">
                         {post.tags && post.tags.length > 0 ? (
                           post.tags.map((postTag) => (
@@ -516,7 +521,7 @@ export default function AdminBoardDetail() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={post.status}
                         onChange={(e) =>
@@ -536,7 +541,7 @@ export default function AdminBoardDetail() {
                       </select>
                     </td>
                     <td
-                      className={`px-6 py-4 text-sm ${
+                      className={`px-4 py-3.5 text-sm ${
                         theme === 'dark'
                           ? 'text-gray-400'
                           : 'text-gray-600'
@@ -545,7 +550,7 @@ export default function AdminBoardDetail() {
                       {post.commentCount} 💬
                     </td>
                     <td
-                      className={`px-6 py-4 text-sm ${
+                      className={`px-4 py-3.5 text-sm ${
                         theme === 'dark'
                           ? 'text-gray-400'
                           : 'text-gray-600'
@@ -553,7 +558,7 @@ export default function AdminBoardDetail() {
                     >
                       {new Date(post.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <div className="relative">
                         <button
                           onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
@@ -621,6 +626,72 @@ export default function AdminBoardDetail() {
             </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {posts.length > 0 && (
+            <div
+              className={`flex items-center justify-between px-4 py-3 border-t ${
+                theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Rows per page:
+                </span>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setPage(0);
+                  }}
+                  className={`text-sm border rounded px-2 py-1 ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-200 text-gray-700'
+                  }`}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {page * rowsPerPage + 1}-{Math.min((page + 1) * rowsPerPage, posts.length)} of {posts.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className={`p-1.5 rounded transition-colors ${
+                      page === 0
+                        ? 'opacity-40 cursor-not-allowed'
+                        : theme === 'dark'
+                        ? 'hover:bg-gray-700 text-gray-300'
+                        : 'hover:bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                    className={`p-1.5 rounded transition-colors ${
+                      page >= totalPages - 1
+                        ? 'opacity-40 cursor-not-allowed'
+                        : theme === 'dark'
+                        ? 'hover:bg-gray-700 text-gray-300'
+                        : 'hover:bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
