@@ -55,6 +55,8 @@ interface ActivityLog {
 export default function AdminReporting() {
   const theme = useThemeStore((state) => state.theme);
   const [period, setPeriod] = useState('week');
+  const [boardFilter, setBoardFilter] = useState('all');
+  const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
   const [activity, setActivity] = useState<ActivityData | null>(null);
   const [newPosts, setNewPosts] = useState<NewPost[]>([]);
   const [stalePosts, setStalePosts] = useState<StalePost[]>([]);
@@ -67,8 +69,19 @@ export default function AdminReporting() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    fetchBoards();
+  }, []);
+
+  useEffect(() => {
     fetchAll();
   }, [period]);
+
+  const fetchBoards = async () => {
+    try {
+      const res = await api.get('/boards');
+      if (res.data.success) setBoards(res.data.data.boards);
+    } catch {}
+  };
 
   useEffect(() => {
     fetchActivityLogs();
@@ -168,20 +181,28 @@ export default function AdminReporting() {
 
   if (loading) return <div className="text-center py-12">Loading reporting...</div>;
 
+  const d = theme === 'dark';
+
   return (
     <div>
-      {/* Time Filter */}
-      <div className="flex items-center justify-end mb-6">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-gray-400" />
-          <select value={period} onChange={(e) => setPeriod(e.target.value)}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'
-            }`}>
-            <option value="week">This week</option>
-            <option value="month">This month</option>
-            <option value="all">All time</option>
+      {/* Filter Bar */}
+      <div className={`p-4 rounded-lg border mb-5 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex flex-wrap items-center gap-3">
+          <select value={boardFilter} onChange={(e) => setBoardFilter(e.target.value)}
+            className={`px-3 py-2 rounded-lg border text-sm ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`}>
+            <option value="all">All Boards</option>
+            {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
+
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            <select value={period} onChange={(e) => setPeriod(e.target.value)}
+              className={`px-3 py-2 rounded-lg border text-sm ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`}>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
         </div>
       </div>
 
