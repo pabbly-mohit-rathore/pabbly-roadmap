@@ -363,67 +363,65 @@ export default function AdminReporting() {
       </div>
 
       {/* Activity Log Table */}
-      <div className={`p-6 rounded-lg border mt-6 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <h2 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Activity Log</h2>
-        <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <table className="w-full">
-            <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold">User</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Action</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Description</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Post</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Board</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activityLogs.length > 0 ? (
-                activityLogs.map((log) => (
-                  <tr key={log.id} className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-teal-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                          {log.user.name[0].toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className={`text-xs font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{log.user.name}</p>
-                          <p className={`text-[10px] truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{log.user.email}</p>
-                        </div>
+      <div className={`rounded-lg border mt-6 overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="px-4 py-4">
+          <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Activity Log</h2>
+          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{logTotal} activities</p>
+        </div>
+        <table className="w-full">
+          <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
+            <tr>
+              {['User', 'Action', 'Description', 'Post', 'Board', 'Time'].map(h => (
+                <th key={h} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {activityLogs.length > 0 ? (
+              activityLogs.map((log) => (
+                <tr key={log.id} className={`border-t transition ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        {log.user.name[0].toUpperCase()}
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${getActionBadge(log.action)}`}>
-                        {log.action.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td className={`px-4 py-3 text-xs max-w-[200px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {log.description}
-                    </td>
-                    <td className={`px-4 py-3 text-xs truncate max-w-[150px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {log.post?.title || '—'}
-                    </td>
-                    <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {log.board?.name || '—'}
-                    </td>
-                    <td className={`px-4 py-3 text-xs whitespace-nowrap ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                      {new Date(log.createdAt).toLocaleString()}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className={`px-4 py-8 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    No activity logs
+                      <div className="min-w-0">
+                        <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{log.user.name}</p>
+                        <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{log.user.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold ${getActionBadge(log.action)}`}>
+                      {log.action.replace(/_/g, ' ')}
+                    </span>
+                  </td>
+                  <td className={`px-4 py-3.5 text-xs max-w-[220px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {log.description}
+                  </td>
+                  <td className={`px-4 py-3.5 text-xs truncate max-w-[150px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {log.post?.title || '—'}
+                  </td>
+                  <td className={`px-4 py-3.5 text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {log.board?.name || '—'}
+                  </td>
+                  <td className={`px-4 py-3.5 text-xs whitespace-nowrap ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(log.createdAt).toLocaleTimeString()}
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6} className={`px-4 py-12 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                  No activity logs
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-4">
+        <div className={`flex items-center justify-between px-4 py-3 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-2">
             <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Rows per page:</span>
             <select
