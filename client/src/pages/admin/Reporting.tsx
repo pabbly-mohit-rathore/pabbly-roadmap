@@ -320,46 +320,50 @@ export default function AdminReporting() {
       </div>
 
       {/* Admin Activity Table */}
-      <div className={`p-6 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <h2 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Admin Activity</h2>
-        <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <table className="w-full">
-            <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Admin</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">Votes</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">Posts</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">Comments</th>
-              </tr>
-            </thead>
-            <tbody>
-              {admins.map((admin) => (
-                <tr key={admin.id} className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white text-xs font-bold">
-                        {admin.name[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{admin.name}</p>
-                        <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{admin.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className={`px-4 py-3.5 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {admin._count.votes || '—'}
-                  </td>
-                  <td className={`px-4 py-3.5 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {admin._count.posts || '—'}
-                  </td>
-                  <td className={`px-4 py-3.5 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {admin._count.comments || '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="px-4 py-4">
+          <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Admin Activity</h2>
+          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{admins.length} admin{admins.length !== 1 ? 's' : ''}</p>
         </div>
+        <table className="w-full">
+          <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
+            <tr>
+              {['Admin', 'Votes', 'Posts', 'Comments'].map((h, i) => (
+                <th key={h} className={`px-4 py-3 ${i === 0 ? 'text-left' : 'text-center'} text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {admins.length > 0 ? admins.map((admin) => (
+              <tr key={admin.id} className={`border-t transition ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
+                <td className="px-4 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {admin.name[0].toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{admin.name}</p>
+                      <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{admin.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className={`px-4 py-3.5 text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
+                  {admin._count.votes || '—'}
+                </td>
+                <td className={`px-4 py-3.5 text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
+                  {admin._count.posts || '—'}
+                </td>
+                <td className={`px-4 py-3.5 text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
+                  {admin._count.comments || '—'}
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={4} className={`px-4 py-12 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No admin activity</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Activity Log Table */}
