@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit2, Send, Clock, X, Search } from 'lucide-react';
+import { Plus, Trash2, Edit2, Send, X, Search, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -36,6 +36,9 @@ export default function AdminChangeLog() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const [form, setForm] = useState({
     title: '',
@@ -137,152 +140,175 @@ export default function AdminChangeLog() {
     e.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const paginatedEntries = filteredEntries.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+  const totalPages = Math.ceil(filteredEntries.length / rowsPerPage);
+  const hasFilters = searchQuery || filterStatus || filterType;
+  const d = theme === 'dark';
+
+  const handlePublish = async (id: string) => {
+    try {
+      await api.post(`/changelog/${id}/publish`);
+      toast.success('Published!');
+      fetchEntries();
+    } catch { toast.error('Failed to publish'); }
+  };
+
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className={`text-4xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Changelog
-            </h1>
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Create and manage product changelog entries
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setForm({ title: '', description: '', type: 'new', allBoards: true, boardIds: [] });
-              setShowModal(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Create Entry
-          </button>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className={`text-4xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Changelog</h1>
+          <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredEntries.length} entries</p>
         </div>
+        <button onClick={() => { setForm({ title: '', description: '', type: 'new', allBoards: true, boardIds: [] }); setShowModal(true); }}
+          className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition">
+          <Plus className="w-4 h-4" /> Create Entry
+        </button>
       </div>
 
       {/* Filters */}
-      <div className={`p-4 rounded-lg border mb-6 ${
-        theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-      }`}>
+      <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="flex flex-wrap items-center gap-3">
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border flex-1 min-w-[200px] max-w-[300px] ${
-            theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border flex-1 min-w-[180px] max-w-[280px] ${
+            d ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
           }`}>
             <Search className="w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search entries..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`bg-transparent text-sm outline-none w-full ${
-                theme === 'dark' ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'
-              }`}
-            />
+            <input type="text" placeholder="Search entries..." value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+              className={`bg-transparent text-sm outline-none w-full ${d ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`} />
           </div>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
-            }`}>
+          <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(0); }}
+            className={`px-3 py-2 rounded-lg border text-sm ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`}>
             <option value="">All Status</option>
             <option value="draft">Draft</option>
             <option value="scheduled">Scheduled</option>
             <option value="published">Published</option>
           </select>
-          <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
-            }`}>
+          <select value={filterType} onChange={(e) => { setFilterType(e.target.value); setPage(0); }}
+            className={`px-3 py-2 rounded-lg border text-sm ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`}>
             <option value="">All Types</option>
             <option value="new">New</option>
             <option value="improved">Improved</option>
             <option value="fixed">Fixed</option>
           </select>
+          {hasFilters && (
+            <button onClick={() => { setSearchQuery(''); setFilterStatus(''); setFilterType(''); setPage(0); }}
+              className="flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:text-red-600">
+              <X className="w-4 h-4" /> Clear Filters
+            </button>
+          )}
         </div>
       </div>
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-8">Loading...</div>
+        <div className="text-center py-12">Loading...</div>
       ) : (
-        <div className={`rounded-lg border overflow-hidden ${
-          theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-        }`}>
+        <div className={`rounded-lg border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <table className="w-full">
-            <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
+            <thead className={d ? 'bg-gray-700' : 'bg-gray-50'}>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Title</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Boards</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Likes</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Created</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Actions</th>
+                {['Title', 'Type', 'Status', 'Boards', 'Likes', 'Created', 'Actions'].map(h => (
+                  <th key={h} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {filteredEntries.length > 0 ? (
-                filteredEntries.map((entry) => (
+              {paginatedEntries.length > 0 ? (
+                paginatedEntries.map((entry) => (
                   <tr key={entry.id}
-                    className={`border-t cursor-pointer ${
-                      theme === 'dark' ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                    onClick={() => navigate(
-                      entry.status === 'draft' ? `/admin/changelog/${entry.id}/edit` : `/admin/changelog/${entry.id}/view`
-                    )}
-                  >
-                    <td className={`px-4 py-3.5 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {entry.title}
+                    onClick={() => navigate(entry.status === 'draft' ? `/admin/changelog/${entry.id}/edit` : `/admin/changelog/${entry.id}/view`)}
+                    className={`border-t cursor-pointer transition ${d ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
+                    <td className={`px-4 py-3.5 text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{entry.title}</td>
+                    <td className="px-4 py-3.5">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${getTypeBadge(entry.type)}`}>{entry.type}</span>
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${getTypeBadge(entry.type)}`}>
-                        {entry.type}
-                      </span>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(entry.status)}`}>{entry.status}</span>
                     </td>
-                    <td className="px-4 py-3.5">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(entry.status)}`}>
-                        {entry.status}
-                      </span>
-                    </td>
-                    <td className={`px-4 py-3.5 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <td className={`px-4 py-3.5 text-xs ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                       {entry.allBoards ? 'All Boards' : entry.boards.map((b) => b.board.name).join(', ')}
                     </td>
-                    <td className={`px-4 py-3.5 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {entry._count.likes}
-                    </td>
-                    <td className={`px-4 py-3.5 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {new Date(entry.createdAt).toLocaleDateString()}
+                    <td className={`px-4 py-3.5 text-sm font-semibold ${d ? 'text-teal-400' : 'text-teal-600'}`}>{entry._count.likes}</td>
+                    <td className={`px-4 py-3.5 text-xs whitespace-nowrap ${d ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => navigate(`/admin/changelog/${entry.id}/edit`)}
-                          className={`p-1.5 rounded-lg transition ${theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}
-                          title="Edit">
-                          <Edit2 className="w-4 h-4" />
+                      <div className="relative inline-block">
+                        <button onClick={() => setOpenMenuId(openMenuId === entry.id ? null : entry.id)}
+                          className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
+                          <MoreVertical className="w-4 h-4 text-gray-400" />
                         </button>
-                        <button onClick={() => handleDelete(entry.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-100 text-red-500 transition" title="Delete">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {openMenuId === entry.id && (
+                          <div className={`absolute right-0 top-full mt-1 w-36 rounded-lg shadow-xl border z-50 py-1 ${
+                            d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
+                          }`}>
+                            <button onClick={() => { navigate(`/admin/changelog/${entry.id}/edit`); setOpenMenuId(null); }}
+                              className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${d ? 'hover:bg-gray-600 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
+                              <Edit2 className="w-3.5 h-3.5" /> Edit
+                            </button>
+                            {entry.status === 'draft' && (
+                              <button onClick={() => { handlePublish(entry.id); setOpenMenuId(null); }}
+                                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-green-600 ${d ? 'hover:bg-gray-600' : 'hover:bg-green-50'}`}>
+                                <Send className="w-3.5 h-3.5" /> Publish
+                              </button>
+                            )}
+                            <button onClick={() => { handleDelete(entry.id); setOpenMenuId(null); }}
+                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-red-500 hover:bg-red-50">
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className={`px-4 py-12 text-center text-sm ${
-                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                  }`}>
+                  <td colSpan={7} className={`px-4 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>
                     No changelog entries yet. Create your first entry!
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+
+          {/* Pagination */}
+          {filteredEntries.length > 0 && (
+            <div className={`flex items-center justify-between px-4 py-3 border-t ${d ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs ${d ? 'text-gray-400' : 'text-gray-500'}`}>Rows per page:</span>
+                <select value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
+                  className={`px-2 py-1 rounded border text-xs ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'}`}>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, filteredEntries.length)} of {filteredEntries.length}
+                </span>
+                <div className="flex gap-1">
+                  <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
+                    className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
+                    className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Close menu on click outside */}
+      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
 
       {/* Create Modal - Simple */}
       {showModal && (
