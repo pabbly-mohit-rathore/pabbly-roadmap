@@ -226,51 +226,41 @@ export default function AdminReporting() {
           <p className={`text-xs mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Board distribution</p>
 
           {boardData.boards.length > 0 ? (
-            <>
-              <div style={{ width: '100%', height: 180 }}>
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie
-                      data={boardData.boards}
-                      dataKey="count"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={75}
-                      strokeWidth={3}
-                      stroke={theme === 'dark' ? '#1f2937' : '#fff'}
-                    >
-                      {boardData.boards.map((entry, index) => (
-                        <Cell key={index} fill={entry.color || '#3b82f6'} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: theme === 'dark' ? '#1f2937' : '#fff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                      }}
-                    />
-                    <text x="50%" y="46%" textAnchor="middle" className="text-xs" fill={theme === 'dark' ? '#9ca3af' : '#9ca3af'}>
-                      Total
-                    </text>
-                    <text x="50%" y="58%" textAnchor="middle" className="text-xl font-bold" fill={theme === 'dark' ? '#fff' : '#1e3a5f'}>
-                      {boardData.total}
-                    </text>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className={`mt-3 pt-3 border-t space-y-1.5 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                {boardData.boards.map((b, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: b.color || '#3b82f6' }} />
-                    <span className={`text-xs ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{b.name} ({b.count})</span>
-                  </div>
-                ))}
-              </div>
-            </>
+            <div style={{ width: '100%', height: 220 }}>
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie
+                    data={boardData.boards}
+                    dataKey="count"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={65}
+                    outerRadius={95}
+                    strokeWidth={3}
+                    stroke={theme === 'dark' ? '#1f2937' : '#fff'}
+                  >
+                    {boardData.boards.map((entry, index) => (
+                      <Cell key={index} fill={entry.color || '#3b82f6'} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: theme === 'dark' ? '#1f2937' : '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <text x="50%" y="46%" textAnchor="middle" className="text-xs" fill={theme === 'dark' ? '#9ca3af' : '#9ca3af'}>
+                    Total
+                  </text>
+                  <text x="50%" y="58%" textAnchor="middle" className="text-xl font-bold" fill={theme === 'dark' ? '#fff' : '#1e3a5f'}>
+                    {boardData.total}
+                  </text>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <p className={`text-sm text-center py-12 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No data</p>
           )}
