@@ -18,7 +18,8 @@
       "Bash(git commit -m 'Fix redirect after login - default to /user/boards instead of /:*)",
       "Bash(git commit -m 'Fix UserBoardsPage re-fetch and invite redemption logic:*)",
       "Bash(npm install:*)",
-      "Bash(node -e ':*)"
+      "Bash(node -e ':*)",
+      "Bash(npm list:*)"
     ]
   }
 }

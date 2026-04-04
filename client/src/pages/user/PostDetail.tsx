@@ -6,6 +6,7 @@ import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import CommentEditor from '../../components/CommentEditor';
 
 interface Tag {
   id: string;
@@ -170,14 +171,15 @@ export default function UserPostDetail() {
     }
   };
 
-  const handleAddComment = async () => {
+  const handleAddComment = async (htmlContent?: string) => {
     // Show modal for unauthenticated users or users with only invite access
     if (!isAuthenticated && hasInviteAccess()) {
       setShowLoginModal(true);
       return;
     }
 
-    if (!commentText.trim()) {
+    const content = htmlContent || commentText;
+    if (!content.trim() || content === '<p></p>') {
       toast.error('Comment cannot be empty');
       return;
     }
@@ -185,7 +187,7 @@ export default function UserPostDetail() {
     try {
       setSubmittingComment(true);
       const response = await api.post(`/comments/post/${post?.id}`, {
-        content: commentText,
+        content,
       });
 
       if (response.data.success) {
@@ -448,31 +450,11 @@ export default function UserPostDetail() {
                     </h2>
 
                     {/* Add Comment */}
-                    <div
-                      className={`p-4 rounded-lg border mb-6 ${
-                        theme === 'dark'
-                          ? 'bg-gray-800 border-gray-700'
-                          : 'bg-white border-gray-200'
-                      }`}
-                    >
-                      <textarea
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="Add a comment..."
-                        rows={3}
-                        className={`w-full px-4 py-2 rounded-lg border mb-3 ${
-                          theme === 'dark'
-                            ? 'bg-gray-700 border-gray-600 text-white'
-                            : 'bg-white border-gray-200'
-                        }`}
+                    <div className="mb-6">
+                      <CommentEditor
+                        onSubmit={(html) => handleAddComment(html)}
+                        submitting={submittingComment}
                       />
-                      <button
-                        onClick={handleAddComment}
-                        disabled={submittingComment || !commentText.trim()}
-                        className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors"
-                      >
-                        {submittingComment ? 'Posting...' : 'Post Comment'}
-                      </button>
                     </div>
 
                     {/* Comments List */}
@@ -567,7 +549,7 @@ export default function UserPostDetail() {
                                     : 'text-gray-700'
                                 }`}
                               >
-                                {comment.content}
+                                <span dangerouslySetInnerHTML={{ __html: comment.content }} />
                               </p>
                             )}
 
@@ -731,7 +713,7 @@ export default function UserPostDetail() {
                                       </div>
                                     ) : (
                                       <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                        {reply.content}
+                                        <span dangerouslySetInnerHTML={{ __html: reply.content }} />
                                       </p>
                                     )}
 
