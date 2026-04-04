@@ -106,42 +106,52 @@ export default function AdminDashboard() {
             })}
           </div>
 
-          {/* Top Posts */}
+          {/* Top Posts - Table */}
           <div className={`rounded-xl border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div className="px-5 py-4">
+            <div className="px-4 py-4">
               <h2 className={`text-lg font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Top Posts (Most Voted)</h2>
             </div>
-            <div>
-              {topPosts.length > 0 ? topPosts.map((post, index) => (
-                <div key={post.id}
-                  className={`flex items-center gap-4 px-5 py-4 border-t transition ${
-                    d ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'
-                  } cursor-pointer`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                    index === 0 ? 'bg-yellow-100 text-yellow-700'
-                    : index === 1 ? 'bg-gray-100 text-gray-600'
-                    : index === 2 ? 'bg-orange-100 text-orange-700'
-                    : d ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {index + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${getStatusColor(post.status)}`}>
-                      {post.status.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className={`text-sm font-bold ${d ? 'text-teal-400' : 'text-teal-600'}`}>👍 {post._count.votes}</p>
-                    <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>💬 {post._count.comments}</p>
-                  </div>
-                </div>
-              )) : (
-                <div className={`px-5 py-12 text-center text-sm border-t ${d ? 'border-gray-700 text-gray-500' : 'border-gray-100 text-gray-400'}`}>
-                  No posts yet
-                </div>
-              )}
-            </div>
+            <table className="w-full">
+              <thead className={d ? 'bg-gray-700' : 'bg-gray-50'}>
+                <tr>
+                  {['#', 'Title', 'Status', 'Votes', 'Comments'].map(h => (
+                    <th key={h} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {topPosts.length > 0 ? topPosts.map((post, index) => (
+                  <tr key={post.id} className={`border-t transition ${d ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
+                    <td className="px-4 py-3.5">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                        index === 0 ? 'bg-yellow-100 text-yellow-700'
+                        : index === 1 ? 'bg-gray-100 text-gray-600'
+                        : index === 2 ? 'bg-orange-100 text-orange-700'
+                        : d ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {index + 1}
+                      </div>
+                    </td>
+                    <td className={`px-4 py-3.5 text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</td>
+                    <td className="px-4 py-3.5">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold capitalize ${getStatusColor(post.status)}`}>
+                        {post.status.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className={`px-4 py-3.5 text-sm font-semibold ${d ? 'text-teal-400' : 'text-teal-600'}`}>
+                      👍 {post._count.votes}
+                    </td>
+                    <td className={`px-4 py-3.5 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      💬 {post._count.comments}
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={5} className={`px-4 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No posts yet</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </>
       )}
