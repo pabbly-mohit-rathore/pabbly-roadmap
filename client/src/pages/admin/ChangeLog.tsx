@@ -26,7 +26,7 @@ interface ChangelogEntry {
   _count: { likes: number };
 }
 
-export default function AdminChangeLog() {
+export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: number }) {
   const theme = useThemeStore((state) => state.theme);
   const navigate = useNavigate();
   const [entries, setEntries] = useState<ChangelogEntry[]>([]);
@@ -52,6 +52,10 @@ export default function AdminChangeLog() {
     fetchEntries();
     fetchBoards();
   }, [filterStatus, filterType]);
+
+  useEffect(() => {
+    if (triggerCreate && triggerCreate > 0) setShowModal(true);
+  }, [triggerCreate]);
 
   const fetchEntries = async () => {
     try {
@@ -155,14 +159,8 @@ export default function AdminChangeLog() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredEntries.length} entries</p>
-        <button onClick={() => { setForm({ title: '', description: '', type: 'new', allBoards: true, boardIds: [] }); setShowModal(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition">
-          <Plus className="w-4 h-4" /> Create Entry
-        </button>
-      </div>
+      {/* Count */}
+      <p className={`text-sm mb-4 ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredEntries.length} entries</p>
 
       {/* Filters */}
       <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>

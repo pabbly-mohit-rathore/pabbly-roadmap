@@ -21,7 +21,7 @@ interface Board {
   name: string;
 }
 
-export default function AdminInviteLinks() {
+export default function AdminInviteLinks({ triggerCreate }: { triggerCreate?: number }) {
   const theme = useThemeStore((state) => state.theme);
   const [links, setLinks] = useState<InviteLink[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -38,6 +38,10 @@ export default function AdminInviteLinks() {
     fetchLinks();
     fetchBoards();
   }, []);
+
+  useEffect(() => {
+    if (triggerCreate && triggerCreate > 0) setShowCreateModal(true);
+  }, [triggerCreate]);
 
   const fetchLinks = async () => {
     try {
@@ -137,18 +141,7 @@ export default function AdminInviteLinks() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-end">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Generate Link
-          </button>
-        </div>
-      </div>
+      {/* Content */}
 
       {/* Links List */}
       {loading ? (

@@ -24,7 +24,7 @@ interface BoardManager {
   user: { id: string; name: string; email: string };
 }
 
-export default function AdminBoards() {
+export default function AdminBoards({ triggerCreate }: { triggerCreate?: number }) {
   const theme = useThemeStore((state) => state.theme);
   const navigate = useNavigate();
   const [boards, setBoards] = useState<Board[]>([]);
@@ -49,6 +49,10 @@ export default function AdminBoards() {
   useEffect(() => {
     fetchBoards();
   }, []);
+
+  useEffect(() => {
+    if (triggerCreate && triggerCreate > 0) setShowCreateModal(true);
+  }, [triggerCreate]);
 
   const fetchBoards = async () => {
     try {
@@ -249,18 +253,7 @@ export default function AdminBoards() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-end">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Create Board
-          </button>
-        </div>
-      </div>
+      {/* Content */}
 
       {/* Boards Grid */}
       {loading ? (
