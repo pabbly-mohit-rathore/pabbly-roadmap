@@ -138,20 +138,8 @@ export default function AdminInviteLinks() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className={`text-4xl font-bold mb-2 ${
-              theme === 'dark' ? 'text-white' : 'text-gray-900'
-            }`}>
-              Board Access Links
-            </h1>
-            <p className={`text-sm ${
-              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-            }`}>
-              Create and manage user invitation links
-            </p>
-          </div>
+      <div className="mb-6">
+        <div className="flex items-center justify-end">
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"

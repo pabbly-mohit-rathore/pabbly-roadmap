@@ -18,6 +18,12 @@ export default function BoardManagement() {
 
   return (
     <div>
+      {/* Header */}
+      <h1 className={`text-4xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Board Management</h1>
+      <p className={`text-sm mb-6 ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+        Create and manage your product boards, changelog entries, and invite links.
+      </p>
+
       {/* Tabs */}
       <div className={`flex items-center gap-6 border-b mb-6 ${d ? 'border-gray-700' : 'border-gray-200'}`}>
         {TABS.map((tab) => {

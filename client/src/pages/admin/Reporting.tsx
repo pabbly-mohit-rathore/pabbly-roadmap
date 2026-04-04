@@ -170,12 +170,8 @@ export default function AdminReporting() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className={`text-4xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Activity Log</h1>
-          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Platform activity and insights</p>
-        </div>
+      {/* Time Filter */}
+      <div className="flex items-center justify-end mb-6">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-gray-400" />
           <select value={period} onChange={(e) => setPeriod(e.target.value)}

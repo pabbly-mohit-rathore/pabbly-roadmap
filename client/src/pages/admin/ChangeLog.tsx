@@ -156,11 +156,8 @@ export default function AdminChangeLog() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className={`text-4xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Changelog</h1>
-          <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredEntries.length} entries</p>
-        </div>
+      <div className="flex items-center justify-between mb-4">
+        <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredEntries.length} entries</p>
         <button onClick={() => { setForm({ title: '', description: '', type: 'new', allBoards: true, boardIds: [] }); setShowModal(true); }}
           className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition">
           <Plus className="w-4 h-4" /> Create Entry
