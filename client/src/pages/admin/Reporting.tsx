@@ -129,18 +129,30 @@ export default function AdminReporting() {
 
   const totalLogPages = Math.ceil(logTotal / logRowsPerPage);
 
+  const statColors: Record<string, string> = {
+    'Posts': 'text-blue-600',
+    'Votes': 'text-green-600',
+    'Comments': 'text-purple-600',
+  };
+
+  const statSubs: Record<string, string> = {
+    'Posts': 'Total posts created',
+    'Votes': 'Total votes received',
+    'Comments': 'Total comments made',
+  };
+
   const StatCard = ({ label, count, change }: { label: string; count: number; change: number }) => (
-    <div className={`p-5 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-      <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{label}</p>
-      <div className="flex items-end gap-3">
-        <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{count}</span>
-        <span className={`flex items-center gap-1 text-xs font-semibold mb-1 ${
-          change >= 0 ? 'text-green-600' : 'text-red-500'
-        }`}>
-          {change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-          {change >= 0 ? '+' : ''}{change}%
-        </span>
-      </div>
+    <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <p className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
+      <p className={`text-3xl font-bold mb-1 ${statColors[label] || (theme === 'dark' ? 'text-white' : 'text-gray-900')}`}>{count}</p>
+      <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+        {statSubs[label] || ''}
+        {change !== 0 && (
+          <span className={`ml-2 font-semibold ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            {change >= 0 ? '↑' : '↓'} {Math.abs(change)}%
+          </span>
+        )}
+      </p>
     </div>
   );
 
