@@ -74,7 +74,7 @@ export default function AdminReporting() {
 
   useEffect(() => {
     fetchAll();
-  }, [period]);
+  }, [period, boardFilter]);
 
   const fetchBoards = async () => {
     try {
@@ -90,11 +90,12 @@ export default function AdminReporting() {
   const fetchAll = async () => {
     setLoading(true);
     try {
+      const bp = { period, boardId: boardFilter };
       const [actRes, newRes, staleRes, boardRes, adminRes] = await Promise.all([
-        api.get('/reporting/activity-overview', { params: { period } }),
-        api.get('/reporting/new-posts', { params: { period } }),
-        api.get('/reporting/stale-posts'),
-        api.get('/reporting/posts-by-board', { params: { period } }),
+        api.get('/reporting/activity-overview', { params: bp }),
+        api.get('/reporting/new-posts', { params: bp }),
+        api.get('/reporting/stale-posts', { params: { boardId: boardFilter } }),
+        api.get('/reporting/posts-by-board', { params: bp }),
         api.get('/reporting/admin-activity', { params: { period } }),
       ]);
       if (actRes.data.success) setActivity(actRes.data.data);
