@@ -187,7 +187,7 @@ export default function UserDashboard() {
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
                 {['Upvote', 'Post', 'Status', 'Board', 'Comments'].map((h, i) => (
                   <th key={h} className={`text-left font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
-                    style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : '16px', width: i === 0 ? '120px' : undefined }}>{h}</th>
+                    style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : i === 4 ? '24px' : '16px', width: i === 0 ? '120px' : undefined, textAlign: i === 4 ? 'right' as const : 'left' as const }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -222,7 +222,7 @@ export default function UserDashboard() {
                     {post.board?.name || '—'}
                   </td>
                   {/* Comments */}
-                  <td className="px-5 py-4">
+                  <td className="py-4" style={{ paddingRight: '24px', textAlign: 'right' }}>
                     <div className={`inline-flex items-center gap-1.5 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
                       <MessageCircle className="w-4 h-4" />
                       {post.commentCount}
