@@ -388,6 +388,7 @@ model Activity {
 enum ActivityAction {
   created
   updated
+  deleted
   status_changed
   commented
   voted

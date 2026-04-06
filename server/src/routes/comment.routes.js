@@ -36,7 +36,7 @@ const addCommentRules = [
   body('content')
     .trim()
     .notEmpty().withMessage('Comment content is required.')
-    .isLength({ min: 1, max: 5000 }).withMessage('Comment must be between 1 and 5000 characters.'),
+    .isLength({ min: 1, max: 500000 }).withMessage('Comment content is too large.'),
   body('parentId')
     .optional()
     .isUUID().withMessage('Parent comment ID must be a valid UUID.'),
@@ -46,7 +46,7 @@ const updateCommentRules = [
   body('content')
     .trim()
     .notEmpty().withMessage('Comment content is required.')
-    .isLength({ min: 1, max: 5000 }).withMessage('Comment must be between 1 and 5000 characters.'),
+    .isLength({ min: 1, max: 500000 }).withMessage('Comment content is too large.'),
 ];
 
 const postIdParamRules = [
