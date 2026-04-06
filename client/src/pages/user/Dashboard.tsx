@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, ThumbsUp, Layout, TrendingUp } from 'lucide-react';
+import { MessageSquare, ThumbsUp, Layout, TrendingUp, ArrowUpRight, MessageCircle } from 'lucide-react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -19,6 +19,7 @@ interface Post {
   title: string;
   slug: string;
   status: string;
+  description?: string;
   voteCount: number;
   commentCount: number;
   createdAt: string;
@@ -178,43 +179,64 @@ export default function UserDashboard() {
 
         {/* Top Posts */}
         <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div className={`px-5 py-4 border-b flex items-center justify-between ${d ? 'border-gray-700' : 'border-gray-100'}`}>
-              <h2 className={`text-base font-semibold ${d ? 'text-white' : 'text-gray-900'}`}>Top Posts (Most Voted)</h2>
-            </div>
-            <div className="divide-y">
-              {posts.length > 0 ? posts.map((post, idx) => (
-                <div
-                  key={post.id}
-                  onClick={() => navigate(`/user/posts/${post.slug}`)}
-                  className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
-                    d ? 'divide-gray-700 hover:bg-gray-700' : 'divide-gray-100 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className={`text-sm font-bold w-5 ${d ? 'text-blue-400' : 'text-blue-600'}`}>{idx + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${d ? 'text-white' : 'text-gray-900'}`}>
-                      {post.title}
-                    </p>
-                    {post.board && (
-                      <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.board.name}</p>
+          <div className={`px-5 py-4 border-b ${d ? 'border-gray-700' : 'border-gray-100'}`}>
+            <h2 className={`text-base font-semibold ${d ? 'text-white' : 'text-gray-900'}`}>Top Posts (Most Voted)</h2>
+          </div>
+          <table className="w-full">
+            <thead>
+              <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
+                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Upvote</th>
+                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Post</th>
+                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
+                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Board</th>
+                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Comments</th>
+              </tr>
+            </thead>
+            <tbody>
+              {posts.length > 0 ? posts.map((post) => (
+                <tr key={post.id} onClick={() => navigate(`/user/posts/${post.slug}`)}
+                  className={`border-t transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-100 hover:bg-gray-50'}`}>
+                  {/* Upvote */}
+                  <td className="px-5 py-4">
+                    <div className={`inline-flex flex-col items-center justify-center w-10 h-10 rounded-lg border text-xs font-bold gap-0.5 ${
+                      d ? 'border-gray-600 text-gray-300' : 'border-gray-200 text-gray-700'
+                    }`}>
+                      <ArrowUpRight className="w-3 h-3 rotate-[-45deg]" />
+                      {post.voteCount}
+                    </div>
+                  </td>
+                  {/* Title + description */}
+                  <td className="px-5 py-4 max-w-xs">
+                    <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
+                    {post.description && (
+                      <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
                     )}
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                    STATUS_COLORS[post.status] || 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {STATUS_LABELS[post.status] || post.status}
-                  </span>
-                  <div className={`flex items-center gap-3 text-xs flex-shrink-0 ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                    <span>👍 {post.voteCount}</span>
-                    <span>💬 {post.commentCount}</span>
-                  </div>
-                </div>
+                  </td>
+                  {/* Status */}
+                  <td className="px-5 py-4">
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${STATUS_COLORS[post.status] || 'bg-gray-100 text-gray-600'}`}>
+                      {STATUS_LABELS[post.status] || post.status}
+                    </span>
+                  </td>
+                  {/* Board */}
+                  <td className={`px-5 py-4 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {post.board?.name || '—'}
+                  </td>
+                  {/* Comments */}
+                  <td className="px-5 py-4">
+                    <div className={`inline-flex items-center gap-1.5 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <MessageCircle className="w-4 h-4" />
+                      {post.commentCount}
+                    </div>
+                  </td>
+                </tr>
               )) : (
-                <p className={`text-sm text-center py-6 ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                  No posts yet
-                </p>
+                <tr>
+                  <td colSpan={5} className={`px-5 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No posts yet</td>
+                </tr>
               )}
-            </div>
+            </tbody>
+          </table>
           </div>
       </div>
     </UserLayout>

@@ -18,6 +18,8 @@ interface Post {
   title: string;
   slug: string;
   status: string;
+  description?: string;
+  board?: { name: string };
   _count: {
     votes: number;
     comments: number;
@@ -135,52 +137,60 @@ export default function AdminDashboard() {
 
           {/* Top Posts - Table */}
           <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div className="px-5 py-4">
-              <h2 className={`text-lg font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Top Posts (Most Voted)</h2>
+            <div className={`px-5 py-4 border-b ${d ? 'border-gray-700' : 'border-gray-100'}`}>
+              <h2 className={`text-base font-semibold ${d ? 'text-white' : 'text-gray-900'}`}>Top Posts (Most Voted)</h2>
             </div>
             <table className="w-full">
               <thead>
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider w-12 ${d ? 'text-gray-400' : 'text-gray-500'}`}>S.No</th>
-                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Title</th>
+                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Upvote</th>
+                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Post</th>
                   <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
-                  <th className={`px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider w-28 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Votes</th>
-                  <th className={`px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider w-28 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Comments</th>
-                  <th className={`px-5 py-3 w-10`}></th>
+                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Board</th>
+                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Comments</th>
                 </tr>
               </thead>
               <tbody>
-                {topPosts.length > 0 ? topPosts.map((post, index) => (
+                {topPosts.length > 0 ? topPosts.map((post) => (
                   <tr key={post.id} onClick={() => navigate(`/admin/posts/${post.slug}`)}
                     className={`border-t transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-100 hover:bg-gray-50'}`}>
-                    <td className={`px-5 py-4 text-sm font-medium ${d ? 'text-blue-400' : 'text-blue-600'}`}>{index + 1}</td>
-                    <td className={`px-5 py-4 text-sm font-medium max-w-xs truncate ${d ? 'text-white' : 'text-gray-900'}`}>
-                      {post.title}
+                    {/* Upvote */}
+                    <td className="px-5 py-4">
+                      <div className={`inline-flex flex-col items-center justify-center w-10 h-10 rounded-lg border text-xs font-bold gap-0.5 ${
+                        d ? 'border-gray-600 text-gray-300' : 'border-gray-200 text-gray-700'
+                      }`}>
+                        <ArrowUpRight className="w-3 h-3 rotate-[-45deg]" />
+                        {post._count.votes}
+                      </div>
                     </td>
+                    {/* Title + description */}
+                    <td className="px-5 py-4 max-w-xs">
+                      <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
+                      {post.description && (
+                        <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
+                      )}
+                    </td>
+                    {/* Status */}
                     <td className="px-5 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ${getStatusColor(post.status)}`}>
                         {post.status.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-center">
-                      <div className={`inline-flex items-center gap-1.5 text-sm font-semibold ${d ? 'text-blue-400' : 'text-blue-600'}`}>
-                        <ThumbsUp className="w-3.5 h-3.5" />
-                        {post._count.votes}
-                      </div>
+                    {/* Board */}
+                    <td className={`px-5 py-4 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {post.board?.name || '—'}
                     </td>
-                    <td className="px-5 py-4 text-center">
+                    {/* Comments */}
+                    <td className="px-5 py-4">
                       <div className={`inline-flex items-center gap-1.5 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                        <MessageCircle className="w-3.5 h-3.5" />
+                        <MessageCircle className="w-4 h-4" />
                         {post._count.comments}
                       </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <ArrowUpRight className={`w-4 h-4 ${d ? 'text-gray-600' : 'text-gray-300'}`} />
                     </td>
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={6} className={`px-5 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No posts yet</td>
+                    <td colSpan={5} className={`px-5 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No posts yet</td>
                   </tr>
                 )}
               </tbody>
