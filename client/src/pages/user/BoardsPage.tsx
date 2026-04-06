@@ -86,10 +86,10 @@ export default function UserBoardsPage() {
       <div>
         {/* Header */}
         <div className="mb-6">
-          <h1 className={`text-4xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>
+          <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>
             Boards
           </h1>
-          <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-600'}`}>
             All boards you have access to
           </p>
         </div>

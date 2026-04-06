@@ -23,8 +23,8 @@ export default function BoardManagement() {
       {/* Header + Create Button */}
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h1 className={`text-4xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{currentTab.heading}</h1>
-          <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{currentTab.description}</p>
+          <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{currentTab.heading}</h1>
+          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{currentTab.description}</p>
         </div>
         <button onClick={() => setTriggerAction(prev => prev + 1)}
           className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition shrink-0">

@@ -130,12 +130,12 @@ export default function AdminBoardMembers() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className={`text-4xl font-bold mb-2 ${
+            <h1 className={`text-2xl font-bold mb-2 ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
               Board Members
             </h1>
-            <p className={`text-sm ${
+            <p className={`text-base ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
             }`}>
               Assign managers to boards

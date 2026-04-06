@@ -89,8 +89,8 @@ export default function UserSettings() {
   return (
     <UserLayout>
       <div>
-        <h1 className={`text-4xl font-bold mb-3 ${d ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
-        <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+        <h1 className={`text-2xl font-bold mb-3 ${d ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
+        <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>
           Manage your team access and account settings.
         </p>
 

@@ -24,13 +24,13 @@ interface Post {
   };
 }
 
-const STAT_CONFIG: Record<string, { iconColor: string; glowColor: string; icon: React.ElementType }> = {
-  'Total Posts':    { iconColor: 'text-blue-400',   glowColor: 'rgba(96,165,250,0.18)',  icon: MessageSquare },
-  'Total Votes':    { iconColor: 'text-cyan-400',   glowColor: 'rgba(34,211,238,0.18)',  icon: ThumbsUp },
-  'Total Users':    { iconColor: 'text-purple-400', glowColor: 'rgba(167,139,250,0.18)', icon: Users },
-  'Active Users':   { iconColor: 'text-orange-400', glowColor: 'rgba(251,146,60,0.18)',  icon: TrendingUp },
-  'Total Boards':   { iconColor: 'text-green-500',  glowColor: 'rgba(34,197,94,0.18)',   icon: Layout },
-  'Total Comments': { iconColor: 'text-indigo-400', glowColor: 'rgba(129,140,248,0.18)', icon: BarChart2 },
+const STAT_CONFIG: Record<string, { iconBg: string; iconColor: string; icon: React.ElementType }> = {
+  'Total Posts':    { iconBg: 'bg-blue-50',   iconColor: 'text-blue-400',   icon: MessageSquare },
+  'Total Votes':    { iconBg: 'bg-cyan-50',   iconColor: 'text-cyan-400',   icon: ThumbsUp },
+  'Total Users':    { iconBg: 'bg-purple-50', iconColor: 'text-purple-400', icon: Users },
+  'Active Users':   { iconBg: 'bg-orange-50', iconColor: 'text-orange-400', icon: TrendingUp },
+  'Total Boards':   { iconBg: 'bg-green-50',  iconColor: 'text-green-500',  icon: Layout },
+  'Total Comments': { iconBg: 'bg-indigo-50', iconColor: 'text-indigo-400', icon: BarChart2 },
 };
 
 export default function AdminDashboard() {
@@ -86,8 +86,8 @@ export default function AdminDashboard() {
     <div>
       {/* Header */}
       <div className="mb-8">
-        <h1 className={`text-4xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Dashboard</h1>
-        <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>Overview of your platform performance</p>
+        <h1 className={`text-2xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Dashboard</h1>
+        <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>Overview of your platform performance</p>
       </div>
 
       {loading ? (
@@ -112,11 +112,10 @@ export default function AdminDashboard() {
                     </p>
                     <p className={`text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>{card.label}</p>
                   </div>
-                  <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: `radial-gradient(circle, ${cfg.glowColor} 0%, transparent 75%)` }}
-                  >
-                    <Icon className={`w-7 h-7 ${cfg.iconColor}`} />
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                    d ? 'bg-gray-700' : cfg.iconBg
+                  }`}>
+                    <Icon className={`w-6 h-6 ${cfg.iconColor}`} />
                   </div>
                 </div>
               );

@@ -7,7 +7,12 @@
       "Bash(git commit -m 'fix: same CSS for both board card buttons:*)",
       "Bash(git commit -m 'fix: grey button border, image fills full icon area:*)",
       "Bash(git commit -m 'remove: Board Managers & Permissions section from board detail:*)",
-      "Bash(git commit -m 'feat: user Settings page with Team Member + General Settings tabs, rename sidebar item to Boards:*)"
+      "Bash(git commit -m 'feat: user Settings page with Team Member + General Settings tabs, rename sidebar item to Boards:*)",
+      "Bash(git commit -m 'refactor: user Settings UI matches admin Settings style:*)",
+      "Bash(git commit -m 'redesign: stat cards with large number left, colored icon right:*)",
+      "Bash(git commit -m 'redesign: admin dashboard stat cards match user dashboard style:*)",
+      "Bash(git commit -m 'feat: radial glow behind stat card icons on both dashboards:*)",
+      "Bash(git commit -m 'style: page titles 24px, descriptions 16px across all pages:*)"
     ]
   }
 }

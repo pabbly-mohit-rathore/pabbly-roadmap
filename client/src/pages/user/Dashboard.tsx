@@ -86,29 +86,29 @@ export default function UserDashboard() {
       label: 'Total Boards',
       value: boards.length,
       icon: Layout,
+      iconBg: 'bg-orange-50',
       iconColor: 'text-orange-400',
-      glowColor: 'rgba(251,146,60,0.18)',
     },
     {
       label: 'Total Posts',
       value: posts.length,
       icon: MessageSquare,
+      iconBg: 'bg-blue-50',
       iconColor: 'text-blue-400',
-      glowColor: 'rgba(96,165,250,0.18)',
     },
     {
       label: 'Total Votes',
       value: totalVotes,
       icon: ThumbsUp,
+      iconBg: 'bg-cyan-50',
       iconColor: 'text-cyan-400',
-      glowColor: 'rgba(34,211,238,0.18)',
     },
     {
       label: 'Active Boards',
       value: boards.length,
       icon: TrendingUp,
+      iconBg: 'bg-green-50',
       iconColor: 'text-green-500',
-      glowColor: 'rgba(34,197,94,0.18)',
     },
   ];
 
@@ -125,10 +125,10 @@ export default function UserDashboard() {
       <div>
         {/* Header */}
         <div className="mb-6">
-          <h1 className={`text-4xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>
+          <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>
             Dashboard
           </h1>
-          <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>
             Welcome back, {user?.name} — here's an overview of your boards
           </p>
         </div>
@@ -154,16 +154,11 @@ export default function UserDashboard() {
                     {card.label}
                   </p>
                 </div>
-                {/* Right: icon with radial glow */}
-                <div
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style={{
-                    background: d
-                      ? `radial-gradient(circle, ${card.glowColor} 0%, transparent 75%)`
-                      : `radial-gradient(circle, ${card.glowColor} 0%, transparent 75%)`,
-                  }}
-                >
-                  <Icon className={`w-7 h-7 ${card.iconColor}`} />
+                {/* Right: icon */}
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                  d ? 'bg-gray-700' : card.iconBg
+                }`}>
+                  <Icon className={`w-6 h-6 ${card.iconColor}`} />
                 </div>
               </div>
             );

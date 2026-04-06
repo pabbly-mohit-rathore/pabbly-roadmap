@@ -100,8 +100,8 @@ export default function AdminUsers() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className={`text-4xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Users</h1>
-          <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredUsers.length} users</p>
+          <h1 className={`text-2xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Users</h1>
+          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredUsers.length} users</p>
         </div>
       </div>
 
