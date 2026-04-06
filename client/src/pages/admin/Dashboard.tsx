@@ -24,13 +24,13 @@ interface Post {
   };
 }
 
-const STAT_CONFIG: Record<string, { iconBg: string; iconColor: string; icon: React.ElementType }> = {
-  'Total Posts':    { iconBg: 'bg-blue-50',   iconColor: 'text-blue-400',   icon: MessageSquare },
-  'Total Votes':    { iconBg: 'bg-cyan-50',   iconColor: 'text-cyan-400',   icon: ThumbsUp },
-  'Total Users':    { iconBg: 'bg-purple-50', iconColor: 'text-purple-400', icon: Users },
-  'Active Users':   { iconBg: 'bg-orange-50', iconColor: 'text-orange-400', icon: TrendingUp },
-  'Total Boards':   { iconBg: 'bg-green-50',  iconColor: 'text-green-500',  icon: Layout },
-  'Total Comments': { iconBg: 'bg-indigo-50', iconColor: 'text-indigo-400', icon: BarChart2 },
+const STAT_CONFIG: Record<string, { iconColor: string; glowColor: string; icon: React.ElementType }> = {
+  'Total Posts':    { iconColor: 'text-blue-400',   glowColor: 'rgba(96,165,250,0.2)',  icon: MessageSquare },
+  'Total Votes':    { iconColor: 'text-cyan-400',   glowColor: 'rgba(34,211,238,0.2)',  icon: ThumbsUp },
+  'Total Users':    { iconColor: 'text-purple-400', glowColor: 'rgba(167,139,250,0.2)', icon: Users },
+  'Active Users':   { iconColor: 'text-orange-400', glowColor: 'rgba(251,146,60,0.2)',  icon: TrendingUp },
+  'Total Boards':   { iconColor: 'text-green-500',  glowColor: 'rgba(34,197,94,0.2)',   icon: Layout },
+  'Total Comments': { iconColor: 'text-indigo-400', glowColor: 'rgba(129,140,248,0.2)', icon: BarChart2 },
 };
 
 export default function AdminDashboard() {
@@ -97,25 +97,26 @@ export default function AdminDashboard() {
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {statsCards.map((card) => {
-              const cfg = STAT_CONFIG[card.label] || { iconBg: 'bg-gray-50', iconColor: 'text-gray-400', icon: BarChart2 };
+              const cfg = STAT_CONFIG[card.label] || { iconColor: 'text-gray-400', glowColor: 'rgba(156,163,175,0.2)', icon: BarChart2 };
               const Icon = cfg.icon;
               return (
                 <div key={card.label}
-                  className={`relative p-5 rounded-2xl border flex items-start justify-between overflow-hidden ${
+                  className={`relative p-5 rounded-2xl border overflow-hidden ${
                     d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
                   }`}
                   style={{ boxShadow: d ? 'none' : '0 1px 8px rgba(0,0,0,0.05)' }}
                 >
-                  <div>
+                  <div className="relative z-10">
                     <p className={`text-4xl font-extrabold mb-1.5 tracking-tight ${d ? 'text-white' : 'text-gray-900'}`}>
                       {card.value ?? 0}
                     </p>
                     <p className={`text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>{card.label}</p>
                   </div>
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                    d ? 'bg-gray-700' : cfg.iconBg
-                  }`}>
-                    <Icon className={`w-6 h-6 ${cfg.iconColor}`} />
+                  <div
+                    className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full flex items-center justify-center"
+                    style={{ background: cfg.glowColor }}
+                  >
+                    <Icon className={`w-7 h-7 ${cfg.iconColor} relative -top-2 -left-2`} />
                   </div>
                 </div>
               );

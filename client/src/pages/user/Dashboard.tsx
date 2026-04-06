@@ -86,29 +86,29 @@ export default function UserDashboard() {
       label: 'Total Boards',
       value: boards.length,
       icon: Layout,
-      iconBg: 'bg-orange-50',
       iconColor: 'text-orange-400',
+      glowColor: 'rgba(251,146,60,0.2)',
     },
     {
       label: 'Total Posts',
       value: posts.length,
       icon: MessageSquare,
-      iconBg: 'bg-blue-50',
       iconColor: 'text-blue-400',
+      glowColor: 'rgba(96,165,250,0.2)',
     },
     {
       label: 'Total Votes',
       value: totalVotes,
       icon: ThumbsUp,
-      iconBg: 'bg-cyan-50',
       iconColor: 'text-cyan-400',
+      glowColor: 'rgba(34,211,238,0.2)',
     },
     {
       label: 'Active Boards',
       value: boards.length,
       icon: TrendingUp,
-      iconBg: 'bg-green-50',
       iconColor: 'text-green-500',
+      glowColor: 'rgba(34,197,94,0.2)',
     },
   ];
 
@@ -140,13 +140,13 @@ export default function UserDashboard() {
             return (
               <div
                 key={card.label}
-                className={`relative p-5 rounded-2xl border flex items-start justify-between overflow-hidden ${
+                className={`relative p-5 rounded-2xl border overflow-hidden ${
                   d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
                 }`}
                 style={{ boxShadow: d ? 'none' : '0 1px 8px rgba(0,0,0,0.05)' }}
               >
                 {/* Left: number + label */}
-                <div>
+                <div className="relative z-10">
                   <p className={`text-4xl font-extrabold mb-1.5 tracking-tight ${d ? 'text-white' : 'text-gray-900'}`}>
                     {card.value}
                   </p>
@@ -154,11 +154,12 @@ export default function UserDashboard() {
                     {card.label}
                   </p>
                 </div>
-                {/* Right: icon */}
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                  d ? 'bg-gray-700' : card.iconBg
-                }`}>
-                  <Icon className={`w-6 h-6 ${card.iconColor}`} />
+                {/* Overflowing circle glow + icon */}
+                <div
+                  className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full flex items-center justify-center"
+                  style={{ background: card.glowColor }}
+                >
+                  <Icon className={`w-7 h-7 ${card.iconColor} relative -top-2 -left-2`} />
                 </div>
               </div>
             );
