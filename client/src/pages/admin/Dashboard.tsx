@@ -123,7 +123,7 @@ export default function AdminDashboard() {
                       top: '50%',
                       transform: 'translateY(-50%) rotate(45deg)',
                       borderRadius: '16px',
-                      background: cfg.glowColor,
+                      background: d ? 'rgba(255,255,255,0.08)' : '#f4f6f8',
                     }}
                   >
                     <Icon className={`w-7 h-7 ${cfg.iconColor}`} style={{ transform: 'rotate(-45deg)', marginRight: '14px' }} />
