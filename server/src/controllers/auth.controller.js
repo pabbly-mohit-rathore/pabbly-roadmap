@@ -47,7 +47,7 @@ const generateRefreshToken = (userId) => {
 // ============================================================
 const register = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role: requestedRole } = req.body;
 
     // Step 1: Kya email pehle se registered hai?
     const existingUser = await prisma.user.findUnique({
@@ -68,11 +68,13 @@ const register = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Step 3: Database mein naya user banao
+    const validRole = requestedRole === 'admin' ? 'admin' : 'user';
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,  // Hashed password save hoga, plain nahi
+        role: validRole,
       },
     });
 

@@ -130,6 +130,7 @@ const assignManager = async (req, res, next) => {
         userId,
         boardId,
         role: 'manager',
+        accessLevel: req.body.accessLevel || 'manager',
         canEditPost: req.body.canEditPost || false,
         canDeletePost: req.body.canDeletePost || false,
         canEditComment: req.body.canEditComment || false,

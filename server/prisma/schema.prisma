@@ -93,12 +93,13 @@ model Board {
 // ============================================================
 
 model BoardMember {
-  id        String   @id @default(uuid())
-  userId    String
-  boardId   String
-  role      String   @default("manager")  // Abhi sirf "manager" hoga
+  id          String   @id @default(uuid())
+  userId      String
+  boardId     String
+  role        String   @default("manager")  // "manager" hoga
+  accessLevel String   @default("manager")  // "admin" ya "manager" — access type
 
-  // Permissions
+  // Permissions (for manager access level)
   canEditPost      Boolean @default(false)
   canDeletePost    Boolean @default(false)
   canEditComment   Boolean @default(false)
@@ -434,6 +435,7 @@ enum NotificationType {
   status_changed
   new_comment
   official_reply
+  team_access_granted
 }
 
 // ============================================================

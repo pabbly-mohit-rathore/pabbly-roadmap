@@ -29,6 +29,7 @@ const roadmapRoutes = require('./routes/roadmap.routes');
 const activityLogRoutes = require('./routes/activityLog.routes');
 const changelogRoutes = require('./routes/changelog.routes');
 const reportingRoutes = require('./routes/reporting.routes');
+const teamMemberRoutes = require('./routes/teamMember.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -38,7 +39,13 @@ const PORT = process.env.PORT || 5000;
 // ──────────────────────────────────────
 
 // CORS — frontend (localhost:5173) ko allow karo server se baat karne ke liye
-app.use(cors({ origin: process.env.CLIENT_URL }));
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://pabbly-roadmap.vercel.app"
+  ],
+  credentials: true
+}));
 
 // JSON — request body ko JSON format mein parse karo
 app.use(express.json({ limit: '50mb' }));
@@ -96,6 +103,9 @@ app.use('/api', changelogRoutes);
 
 // Reporting routes — /api/reporting/*, etc.
 app.use('/api', reportingRoutes);
+
+// Team Member routes — /api/team-members/*, etc.
+app.use('/api', teamMemberRoutes);
 
 // ──────────────────────────────────────
 // ERROR HANDLER (sabse last mein lagta hai)
