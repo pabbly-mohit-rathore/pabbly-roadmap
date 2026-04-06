@@ -179,8 +179,8 @@ export default function UserDashboard() {
 
         {/* Top Posts */}
         <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <div className={`px-5 py-4 border-b ${d ? 'border-gray-700' : 'border-gray-100'}`}>
-            <h2 className={`text-base font-semibold ${d ? 'text-white' : 'text-gray-900'}`}>Top Posts (Most Voted)</h2>
+          <div className={`border-b ${d ? 'border-gray-700' : 'border-gray-100'}`} style={{ padding: '24px' }}>
+            <h2 className={`text-base font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Top Posts (Most Voted)</h2>
           </div>
           <table className="w-full">
             <thead>
