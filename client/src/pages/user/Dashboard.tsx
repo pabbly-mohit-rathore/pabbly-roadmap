@@ -87,28 +87,28 @@ export default function UserDashboard() {
       value: boards.length,
       icon: Layout,
       iconColor: 'text-orange-400',
-      glowColor: 'rgba(251,146,60,0.12)',
+      glowColor: 'linear-gradient(180deg, rgba(251,146,60,0.15) 0%, rgba(255,255,255,0.0) 100%)',
     },
     {
       label: 'Total Posts',
       value: posts.length,
       icon: MessageSquare,
       iconColor: 'text-blue-400',
-      glowColor: 'rgba(96,165,250,0.12)',
+      glowColor: 'linear-gradient(180deg, rgba(96,165,250,0.15) 0%, rgba(255,255,255,0.0) 100%)',
     },
     {
       label: 'Total Votes',
       value: totalVotes,
       icon: ThumbsUp,
       iconColor: 'text-cyan-400',
-      glowColor: 'rgba(34,211,238,0.12)',
+      glowColor: 'linear-gradient(180deg, rgba(34,211,238,0.15) 0%, rgba(255,255,255,0.0) 100%)',
     },
     {
       label: 'Active Boards',
       value: boards.length,
       icon: TrendingUp,
       iconColor: 'text-green-500',
-      glowColor: 'rgba(34,197,94,0.12)',
+      glowColor: 'linear-gradient(180deg, rgba(34,197,94,0.15) 0%, rgba(255,255,255,0.0) 100%)',
     },
   ];
 
