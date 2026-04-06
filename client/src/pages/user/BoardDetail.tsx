@@ -53,11 +53,6 @@ export default function UserBoardDetail() {
   const [votedPostIds, setVotedPostIds] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  // Helper to check if user is in invite-only mode
-  const hasInviteAccess = () => {
-    return Object.keys(localStorage || {}).some(key => key.startsWith('invite_'));
-  };
-
   const [formData, setFormData] = useState({
     title: '',
     description: '',

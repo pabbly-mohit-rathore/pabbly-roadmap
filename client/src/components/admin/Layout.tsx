@@ -12,7 +12,7 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const theme = useThemeStore((state) => state.theme);
-  const { isTeamAccess, accessLevel, memberName, boardName, exitTeamAccess } = useTeamAccessStore();
+  const { isTeamAccess, accessLevel, memberName, exitTeamAccess } = useTeamAccessStore();
   const { user } = useAuthStore();
   const navigate = useNavigate();
 

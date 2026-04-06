@@ -76,11 +76,6 @@ export default function UserPostDetail() {
   const [replyText, setReplyText] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Helper to check if user is in invite-only mode
-  const hasInviteAccess = () => {
-    return Object.keys(localStorage || {}).some(key => key.startsWith('invite_'));
-  };
-
   useEffect(() => {
     fetchPost();
   }, [slug]);
