@@ -81,13 +81,20 @@ const getPosts = async (req, res, next) => {
         board: { select: { id: true, name: true, slug: true } },
         tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
         createdAt: true,
+        ...(req.user ? { votes: { where: { userId: req.user.userId }, select: { userId: true } } } : {}),
       },
     });
+
+    const postsWithVoteStatus = posts.map(post => ({
+      ...post,
+      hasVoted: req.user ? (post.votes?.length > 0) : false,
+      votes: undefined,
+    }));
 
     res.json({
       success: true,
       data: {
-        posts,
+        posts: postsWithVoteStatus,
         pagination: {
           page: parseInt(page),
           limit: take,
@@ -123,7 +130,14 @@ const getPostBySlug = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Post not found.' });
     }
 
-    res.json({ success: true, data: { post } });
+    const hasVoted = req.user
+      ? post.votes.some(v => v.userId === req.user.userId)
+      : false;
+
+    // Use actual vote count from DB (_count.votes) to override any corrupted voteCount field
+    const actualVoteCount = post._count.votes;
+
+    res.json({ success: true, data: { post: { ...post, voteCount: actualVoteCount, hasVoted } } });
   } catch (error) {
     next(error);
   }

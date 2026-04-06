@@ -16,7 +16,7 @@ const express = require('express');
 const router = express.Router();
 const { body, param, query } = require('express-validator');
 const validate = require('../middleware/validate');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, optionalAuth } = require('../middleware/auth');
 
 const {
   getPosts,
@@ -91,14 +91,14 @@ const idParamRules = [
 // Routes
 // ──────────────────────────────────────
 
-// GET /posts — Get all posts (public but optional auth for filtering)
-router.get('/', getPosts);
+// GET /posts — Get all posts (optional auth for vote status)
+router.get('/', optionalAuth, getPosts);
 
 // POST /posts — Create new post (authenticated)
 router.post('/', authenticate, createPostRules, validate, createPost);
 
-// GET /posts/:slug — Get post detail (public)
-router.get('/:slug', slugParamRules, validate, getPostBySlug);
+// GET /posts/:slug — Get post detail (optional auth for vote status)
+router.get('/:slug', optionalAuth, slugParamRules, validate, getPostBySlug);
 
 // PUT /posts/:id — Update post (authenticated)
 router.put('/:id', authenticate, idParamRules, updatePostRules, validate, updatePost);

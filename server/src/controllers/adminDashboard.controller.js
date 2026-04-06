@@ -106,16 +106,22 @@ const getTopVotedPosts = async (req, res, next) => {
         id: true,
         title: true,
         slug: true,
+        description: true,
         status: true,
+        voteCount: true,
         createdAt: true,
         _count: {
-          select: { votes: true, comments: true },
+          select: { comments: true },
         },
         author: {
           select: { id: true, name: true, email: true },
         },
         board: {
           select: { id: true, name: true },
+        },
+        votes: {
+          where: { userId: req.user.userId },
+          select: { userId: true },
         },
       },
       orderBy: {
@@ -126,9 +132,15 @@ const getTopVotedPosts = async (req, res, next) => {
       take: parseInt(limit) || 10,
     });
 
+    const postsWithVoteStatus = topPosts.map(post => ({
+      ...post,
+      hasVoted: post.votes.length > 0,
+      votes: undefined,
+    }));
+
     res.json({
       success: true,
-      data: { posts: topPosts },
+      data: { posts: postsWithVoteStatus },
     });
   } catch (error) {
     next(error);

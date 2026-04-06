@@ -63,35 +63,24 @@ const upvotePost = async (req, res, next) => {
       },
     });
 
-    let vote;
-    let voteCount = post.voteCount;
-
     if (existingVote) {
       // Vote already exists — remove it (toggle)
-      await prisma.vote.delete({
-        where: {
-          userId_postId: {
-            userId,
-            postId,
-          },
-        },
+      await prisma.vote.deleteMany({
+        where: { userId, postId },
       });
-      voteCount = post.voteCount - 1;
     } else {
       // Vote doesn't exist — create it
-      vote = await prisma.vote.create({
-        data: {
-          userId,
-          postId,
-        },
+      await prisma.vote.create({
+        data: { userId, postId },
       });
-      voteCount = post.voteCount + 1;
     }
 
-    // Update post vote count
+    // Always recalculate from actual DB count to avoid drift
+    const actualCount = await prisma.vote.count({ where: { postId } });
+
     const updatedPost = await prisma.post.update({
       where: { id: postId },
-      data: { voteCount },
+      data: { voteCount: actualCount },
       select: { id: true, voteCount: true },
     });
 
