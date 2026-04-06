@@ -108,7 +108,7 @@ export default function AdminDashboard() {
                 >
                   <div className="relative z-10">
                     <p className={`font-extrabold mb-1 leading-none ${d ? 'text-white' : ''}`}
-                      style={{ fontSize: '28px', color: d ? undefined : '#637381' }}>
+                      style={{ fontSize: '28px', color: d ? undefined : '#1c252e' }}>
                       {card.value ?? 0}
                     </p>
                     <p className={`text-sm font-medium mt-1.5 ${d ? 'text-gray-400' : ''}`}
