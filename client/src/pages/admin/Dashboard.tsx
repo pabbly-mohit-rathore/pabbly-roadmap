@@ -143,9 +143,9 @@ export default function AdminDashboard() {
             <table className="w-full">
               <thead>
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                  {['Upvote', 'Post', 'Status', 'Comments'].map((h, i) => (
-                    <th key={h} className={`text-left font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
-                      style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : i === 3 ? '24px' : '16px', width: i === 0 ? '120px' : i === 3 ? '200px' : undefined, textAlign: i === 3 ? 'right' as const : 'left' as const }}>{h}</th>
+                  {['Upvote', 'Post', 'Board', 'Status', 'Comments'].map((h, i) => (
+                    <th key={h} className={`font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
+                      style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : i === 4 ? '24px' : '16px', width: i === 0 ? '120px' : i === 4 ? '200px' : undefined, textAlign: i === 4 ? 'right' as const : 'left' as const }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -162,12 +162,16 @@ export default function AdminDashboard() {
                         {post._count.votes}
                       </div>
                     </td>
-                    {/* Title + board as subtitle */}
+                    {/* Title + description */}
                     <td className="px-5 py-4 max-w-xs">
                       <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                      {post.board?.name && (
-                        <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.board.name}</p>
+                      {post.description && (
+                        <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
                       )}
+                    </td>
+                    {/* Board */}
+                    <td className={`px-5 py-4 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {post.board?.name || '—'}
                     </td>
                     {/* Status */}
                     <td className="px-5 py-4">
