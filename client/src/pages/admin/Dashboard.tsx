@@ -115,17 +115,18 @@ export default function AdminDashboard() {
                       style={!d ? { color: '#637381' } : {}}>{card.label}</p>
                   </div>
                   <div
-                    className="absolute rounded-full flex items-center justify-center"
+                    className="absolute flex items-center justify-center"
                     style={{
-                      width: '90px',
-                      height: '90px',
-                      right: '-20px',
+                      width: '80px',
+                      height: '80px',
+                      right: '-22px',
                       top: '50%',
-                      transform: 'translateY(-50%)',
+                      transform: 'translateY(-50%) rotate(45deg)',
+                      borderRadius: '16px',
                       background: cfg.glowColor,
                     }}
                   >
-                    <Icon className={`w-8 h-8 ${cfg.iconColor}`} style={{ marginRight: '18px' }} />
+                    <Icon className={`w-7 h-7 ${cfg.iconColor}`} style={{ transform: 'rotate(-45deg)', marginRight: '14px' }} />
                   </div>
                 </div>
               );

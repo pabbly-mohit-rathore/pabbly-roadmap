@@ -156,19 +156,20 @@ export default function UserDashboard() {
                     {card.label}
                   </p>
                 </div>
-                {/* Right: large soft circle, half overflowing */}
+                {/* Right: rotated square diamond */}
                 <div
-                  className="absolute rounded-full flex items-center justify-center"
+                  className="absolute flex items-center justify-center"
                   style={{
-                    width: '90px',
-                    height: '90px',
-                    right: '-20px',
+                    width: '80px',
+                    height: '80px',
+                    right: '-22px',
                     top: '50%',
-                    transform: 'translateY(-50%)',
+                    transform: 'translateY(-50%) rotate(45deg)',
+                    borderRadius: '16px',
                     background: card.glowColor,
                   }}
                 >
-                  <Icon className={`w-8 h-8 ${card.iconColor}`} style={{ marginRight: '18px' }} />
+                  <Icon className={`w-7 h-7 ${card.iconColor}`} style={{ transform: 'rotate(-45deg)', marginRight: '14px' }} />
                 </div>
               </div>
             );
