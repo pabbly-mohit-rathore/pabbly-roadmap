@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { ThumbsUp, Pin, Trash2, Heart, Plus, X } from 'lucide-react';
+import { ArrowUpRight, Pin, Trash2, Heart, Plus, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
+import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import CommentEditor from '../../components/CommentEditor';
@@ -32,7 +33,7 @@ interface Post {
 interface Comment {
   id: string;
   content: string;
-  author: { id: string; name: string };
+  author: { id: string; name: string; avatar?: string };
   createdAt: string;
   isOfficial: boolean;
   isSpam: boolean;
@@ -60,6 +61,7 @@ const getTimeAgo = (dateStr: string): string => {
 export default function AdminPostDetail() {
   const theme = useThemeStore((state) => state.theme);
   const { user: currentUser } = useAuthStore();
+  const { votes, init, toggle } = useVoteStore();
   const navigate = useNavigate();
   const { postId } = useParams<{ postId: string }>();
   const { state } = useLocation();
@@ -69,7 +71,7 @@ export default function AdminPostDetail() {
   const [loading, setLoading] = useState(!post);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [isVoted, setIsVoted] = useState(false);
+  const [animating, setAnimating] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
@@ -98,7 +100,9 @@ export default function AdminPostDetail() {
       setLoading(true);
       const response = await api.get(`/posts/${postId}`);
       if (response.data.success) {
-        setPost(response.data.data.post);
+        const postData = response.data.data.post;
+        setPost(postData);
+        init(postData.id, postData.voteCount ?? 0, postData.hasVoted ?? false);
       }
     } catch (error) {
       console.error('Error fetching post:', error);
@@ -130,24 +134,11 @@ export default function AdminPostDetail() {
     }
   };
 
-  const handleVote = async () => {
-    try {
-      const response = await api.post(`/votes/${post?.id}`);
-      if (response.data.success) {
-        setIsVoted(!isVoted);
-        setPost((prev) =>
-          prev
-            ? {
-                ...prev,
-                voteCount: response.data.data.post.voteCount,
-              }
-            : null
-        );
-      }
-    } catch (error) {
-      console.error('Error voting:', error);
-      toast.error('Failed to vote');
-    }
+  const handleVote = () => {
+    if (!post) return;
+    toggle(post.id);
+    setAnimating(true);
+    setTimeout(() => setAnimating(false), 400);
   };
 
   const handlePin = async () => {
@@ -410,7 +401,7 @@ export default function AdminPostDetail() {
     <div className={`${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
       {/* Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-3 gap-8">
+        <div className="grid grid-cols-3 gap-8 items-start">
           {/* Main Content - Left */}
           <div className="col-span-2">
             {loading ? (
@@ -418,33 +409,42 @@ export default function AdminPostDetail() {
             ) : (
               <>
                 {/* Post Header */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <button
+                <div className="mb-8">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div
                         onClick={handleVote}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors font-medium ${
-                          isVoted
-                            ? 'bg-black text-white'
-                            : theme === 'dark'
-                            ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                        className="inline-flex flex-col items-center justify-center h-11 rounded-lg border font-bold transition-all cursor-pointer overflow-hidden flex-shrink-0"
+                        style={{
+                          width: '56px',
+                          fontSize: '13px',
+                          gap: '1px',
+                          backgroundColor: votes[post!.id]?.voted ? '#1c252e' : 'transparent',
+                          borderColor: votes[post!.id]?.voted ? '#1c252e' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
+                          color: votes[post!.id]?.voted ? '#ffffff' : (theme === 'dark' ? '#d1d5db' : '#374151'),
+                        }}
+                        onMouseEnter={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = '#1c252e'; }}
+                        onMouseLeave={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = theme === 'dark' ? '#4b5563' : '#e5e7eb'; }}
                       >
-                        <ThumbsUp className="w-4 h-4" />
-                        <span className="text-sm">{post?.voteCount || 0}</span>
-                      </button>
-                      <h1
-                        className={`text-3xl font-bold ${
-                          theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        }`}
-                      >
-                        {post?.title}
-                      </h1>
+                        <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
+                        <span style={{ animation: animating ? 'slideUpCount 0.35s cubic-bezier(0.34,1.56,0.64,1)' : 'none', display: 'block' }}>
+                          {votes[post!.id]?.count ?? 0}
+                        </span>
+                      </div>
+                      <div>
+                        <h1 className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {post?.title}
+                        </h1>
+                        {post?.description && (
+                          <p className={`text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {post.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <button
                       onClick={handlePin}
-                      className={`p-2 rounded-lg transition-colors ${
+                      className={`p-2 rounded-lg transition-colors flex-shrink-0 ${
                         post?.isPinned
                           ? 'bg-yellow-100 text-yellow-800'
                           : theme === 'dark'
@@ -457,39 +457,6 @@ export default function AdminPostDetail() {
                     </button>
                   </div>
 
-                  <div className="flex gap-2 mb-4 mt-3">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(
-                        post?.type || ''
-                      )}`}
-                    >
-                      {post?.type?.toUpperCase()}
-                    </span>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                        post?.status || ''
-                      )}`}
-                    >
-                      {post?.status?.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div
-                  className={`p-6 rounded-lg border mb-8 ${
-                    theme === 'dark'
-                      ? 'bg-gray-800 border-gray-700'
-                      : 'bg-white border-gray-200'
-                  }`}
-                >
-                  <p
-                    className={`whitespace-pre-wrap ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                    }`}
-                  >
-                    {post?.description}
-                  </p>
                 </div>
 
                 {/* Comments Section */}
@@ -514,431 +481,151 @@ export default function AdminPostDetail() {
                   <div className="space-y-4">
                     {comments.length > 0 ? (
                       comments.map((comment) => (
-                        <div
-                          key={comment.id}
-                          className={`p-4 rounded-lg border ${
-                            comment.isSpam
-                              ? theme === 'dark'
-                                ? 'bg-red-900/20 border-red-800'
-                                : 'bg-red-50 border-red-200'
-                              : theme === 'dark'
-                              ? 'bg-gray-800 border-gray-700'
-                              : 'bg-white border-gray-200'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <p
-                                className={`font-semibold ${
-                                  theme === 'dark'
-                                    ? 'text-white'
-                                    : 'text-gray-900'
-                                }`}
-                              >
-                                {comment.author.name}
-                                {comment.isSpam && (
-                                  <span className="ml-2 px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800">
-                                    Spam
-                                  </span>
-                                )}
-                                {comment.isPinned && (
-                                  <span className="ml-2">📌</span>
-                                )}
-                              </p>
-                              <p
-                                className={`text-xs ${
-                                  theme === 'dark'
-                                    ? 'text-gray-500'
-                                    : 'text-gray-500'
-                                }`}
-                              >
-                                {getTimeAgo(comment.createdAt)}
-                              </p>
-                            </div>
-                            {!comment.isSpam && (
-                              <button
-                                onClick={() => handleDeleteComment(comment.id)}
-                                className={`p-1 rounded-lg transition-colors ${
-                                  theme === 'dark'
-                                    ? 'hover:bg-gray-700'
-                                    : 'hover:bg-gray-100'
-                                }`}
-                              >
-                                <Trash2 className="w-4 h-4 text-red-500" />
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Comment Content */}
-                          {editingCommentId === comment.id ? (
-                            <div className="mb-3">
-                              <textarea
-                                value={editText}
-                                onChange={(e) => setEditText(e.target.value)}
-                                className={`w-full px-3 py-2 rounded-lg border mb-2 ${
-                                  theme === 'dark'
-                                    ? 'bg-gray-700 border-gray-600 text-white'
-                                    : 'bg-white border-gray-200'
-                                }`}
-                                rows={3}
-                              />
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleEditComment(comment.id)}
-                                  className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => setEditingCommentId(null)}
-                                  className={`px-3 py-1 text-sm rounded border ${
-                                    theme === 'dark'
-                                      ? 'border-gray-600 hover:bg-gray-700'
-                                      : 'border-gray-200 hover:bg-gray-100'
-                                  }`}
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <p
-                              className={`mb-3 ${
-                                theme === 'dark'
-                                  ? 'text-gray-300'
-                                  : 'text-gray-700'
-                              }`}
-                            >
-                              <span dangerouslySetInnerHTML={{ __html: comment.content }} />
-                            </p>
-                          )}
-
-                          {/* Comment Actions */}
-                          <div className="flex flex-wrap gap-3 text-sm">
-                            {comment.isSpam ? (
-                              <button
-                                onClick={() => handleMarkNotSpam(comment.id)}
-                                className="text-blue-600 hover:underline"
-                              >
-                                Mark not spam
-                              </button>
+                        <div key={comment.id} className={`p-5 rounded-xl border ${comment.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border-red-800' : 'bg-red-50 border-red-200') : (theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200')}`}>
+                          <div className="flex gap-3">
+                            {/* Avatar */}
+                            {comment.author.avatar ? (
+                              <img src={comment.author.avatar} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
                             ) : (
-                              <>
-                                <button
-                                  onClick={() => handleLikeComment(comment.id)}
-                                  className={`flex items-center gap-1 ${
-                                    likedCommentIds.has(comment.id)
-                                      ? 'text-red-500'
-                                      : theme === 'dark'
-                                      ? 'text-gray-400 hover:text-red-500'
-                                      : 'text-gray-600 hover:text-red-500'
-                                  }`}
-                                >
-                                  <Heart
-                                    className="w-4 h-4"
-                                    fill={
-                                      likedCommentIds.has(comment.id)
-                                        ? 'currentColor'
-                                        : 'none'
-                                    }
-                                  />
-                                  {comment.likeCount}
-                                </button>
-
-                                <button
-                                  onClick={() => {
-                                    setEditingCommentId(comment.id);
-                                    setEditText(comment.content);
-                                  }}
-                                  className={`${
-                                    theme === 'dark'
-                                      ? 'text-gray-400 hover:text-white'
-                                      : 'text-gray-600 hover:text-gray-900'
-                                  }`}
-                                >
-                                  Edit
-                                </button>
-
-                                <button
-                                  onClick={() => handlePinComment(comment.id)}
-                                  className={`${
-                                    comment.isPinned
-                                      ? 'text-yellow-500'
-                                      : theme === 'dark'
-                                      ? 'text-gray-400 hover:text-yellow-500'
-                                      : 'text-gray-600 hover:text-yellow-500'
-                                  }`}
-                                >
-                                  {comment.isPinned ? '📌 Unpin' : '📌 Pin'}
-                                </button>
-
-                                <button
-                                  onClick={() => setReplyingToId(replyingToId === comment.id ? null : comment.id)}
-                                  className={`${
-                                    replyingToId === comment.id
-                                      ? 'text-blue-600'
-                                      : theme === 'dark'
-                                      ? 'text-gray-400 hover:text-white'
-                                      : 'text-gray-600 hover:text-gray-900'
-                                  }`}
-                                >
-                                  Reply
-                                </button>
-                              </>
-                            )}
-                          </div>
-
-                          {comment.isOfficial && (
-                            <p className="text-xs text-green-600 mt-2 font-semibold">
-                              ✓ Official Response
-                            </p>
-                          )}
-
-                          {/* Reply Form */}
-                          {replyingToId === comment.id && (
-                            <div className="mt-4 pt-4 border-t border-gray-300">
-                              <textarea
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                placeholder="Write a reply..."
-                                rows={2}
-                                className={`w-full px-3 py-2 rounded-lg border mb-2 ${
-                                  theme === 'dark'
-                                    ? 'bg-gray-700 border-gray-600 text-white'
-                                    : 'bg-white border-gray-200'
-                                }`}
-                              />
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleReply(comment.id)}
-                                  className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800"
-                                >
-                                  Reply
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setReplyingToId(null);
-                                    setReplyText('');
-                                  }}
-                                  className={`px-3 py-1 text-sm rounded border ${
-                                    theme === 'dark'
-                                      ? 'border-gray-600 hover:bg-gray-700'
-                                      : 'border-gray-200 hover:bg-gray-100'
-                                  }`}
-                                >
-                                  Cancel
-                                </button>
+                              <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-neutral-200'}`}>
+                                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-neutral-700'}`}>{comment.author.name.charAt(0).toUpperCase()}</span>
                               </div>
-                            </div>
-                          )}
-
-                          {/* Replies */}
-                          {comment.replies && comment.replies.length > 0 && (
-                            <div className="mt-4 space-y-3 pl-4 border-l-2 border-gray-300">
-                              {comment.replies.map((reply) => (
-                                <div
-                                  key={reply.id}
-                                  className={`p-3 rounded-lg border ${
-                                    reply.isSpam
-                                      ? theme === 'dark'
-                                        ? 'bg-red-900/20 border-red-800'
-                                        : 'bg-red-50 border-red-200'
-                                      : theme === 'dark'
-                                      ? 'bg-gray-700 border-gray-600'
-                                      : 'bg-gray-50 border-gray-200'
-                                  }`}
-                                >
-                                  <div className="flex items-start justify-between mb-2">
-                                    <div>
-                                      <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                        {reply.author.name}
-                                        {reply.isSpam && (
-                                          <span className="ml-2 px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800">
-                                            Spam
-                                          </span>
-                                        )}
-                                        {reply.isPinned && (
-                                          <span className="ml-2">📌</span>
-                                        )}
-                                      </p>
-                                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                                        {getTimeAgo(reply.createdAt)}
-                                      </p>
-                                    </div>
-                                    {!reply.isSpam && (
-                                      <button
-                                        onClick={() => handleDeleteComment(reply.id)}
-                                        className={`p-1 rounded-lg transition-colors ${
-                                          theme === 'dark'
-                                            ? 'hover:bg-gray-600'
-                                            : 'hover:bg-gray-200'
-                                        }`}
-                                      >
-                                        <Trash2 className="w-3 h-3 text-red-500" />
-                                      </button>
-                                    )}
-                                  </div>
-
-                                  {/* Reply Content */}
-                                  {editingCommentId === reply.id ? (
-                                    <div className="mb-3">
-                                      <textarea
-                                        value={editText}
-                                        onChange={(e) => setEditText(e.target.value)}
-                                        className={`w-full px-2 py-1 rounded text-sm border mb-2 ${
-                                          theme === 'dark'
-                                            ? 'bg-gray-600 border-gray-500 text-white'
-                                            : 'bg-white border-gray-200'
-                                        }`}
-                                        rows={2}
-                                      />
-                                      <div className="flex gap-2">
-                                        <button
-                                          onClick={() => handleEditComment(reply.id)}
-                                          className="px-2 py-1 bg-black text-white text-xs rounded hover:bg-gray-800"
-                                        >
-                                          Save
-                                        </button>
-                                        <button
-                                          onClick={() => setEditingCommentId(null)}
-                                          className={`px-2 py-1 text-xs rounded border ${
-                                            theme === 'dark'
-                                              ? 'border-gray-600 hover:bg-gray-600'
-                                              : 'border-gray-200 hover:bg-gray-100'
-                                          }`}
-                                        >
-                                          Cancel
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                      <span dangerouslySetInnerHTML={{ __html: reply.content }} />
-                                    </p>
-                                  )}
-
-                                  {/* Reply Actions */}
-                                  <div className="flex flex-wrap gap-2 text-xs">
-                                    {reply.isSpam ? (
-                                      <button
-                                        onClick={() => handleMarkNotSpam(reply.id)}
-                                        className="text-blue-600 hover:underline"
-                                      >
-                                        Mark not spam
-                                      </button>
-                                    ) : (
-                                      <>
-                                        <button
-                                          onClick={() => handleLikeComment(reply.id)}
-                                          className={`flex items-center gap-1 ${
-                                            likedCommentIds.has(reply.id)
-                                              ? 'text-red-500'
-                                              : theme === 'dark'
-                                              ? 'text-gray-400 hover:text-red-500'
-                                              : 'text-gray-600 hover:text-red-500'
-                                          }`}
-                                        >
-                                          <Heart
-                                            className="w-3 h-3"
-                                            fill={
-                                              likedCommentIds.has(reply.id)
-                                                ? 'currentColor'
-                                                : 'none'
-                                            }
-                                          />
-                                          {reply.likeCount}
-                                        </button>
-
-                                        <button
-                                          onClick={() => {
-                                            setEditingCommentId(reply.id);
-                                            setEditText(reply.content);
-                                          }}
-                                          className={`${
-                                            theme === 'dark'
-                                              ? 'text-gray-400 hover:text-white'
-                                              : 'text-gray-600 hover:text-gray-900'
-                                          }`}
-                                        >
-                                          Edit
-                                        </button>
-
-                                        <button
-                                          onClick={() => handlePinComment(reply.id)}
-                                          className={`${
-                                            reply.isPinned
-                                              ? 'text-yellow-500'
-                                              : theme === 'dark'
-                                              ? 'text-gray-400 hover:text-yellow-500'
-                                              : 'text-gray-600 hover:text-yellow-500'
-                                          }`}
-                                        >
-                                          {reply.isPinned ? '📌' : '📌'}
-                                        </button>
-
-                                        <button
-                                          onClick={() => setReplyingToId(replyingToId === reply.id ? null : reply.id)}
-                                          className={`${
-                                            replyingToId === reply.id
-                                              ? 'text-blue-600'
-                                              : theme === 'dark'
-                                              ? 'text-gray-400 hover:text-white'
-                                              : 'text-gray-600 hover:text-gray-900'
-                                          }`}
-                                        >
-                                          Reply
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-
-                                  {reply.isOfficial && (
-                                    <p className="text-xs text-green-600 mt-2 font-semibold">
-                                      ✓ Official Response
-                                    </p>
-                                  )}
-
-                                  {/* Nested Reply Form */}
-                                  {replyingToId === reply.id && (
-                                    <div className="mt-3 pt-3 border-t border-gray-300">
-                                      <textarea
-                                        value={replyText}
-                                        onChange={(e) => setReplyText(e.target.value)}
-                                        placeholder="Write a reply..."
-                                        rows={2}
-                                        className={`w-full px-2 py-1 rounded text-sm border mb-2 ${
-                                          theme === 'dark'
-                                            ? 'bg-gray-600 border-gray-500 text-white'
-                                            : 'bg-white border-gray-200'
-                                        }`}
-                                      />
-                                      <div className="flex gap-2">
-                                        <button
-                                          onClick={() => handleReply(reply.id)}
-                                          className="px-2 py-1 bg-black text-white text-xs rounded hover:bg-gray-800"
-                                        >
-                                          Reply
-                                        </button>
-                                        <button
-                                          onClick={() => {
-                                            setReplyingToId(null);
-                                            setReplyText('');
-                                          }}
-                                          className={`px-2 py-1 text-xs rounded border ${
-                                            theme === 'dark'
-                                              ? 'border-gray-600 hover:bg-gray-600'
-                                              : 'border-gray-200 hover:bg-gray-100'
-                                          }`}
-                                        >
-                                          Cancel
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
+                            )}
+                            <div className="flex-1 min-w-0">
+                              {/* Name · Time */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{comment.author.name}</span>
+                                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>· {getTimeAgo(comment.createdAt)}</span>
+                                  {comment.isSpam && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800">Spam</span>}
+                                  {comment.isPinned && <span className="text-xs">📌</span>}
                                 </div>
-                              ))}
+                                {!comment.isSpam && (
+                                  <button onClick={() => handleDeleteComment(comment.id)} className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Comment Content */}
+                              {editingCommentId === comment.id ? (
+                                <div className="mt-2">
+                                  <textarea value={editText} onChange={(e) => setEditText(e.target.value)}
+                                    className={`w-full px-3 py-2 rounded-lg border mb-2 ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'}`} rows={3} />
+                                  <div className="flex gap-2">
+                                    <button onClick={() => handleEditComment(comment.id)} className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800">Save</button>
+                                    <button onClick={() => setEditingCommentId(null)} className={`px-3 py-1 text-sm rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                  <span dangerouslySetInnerHTML={{ __html: comment.content }} />
+                                </div>
+                              )}
+
+                              {/* Comment Actions */}
+                              <div className="flex flex-wrap gap-3 text-xs mt-2">
+                                {comment.isSpam ? (
+                                  <button onClick={() => handleMarkNotSpam(comment.id)} className="text-blue-600 hover:underline">Mark not spam</button>
+                                ) : (
+                                  <>
+                                    <button onClick={() => handleLikeComment(comment.id)} className={`flex items-center gap-1 ${likedCommentIds.has(comment.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
+                                      <Heart className="w-3.5 h-3.5" fill={likedCommentIds.has(comment.id) ? 'currentColor' : 'none'} /> {comment.likeCount}
+                                    </button>
+                                    <button onClick={() => { setEditingCommentId(comment.id); setEditText(comment.content); }} className={theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Edit</button>
+                                    <button onClick={() => handlePinComment(comment.id)} className={comment.isPinned ? 'text-yellow-500' : theme === 'dark' ? 'text-gray-400 hover:text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}>{comment.isPinned ? '📌 Unpin' : '📌 Pin'}</button>
+                                    <button onClick={() => setReplyingToId(replyingToId === comment.id ? null : comment.id)} className={replyingToId === comment.id ? 'text-blue-600' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Reply</button>
+                                  </>
+                                )}
+                              </div>
+
+                              {comment.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">✓ Official Response</p>}
+
+                              {/* Reply Form */}
+                              {replyingToId === comment.id && (
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                  <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." rows={2}
+                                    className={`w-full px-3 py-2 rounded-lg border mb-2 text-sm ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'}`} />
+                                  <div className="flex gap-2">
+                                    <button onClick={() => handleReply(comment.id)} className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800">Reply</button>
+                                    <button onClick={() => { setReplyingToId(null); setReplyText(''); }} className={`px-3 py-1 text-sm rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Replies */}
+                              {comment.replies && comment.replies.length > 0 && (
+                                <div className="mt-4 space-y-4 pl-2 border-l-2 border-gray-200">
+                                  {comment.replies.map((reply) => (
+                                    <div key={reply.id} className={`pl-4 py-2 ${reply.isSpam ? (theme === 'dark' ? 'bg-red-900/10' : 'bg-red-50') : ''}`}>
+                                      <div className="flex gap-3">
+                                        {reply.author.avatar ? (
+                                          <img src={reply.author.avatar} alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
+                                        ) : (
+                                          <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-neutral-200'}`}>
+                                            <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-neutral-700'}`}>{reply.author.name.charAt(0).toUpperCase()}</span>
+                                          </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{reply.author.name}</span>
+                                              <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>· {getTimeAgo(reply.createdAt)}</span>
+                                              {reply.isSpam && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800">Spam</span>}
+                                              {reply.isPinned && <span className="text-xs">📌</span>}
+                                            </div>
+                                            {!reply.isSpam && (
+                                              <button onClick={() => handleDeleteComment(reply.id)} className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-200'}`}>
+                                                <Trash2 className="w-3 h-3 text-red-500" />
+                                              </button>
+                                            )}
+                                          </div>
+                                          {editingCommentId === reply.id ? (
+                                            <div className="mt-2">
+                                              <textarea value={editText} onChange={(e) => setEditText(e.target.value)}
+                                                className={`w-full px-2 py-1 rounded text-sm border mb-2 ${theme === 'dark' ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-200'}`} rows={2} />
+                                              <div className="flex gap-2">
+                                                <button onClick={() => handleEditComment(reply.id)} className="px-2 py-1 bg-black text-white text-xs rounded hover:bg-gray-800">Save</button>
+                                                <button onClick={() => setEditingCommentId(null)} className={`px-2 py-1 text-xs rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-600' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                              <span dangerouslySetInnerHTML={{ __html: reply.content }} />
+                                            </div>
+                                          )}
+                                          <div className="flex flex-wrap gap-2 text-xs mt-2">
+                                            {reply.isSpam ? (
+                                              <button onClick={() => handleMarkNotSpam(reply.id)} className="text-blue-600 hover:underline">Mark not spam</button>
+                                            ) : (
+                                              <>
+                                                <button onClick={() => handleLikeComment(reply.id)} className={`flex items-center gap-1 ${likedCommentIds.has(reply.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
+                                                  <Heart className="w-3 h-3" fill={likedCommentIds.has(reply.id) ? 'currentColor' : 'none'} /> {reply.likeCount}
+                                                </button>
+                                                <button onClick={() => { setEditingCommentId(reply.id); setEditText(reply.content); }} className={theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Edit</button>
+                                                <button onClick={() => setReplyingToId(replyingToId === reply.id ? null : reply.id)} className={replyingToId === reply.id ? 'text-blue-600' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Reply</button>
+                                              </>
+                                            )}
+                                          </div>
+                                          {reply.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">✓ Official Response</p>}
+                                          {replyingToId === reply.id && (
+                                            <div className="mt-3 pt-3 border-t border-gray-200">
+                                              <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." rows={2}
+                                                className={`w-full px-2 py-1 rounded text-sm border mb-2 ${theme === 'dark' ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-200'}`} />
+                                              <div className="flex gap-2">
+                                                <button onClick={() => handleReply(reply.id)} className="px-2 py-1 bg-black text-white text-xs rounded hover:bg-gray-800">Reply</button>
+                                                <button onClick={() => { setReplyingToId(null); setReplyText(''); }} className={`px-2 py-1 text-xs rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-600' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </div>
                       ))
                     ) : (
@@ -974,6 +661,16 @@ export default function AdminPostDetail() {
               >
                 POST DETAILS
               </h3>
+
+              {/* Type & Status */}
+              <div className="flex gap-2 mb-6">
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(post?.type || '')}`}>
+                  {post?.type?.toUpperCase()}
+                </span>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(post?.status || '')}`}>
+                  {post?.status?.replace(/_/g, ' ')}
+                </span>
+              </div>
 
               {/* Board */}
               <div className="mb-6">

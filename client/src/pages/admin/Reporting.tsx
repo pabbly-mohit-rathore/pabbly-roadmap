@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ThumbsUp, Calendar, ChevronLeft, ChevronRight, MessageSquare, Star, MessageCircle } from 'lucide-react';
+import { ThumbsUp, Calendar, ChevronLeft, ChevronRight, MessageSquare, MessageCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';

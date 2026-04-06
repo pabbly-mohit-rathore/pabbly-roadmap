@@ -27,7 +27,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const cardLogoInputRef = useRef<HTMLInputElement>(null);
-  const [cardLogoBoard, setCardLogoBoard] = useState<Board | null>(null);
+  const [cardLogoBoard, _setCardLogoBoard] = useState<Board | null>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

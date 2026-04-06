@@ -49,7 +49,7 @@ export default function AdminBoardDetail() {
 
   const [board, setBoard] = useState<Board | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [managers, setManagers] = useState<Manager[]>([]);
+  const [_managers, setManagers] = useState<Manager[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);

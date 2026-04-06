@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, ThumbsUp, Layout, TrendingUp, ArrowUpRight, MessageCircle } from 'lucide-react';
+import { MessageSquare, ThumbsUp, Layout, TrendingUp, ArrowUpRight } from 'lucide-react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
+import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
 
 interface Board {
@@ -46,40 +47,38 @@ export default function UserDashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const d = theme === 'dark';
+  const { votes, init, toggle } = useVoteStore();
 
   const [boards, setBoards] = useState<Board[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [totalVotes, setTotalVotes] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [animatingPosts, setAnimatingPosts] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-
-      // Get boards user has access to
       const boardsRes = await api.get('/boards');
-      const boardList: Board[] = boardsRes.data?.data?.boards || [];
-      setBoards(boardList);
+      setBoards(boardsRes.data?.data?.boards || []);
 
-      // Get top posts from those boards
-      const postsRes = await api.get('/posts', {
-        params: { limit: 5, sortBy: 'voteCount', order: 'desc' },
-      });
+      const postsRes = await api.get('/posts', { params: { limit: 5, sortBy: 'voteCount', order: 'desc' } });
       const postList: Post[] = postsRes.data?.data?.posts || [];
       setPosts(postList);
 
-      // Total votes across all top posts
-      const votes = postList.reduce((sum: number, p: Post) => sum + (p.voteCount || 0), 0);
-      setTotalVotes(votes);
+      // Seed global vote store
+      postList.forEach((p: any) => init(p.id, p.voteCount || 0, p.hasVoted ?? false));
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleVote = (postId: string) => {
+    toggle(postId);
+    setAnimatingPosts(prev => { const next = new Set(prev); next.add(postId); return next; });
+    setTimeout(() => setAnimatingPosts(prev => { const next = new Set(prev); next.delete(postId); return next; }), 400);
   };
 
   const statCards = [
@@ -99,7 +98,7 @@ export default function UserDashboard() {
     },
     {
       label: 'Total Votes',
-      value: totalVotes,
+      value: Object.values(votes).reduce((s, v) => s + v.count, 0),
       icon: ThumbsUp,
       iconColor: 'text-cyan-400',
       glowColor: 'linear-gradient(180deg, rgba(34,211,238,0.15) 0%, rgba(255,255,255,0.0) 100%)',
@@ -123,6 +122,7 @@ export default function UserDashboard() {
 
   return (
     <UserLayout>
+      <style>{`@keyframes slideUpCount { 0% { opacity: 0; transform: translateY(8px) scale(0.85); } 60% { opacity: 1; transform: translateY(-2px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } }`}</style>
       <div>
         {/* Header */}
         <div className="mb-6">
@@ -182,7 +182,7 @@ export default function UserDashboard() {
           <div className={`border-b ${d ? 'border-gray-700' : 'border-gray-100'}`} style={{ padding: '24px' }}>
             <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Top Posts (Most Voted)</h2>
           </div>
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
                 {['Upvote', 'Post', 'Board', 'Status', 'Comments'].map((h, i) => (
@@ -196,35 +196,51 @@ export default function UserDashboard() {
                 <tr key={post.id} onClick={() => navigate(`/user/posts/${post.slug}`)}
                   className={`border-t transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-100 hover:bg-gray-50'}`}>
                   {/* Upvote */}
-                  <td className="py-4" style={{ paddingLeft: '24px', paddingRight: '12px', width: '120px' }}>
-                    <div className={`inline-flex flex-col items-center justify-center w-10 h-10 rounded-lg border text-xs font-bold gap-0.5 transition-colors cursor-pointer ${
-                      d ? 'border-gray-600 text-gray-300 hover:border-white' : 'border-gray-200 text-gray-700 hover:border-black'
-                    }`}>
-                      <ArrowUpRight className="w-3 h-3 rotate-[-45deg]" />
-                      {post.voteCount}
+                  <td className="py-4" style={{ paddingLeft: '24px', paddingRight: '12px', width: '120px' }}
+                    onClick={(e) => { e.stopPropagation(); handleVote(post.id); }}>
+                    <div
+                      className={`inline-flex flex-col items-center justify-center h-11 rounded-lg border font-bold transition-all cursor-pointer overflow-hidden`}
+                      style={{
+                        width: '56px',
+                        fontSize: '13px',
+                        gap: '1px',
+                        backgroundColor: votes[post.id]?.voted ? '#1c252e' : 'transparent',
+                        borderColor: votes[post.id]?.voted ? '#1c252e' : (d ? '#4b5563' : '#e5e7eb'),
+                        color: votes[post.id]?.voted ? '#ffffff' : (d ? '#d1d5db' : '#374151'),
+                      }}
+                      onMouseEnter={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = '#1c252e'; }}
+                      onMouseLeave={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = d ? '#4b5563' : '#e5e7eb'; }}
+                    >
+                      <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
+                      <span
+                        key={votes[post.id]?.count}
+                        style={{ animation: animatingPosts.has(post.id) ? 'slideUpCount 0.35s cubic-bezier(0.34,1.56,0.64,1)' : 'none', display: 'block' }}
+                      >
+                        {votes[post.id]?.count ?? post.voteCount}
+                      </span>
                     </div>
                   </td>
                   {/* Title + description */}
-                  <td className="px-5 py-4 max-w-xs">
+                  <td className="px-5 py-4 max-w-0 overflow-hidden">
                     <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
                     {post.description && (
                       <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
                     )}
                   </td>
                   {/* Board */}
-                  <td className={`px-5 py-4 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {post.board?.name || '—'}
+                  <td className={`px-5 py-4 text-sm max-w-0 overflow-hidden ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span className="truncate block">{post.board?.name || '—'}</span>
                   </td>
                   {/* Status */}
                   <td className="px-5 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${STATUS_COLORS[post.status] || 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`px-2.5 py-1 rounded-full text-[13px] font-semibold ${STATUS_COLORS[post.status] || 'bg-gray-100 text-gray-600'}`}>
                       {STATUS_LABELS[post.status] || post.status}
                     </span>
                   </td>
                   {/* Comments */}
                   <td className="py-4" style={{ paddingRight: '24px', textAlign: 'right' }}>
                     <div className={`inline-flex items-center gap-1.5 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                      <MessageCircle className="w-4 h-4" />
+                      <MessageSquare className="w-4 h-4" />
                       {post.commentCount}
                     </div>
                   </td>
