@@ -138,14 +138,14 @@ export default function AdminDashboard() {
           {/* Top Posts - Table */}
           <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             <div className={`border-b ${d ? 'border-gray-700' : 'border-gray-100'}`} style={{ padding: '24px' }}>
-              <h2 className={`text-base font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Top Posts (Most Voted)</h2>
+              <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Top Posts (Most Voted)</h2>
             </div>
             <table className="w-full">
               <thead>
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
                   {['Upvote', 'Post', 'Status', 'Board', 'Comments'].map(h => (
-                    <th key={h} className={`px-5 py-3 text-left font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
-                      style={{ fontSize: '14px', color: d ? undefined : '#1C252E' }}>{h}</th>
+                    <th key={h} className={`text-left font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
+                      style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
