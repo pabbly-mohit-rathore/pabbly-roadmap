@@ -145,7 +145,7 @@ export default function AdminDashboard() {
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
                   {['Upvote', 'Post', 'Status', 'Board', 'Comments'].map((h, i) => (
                     <th key={h} className={`text-left font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
-                      style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '8px' : '16px', width: i === 0 ? '80px' : undefined }}>{h}</th>
+                      style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : '16px', width: i === 0 ? '100px' : undefined }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -154,7 +154,7 @@ export default function AdminDashboard() {
                   <tr key={post.id} onClick={() => navigate(`/admin/posts/${post.slug}`)}
                     className={`border-t transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-100 hover:bg-gray-50'}`}>
                     {/* Upvote */}
-                    <td className="py-4" style={{ paddingLeft: '24px', paddingRight: '8px', width: '80px' }}>
+                    <td className="py-4" style={{ paddingLeft: '24px', paddingRight: '12px', width: '100px' }}>
                       <div className={`inline-flex flex-col items-center justify-center w-10 h-10 rounded-lg border text-xs font-bold gap-0.5 ${
                         d ? 'border-gray-600 text-gray-300' : 'border-gray-200 text-gray-700'
                       }`}>
