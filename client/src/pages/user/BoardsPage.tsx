@@ -204,11 +204,12 @@ export default function UserBoardsPage() {
                             {/* Button */}
                             <button
                               onClick={() => navigate(`/user/boards/${board.id}`, { state: { board } })}
-                              className={`w-full py-2.5 rounded-xl border-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
+                              className={`w-full py-2.5 rounded-xl border-2 font-semibold uppercase tracking-wide transition-colors ${
                                 d
                                   ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white'
                                   : 'border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white'
                               }`}
+                              style={{ fontSize: '16px' }}
                             >
                               Access Now
                             </button>
