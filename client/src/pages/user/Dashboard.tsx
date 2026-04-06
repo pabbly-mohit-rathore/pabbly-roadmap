@@ -185,9 +185,9 @@ export default function UserDashboard() {
           <table className="w-full">
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                {['Upvote', 'Post', 'Status', 'Board', 'Comments'].map((h, i) => (
+                {['Upvote', 'Post', 'Status', 'Comments'].map((h, i) => (
                   <th key={h} className={`text-left font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
-                    style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : i === 4 ? '24px' : '16px', width: i === 0 ? '120px' : i === 4 ? '200px' : undefined, textAlign: i === 3 || i === 4 ? 'right' as const : 'left' as const }}>{h}</th>
+                    style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : i === 3 ? '24px' : '16px', width: i === 0 ? '120px' : i === 3 ? '200px' : undefined, textAlign: i === 3 ? 'right' as const : 'left' as const }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -204,11 +204,11 @@ export default function UserDashboard() {
                       {post.voteCount}
                     </div>
                   </td>
-                  {/* Title + description */}
+                  {/* Title + board as subtitle */}
                   <td className="px-5 py-4 max-w-xs">
                     <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                    {post.description && (
-                      <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
+                    {post.board?.name && (
+                      <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.board.name}</p>
                     )}
                   </td>
                   {/* Status */}
@@ -216,10 +216,6 @@ export default function UserDashboard() {
                     <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${STATUS_COLORS[post.status] || 'bg-gray-100 text-gray-600'}`}>
                       {STATUS_LABELS[post.status] || post.status}
                     </span>
-                  </td>
-                  {/* Board */}
-                  <td className={`px-5 py-4 text-sm text-right ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {post.board?.name || '—'}
                   </td>
                   {/* Comments */}
                   <td className="py-4" style={{ paddingRight: '24px', textAlign: 'right' }}>
