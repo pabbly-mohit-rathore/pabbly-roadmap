@@ -17,11 +17,12 @@ interface SharedBoard {
 
 const TABS = [
   { id: 'team-member', label: 'Team Member', icon: Users },
-  { id: 'general', label: 'General Settings', icon: SettingsIcon },
+  { id: 'general', label: 'General', icon: SettingsIcon },
 ];
 
 export default function UserSettings() {
   const theme = useThemeStore((state) => state.theme);
+  const { setTheme } = useThemeStore();
   const { user, login } = useAuthStore();
   const { enterTeamAccess } = useTeamAccessStore();
   const navigate = useNavigate();
@@ -30,7 +31,6 @@ export default function UserSettings() {
   const [loadingBoards, setLoadingBoards] = useState(true);
   const d = theme === 'dark';
 
-  // General settings form
   const [name, setName] = useState(user?.name || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -45,9 +45,7 @@ export default function UserSettings() {
     try {
       setLoadingBoards(true);
       const res = await api.get('/team-members/shared-with-me');
-      if (res.data.success) {
-        setSharedBoards(res.data.data.memberships || []);
-      }
+      if (res.data.success) setSharedBoards(res.data.data.memberships || []);
     } catch (error) {
       console.error('Error fetching shared boards:', error);
     } finally {
@@ -69,22 +67,16 @@ export default function UserSettings() {
     if (!name.trim()) { toast.error('Name cannot be empty'); return; }
     if (newPassword && newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
     if (newPassword && newPassword.length < 8) { toast.error('Password must be at least 8 characters'); return; }
-
     setSaving(true);
     try {
       const payload: Record<string, string> = { name };
-      if (newPassword) {
-        payload.currentPassword = currentPassword;
-        payload.newPassword = newPassword;
-      }
+      if (newPassword) { payload.currentPassword = currentPassword; payload.newPassword = newPassword; }
       const res = await api.put('/auth/profile', payload);
       if (res.data.success) {
         const state = useAuthStore.getState();
         login(res.data.data.user, state.accessToken || '', localStorage.getItem('refreshToken') || '');
         toast.success('Profile updated successfully');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
+        setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -97,18 +89,13 @@ export default function UserSettings() {
   return (
     <UserLayout>
       <div>
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className={`text-4xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>
-            Settings
-          </h1>
-          <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
-            Manage your account and team access
-          </p>
-        </div>
+        <h1 className={`text-4xl font-bold mb-3 ${d ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
+        <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+          Manage your team access and account settings.
+        </p>
 
         {/* Tabs */}
-        <div className="flex items-center gap-6 mb-6 border-b ${d ? 'border-gray-700' : 'border-gray-200'}">
+        <div className="flex items-center gap-6 mt-5 mb-5">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -116,7 +103,7 @@ export default function UserSettings() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex items-center gap-2 pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
                   active
                     ? `border-black ${d ? 'text-white' : 'text-gray-900'}`
                     : `border-transparent ${d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
@@ -202,23 +189,40 @@ export default function UserSettings() {
           </div>
         )}
 
-        {/* General Settings Tab */}
+        {/* General Tab */}
         {activeTab === 'general' && (
-          <div className="space-y-6 max-w-xl">
-            {/* Profile */}
-            <div className={`rounded-xl border p-6 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h2 className={`text-lg font-bold mb-4 ${d ? 'text-white' : 'text-gray-900'}`}>Profile</h2>
+          <div>
+            {/* Appearance */}
+            <div className={`p-6 rounded-lg border mb-8 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <h2 className={`text-xl font-bold mb-6 ${d ? 'text-white' : 'text-gray-900'}`}>Appearance</h2>
+              <div>
+                <label className={`block text-sm font-medium mb-3 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Theme</label>
+                <div className="flex gap-3">
+                  <button onClick={() => setTheme('light')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      theme === 'light' ? 'bg-black text-white' : d ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}>Light</button>
+                  <button onClick={() => setTheme('dark')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      theme === 'dark' ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}>Dark</button>
+                </div>
+              </div>
+            </div>
 
-              <div className="space-y-4">
+            {/* Profile */}
+            <div className={`p-6 rounded-lg border mb-8 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <h2 className={`text-xl font-bold mb-6 ${d ? 'text-white' : 'text-gray-900'}`}>Profile</h2>
+              <div className="space-y-4 max-w-md">
                 <div>
                   <label className={`block text-sm font-medium mb-1.5 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Full Name</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className={`w-full px-4 h-[44px] rounded-xl border text-sm ${
+                    className={`w-full px-4 h-[44px] rounded-xl border text-sm focus:outline-none focus:border-gray-400 ${
                       d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'
-                    } focus:outline-none focus:border-gray-400`}
+                    }`}
                   />
                 </div>
                 <div>
@@ -236,11 +240,10 @@ export default function UserSettings() {
             </div>
 
             {/* Change Password */}
-            <div className={`rounded-xl border p-6 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h2 className={`text-lg font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Change Password</h2>
-              <p className={`text-sm mb-4 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Leave blank if you don't want to change your password</p>
-
-              <div className="space-y-4">
+            <div className={`p-6 rounded-lg border mb-8 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <h2 className={`text-xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>Change Password</h2>
+              <p className={`text-sm mb-6 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Leave blank if you don't want to change your password</p>
+              <div className="space-y-4 max-w-md">
                 <div>
                   <label className={`block text-sm font-medium mb-1.5 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Current Password</label>
                   <input
@@ -248,9 +251,9 @@ export default function UserSettings() {
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Enter current password"
-                    className={`w-full px-4 h-[44px] rounded-xl border text-sm ${
+                    className={`w-full px-4 h-[44px] rounded-xl border text-sm focus:outline-none focus:border-gray-400 ${
                       d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'
-                    } focus:outline-none focus:border-gray-400`}
+                    }`}
                   />
                 </div>
                 <div>
@@ -260,9 +263,9 @@ export default function UserSettings() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Min 8 characters"
-                    className={`w-full px-4 h-[44px] rounded-xl border text-sm ${
+                    className={`w-full px-4 h-[44px] rounded-xl border text-sm focus:outline-none focus:border-gray-400 ${
                       d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'
-                    } focus:outline-none focus:border-gray-400`}
+                    }`}
                   />
                 </div>
                 <div>
@@ -272,9 +275,9 @@ export default function UserSettings() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repeat new password"
-                    className={`w-full px-4 h-[44px] rounded-xl border text-sm ${
+                    className={`w-full px-4 h-[44px] rounded-xl border text-sm focus:outline-none focus:border-gray-400 ${
                       d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'
-                    } focus:outline-none focus:border-gray-400`}
+                    }`}
                   />
                 </div>
               </div>
@@ -283,7 +286,7 @@ export default function UserSettings() {
             <button
               onClick={handleSaveProfile}
               disabled={saving}
-              className="px-6 py-2.5 bg-black text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+              className="px-6 py-2 rounded-lg bg-black text-white font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
