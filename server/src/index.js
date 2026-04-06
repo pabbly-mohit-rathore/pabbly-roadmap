@@ -38,12 +38,12 @@ const PORT = process.env.PORT || 5000;
 // MIDDLEWARE (har request pe chalte hain)
 // ──────────────────────────────────────
 
-// CORS — frontend (localhost:5173) ko allow karo server se baat karne ke liye
+// CORS — frontend ko allow karo server se baat karne ke liye
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://pabbly-roadmap.vercel.app"
-  ],
+    process.env.CLIENT_URL
+  ].filter(Boolean),
   credentials: true
 }));
 
