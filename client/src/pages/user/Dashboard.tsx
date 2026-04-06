@@ -147,10 +147,12 @@ export default function UserDashboard() {
               >
                 {/* Left: number + label */}
                 <div className="relative z-10">
-                  <p className={`text-4xl font-extrabold mb-1.5 tracking-tight ${d ? 'text-white' : 'text-gray-900'}`}>
+                  <p className={`text-4xl font-extrabold mb-1.5 tracking-tight ${d ? 'text-white' : ''}`}
+                    style={!d ? { color: '#637381' } : {}}>
                     {card.value}
                   </p>
-                  <p className={`text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p className={`text-sm font-medium ${d ? 'text-gray-400' : ''}`}
+                    style={!d ? { color: '#637381' } : {}}>
                     {card.label}
                   </p>
                 </div>

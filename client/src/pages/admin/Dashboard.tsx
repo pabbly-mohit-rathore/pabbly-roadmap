@@ -107,10 +107,12 @@ export default function AdminDashboard() {
                   style={{ boxShadow: d ? 'none' : '0 1px 8px rgba(0,0,0,0.05)' }}
                 >
                   <div className="relative z-10">
-                    <p className={`text-4xl font-extrabold mb-1.5 tracking-tight ${d ? 'text-white' : 'text-gray-900'}`}>
+                    <p className={`text-4xl font-extrabold mb-1.5 tracking-tight ${d ? 'text-white' : ''}`}
+                      style={!d ? { color: '#637381' } : {}}>
                       {card.value ?? 0}
                     </p>
-                    <p className={`text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>{card.label}</p>
+                    <p className={`text-sm font-medium ${d ? 'text-gray-400' : ''}`}
+                      style={!d ? { color: '#637381' } : {}}>{card.label}</p>
                   </div>
                   <div
                     className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full flex items-center justify-center"
