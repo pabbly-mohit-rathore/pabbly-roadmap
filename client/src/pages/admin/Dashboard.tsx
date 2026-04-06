@@ -101,24 +101,31 @@ export default function AdminDashboard() {
               const Icon = cfg.icon;
               return (
                 <div key={card.label}
-                  className={`relative p-5 rounded-2xl border overflow-hidden ${
+                  className={`relative flex items-center justify-between overflow-hidden rounded-2xl border ${
                     d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
                   }`}
-                  style={{ boxShadow: d ? 'none' : '0 1px 8px rgba(0,0,0,0.05)' }}
+                  style={{ padding: '20px 24px', boxShadow: d ? 'none' : '0 2px 12px rgba(0,0,0,0.06)' }}
                 >
                   <div className="relative z-10">
-                    <p className={`text-4xl font-extrabold mb-1.5 tracking-tight ${d ? 'text-white' : ''}`}
-                      style={!d ? { color: '#637381' } : {}}>
+                    <p className={`font-extrabold mb-1 leading-none ${d ? 'text-white' : ''}`}
+                      style={{ fontSize: '28px', color: d ? undefined : '#637381' }}>
                       {card.value ?? 0}
                     </p>
-                    <p className={`text-sm font-medium ${d ? 'text-gray-400' : ''}`}
+                    <p className={`text-sm font-medium mt-1.5 ${d ? 'text-gray-400' : ''}`}
                       style={!d ? { color: '#637381' } : {}}>{card.label}</p>
                   </div>
                   <div
-                    className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full flex items-center justify-center"
-                    style={{ background: cfg.glowColor }}
+                    className="absolute rounded-full flex items-center justify-center"
+                    style={{
+                      width: '90px',
+                      height: '90px',
+                      right: '-20px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: cfg.glowColor,
+                    }}
                   >
-                    <Icon className={`w-7 h-7 ${cfg.iconColor} relative -top-2 -left-2`} />
+                    <Icon className={`w-8 h-8 ${cfg.iconColor}`} style={{ marginRight: '18px' }} />
                   </div>
                 </div>
               );
