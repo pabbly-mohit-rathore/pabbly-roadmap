@@ -155,8 +155,8 @@ export default function AdminDashboard() {
                     className={`border-t transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-100 hover:bg-gray-50'}`}>
                     {/* Upvote */}
                     <td className="py-4" style={{ paddingLeft: '24px', paddingRight: '12px', width: '120px' }}>
-                      <div className={`inline-flex flex-col items-center justify-center w-10 h-10 rounded-lg border text-xs font-bold gap-0.5 ${
-                        d ? 'border-gray-600 text-gray-300' : 'border-gray-200 text-gray-700'
+                      <div className={`inline-flex flex-col items-center justify-center w-10 h-10 rounded-lg border text-xs font-bold gap-0.5 transition-colors cursor-pointer ${
+                        d ? 'border-gray-600 text-gray-300 hover:border-white' : 'border-gray-200 text-gray-700 hover:border-black'
                       }`}>
                         <ArrowUpRight className="w-3 h-3 rotate-[-45deg]" />
                         {post._count.votes}
