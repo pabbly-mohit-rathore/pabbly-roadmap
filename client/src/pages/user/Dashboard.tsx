@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, ThumbsUp, Layout, TrendingUp } from 'lucide-react';
+import { MessageSquare, ThumbsUp, Layout, TrendingUp } from 'lucide-react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -86,29 +86,29 @@ export default function UserDashboard() {
       label: 'Total Boards',
       value: boards.length,
       icon: Layout,
-      color: 'bg-blue-50 text-blue-600',
-      desc: 'Boards you have access to',
+      iconBg: 'bg-orange-50',
+      iconColor: 'text-orange-400',
     },
     {
       label: 'Total Posts',
       value: posts.length,
       icon: MessageSquare,
-      color: 'bg-purple-50 text-purple-600',
-      desc: 'Across your boards',
+      iconBg: 'bg-blue-50',
+      iconColor: 'text-blue-400',
     },
     {
       label: 'Total Votes',
       value: totalVotes,
       icon: ThumbsUp,
-      color: 'bg-green-50 text-green-600',
-      desc: 'Votes on top posts',
+      iconBg: 'bg-cyan-50',
+      iconColor: 'text-cyan-400',
     },
     {
       label: 'Active Boards',
       value: boards.length,
       icon: TrendingUp,
-      color: 'bg-orange-50 text-orange-600',
-      desc: 'Currently active',
+      iconBg: 'bg-green-50',
+      iconColor: 'text-green-500',
     },
   ];
 
@@ -125,13 +125,10 @@ export default function UserDashboard() {
       <div>
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center gap-3 mb-1">
-            <LayoutDashboard className={`w-7 h-7 ${d ? 'text-white' : 'text-gray-900'}`} />
-            <h1 className={`text-3xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>
-              Dashboard
-            </h1>
-          </div>
-          <p className={`text-sm ml-10 ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+          <h1 className={`text-4xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>
+            Dashboard
+          </h1>
+          <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
             Welcome back, {user?.name} — here's an overview of your boards
           </p>
         </div>
@@ -143,22 +140,26 @@ export default function UserDashboard() {
             return (
               <div
                 key={card.label}
-                className={`p-5 rounded-xl border ${
-                  d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                className={`relative p-5 rounded-2xl border flex items-start justify-between overflow-hidden ${
+                  d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
                 }`}
+                style={{ boxShadow: d ? 'none' : '0 1px 8px rgba(0,0,0,0.05)' }}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <p className={`text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+                {/* Left: number + label */}
+                <div>
+                  <p className={`text-4xl font-extrabold mb-1.5 tracking-tight ${d ? 'text-white' : 'text-gray-900'}`}>
+                    {card.value}
+                  </p>
+                  <p className={`text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>
                     {card.label}
                   </p>
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${card.color}`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
                 </div>
-                <p className={`text-3xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>
-                  {card.value}
-                </p>
-                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>{card.desc}</p>
+                {/* Right: icon */}
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                  d ? 'bg-gray-700' : card.iconBg
+                }`}>
+                  <Icon className={`w-6 h-6 ${card.iconColor}`} />
+                </div>
               </div>
             );
           })}
