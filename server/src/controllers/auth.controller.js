@@ -478,15 +478,18 @@ const googleLogin = async (req, res, next) => {
     }
 
     // Google userinfo API se user ka data lo
-    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${googleAccessToken}` },
-    });
-
-    if (!response.ok) {
+    const axios = require('axios');
+    let googleUser;
+    try {
+      const { data } = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${googleAccessToken}` },
+      });
+      googleUser = data;
+    } catch {
       return res.status(401).json({ success: false, message: 'Invalid Google token.' });
     }
 
-    const { sub: googleId, email, name, picture } = await response.json();
+    const { sub: googleId, email, name, picture } = googleUser;
 
     // Pehle email ya googleId se user dhundho
     let user = await prisma.user.findFirst({
