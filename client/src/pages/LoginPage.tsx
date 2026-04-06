@@ -41,7 +41,7 @@ export default function LoginPage() {
       } else {
         const redirectUrl = localStorage.getItem('loginRedirect');
         if (redirectUrl) localStorage.removeItem('loginRedirect');
-        navigate(redirectUrl || '/user/boards');
+        navigate(redirectUrl || '/user/dashboard');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };

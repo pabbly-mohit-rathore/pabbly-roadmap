@@ -13,6 +13,7 @@ interface Board {
   description?: string;
   slug: string;
   color?: string;
+  icon?: string;
 }
 
 interface SharedBoard {
@@ -165,29 +166,59 @@ export default function UserBoardsPage() {
               <>
                 {boards.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {boards.map((board) => (
-                      <div
-                        key={board.id}
-                        onClick={() => navigate(`/user/boards/${board.id}`, { state: { board } })}
-                        className={`p-6 rounded-lg border cursor-pointer ${
-                          d ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
-                            : 'bg-white border-gray-200 hover:border-gray-300'
-                        } transition-all hover:shadow-lg`}
-                      >
-                        {board.color && (
-                          <div className="w-full h-2 rounded-full mb-4" style={{ backgroundColor: board.color }} />
-                        )}
-                        <h3 className={`text-xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{board.name}</h3>
-                        {board.description && (
-                          <p className={`text-sm mb-4 line-clamp-2 ${d ? 'text-gray-400' : 'text-gray-600'}`}>{board.description}</p>
-                        )}
-                        {board.slug && (
-                          <div className={`text-xs ${d ? 'text-gray-500' : 'text-gray-500'}`}>
-                            Slug: <code className="font-mono">{board.slug}</code>
+                    {boards.map((board) => {
+                      const boardColor = board.color || '#6366f1';
+                      const initial = board.name?.charAt(0).toUpperCase();
+                      return (
+                        <div
+                          key={board.id}
+                          className={`rounded-2xl border overflow-hidden flex flex-col ${
+                            d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                          } transition-all hover:shadow-lg`}
+                        >
+                          {/* Icon area */}
+                          <div
+                            className="w-full h-48 flex items-center justify-center overflow-hidden"
+                            style={{ backgroundColor: boardColor + '22' }}
+                          >
+                            {board.icon ? (
+                              <img src={board.icon} alt={board.name} className="w-20 h-20 object-contain rounded-2xl" />
+                            ) : (
+                              <div
+                                className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-md"
+                                style={{ backgroundColor: boardColor }}
+                              >
+                                {initial}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          {/* Content */}
+                          <div className="p-8 flex flex-col flex-1 items-center text-center">
+                            <h3 className={`font-bold mb-4 ${d ? 'text-white' : 'text-gray-900'}`}
+                              style={{ fontSize: '20px' }}>
+                              {board.name}
+                            </h3>
+                            <p className={`flex-1 line-clamp-2 mb-8 ${d ? 'text-gray-400' : 'text-gray-500'}`}
+                              style={{ fontSize: '16px' }}>
+                              {board.description || 'No description provided.'}
+                            </p>
+
+                            {/* Button */}
+                            <button
+                              onClick={() => navigate(`/user/boards/${board.id}`, { state: { board } })}
+                              className={`w-full py-2.5 rounded-xl border-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
+                                d
+                                  ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white'
+                                  : 'border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white'
+                              }`}
+                            >
+                              Access Now
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className={`p-12 text-center rounded-lg border ${

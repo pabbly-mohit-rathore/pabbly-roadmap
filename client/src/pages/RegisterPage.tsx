@@ -28,7 +28,7 @@ export default function RegisterPage() {
       if (user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
-        navigate('/user/boards');
+        navigate('/user/dashboard');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -58,7 +58,7 @@ export default function RegisterPage() {
       if (user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
-        navigate('/user/boards');
+        navigate('/user/dashboard');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Grid3x3, MapPin, History } from 'lucide-react';
+import { LayoutDashboard, Grid3x3, MapPin, History } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 
 export default function UserSidebar() {
@@ -7,6 +7,7 @@ export default function UserSidebar() {
   const theme = useThemeStore((state) => state.theme);
 
   const menuItems = [
+    { label: 'Dashboard', icon: LayoutDashboard, path: '/user/dashboard' },
     { label: 'Board Management', icon: Grid3x3, path: '/user/boards' },
     { label: 'Roadmap', icon: MapPin, path: '/user/roadmap' },
     { label: 'Changelog', icon: History, path: '/user/changelog' },
@@ -16,7 +17,7 @@ export default function UserSidebar() {
 
   return (
     <aside
-      className={`h-screen sticky top-16 border-r border-b transition-colors overflow-y-auto ${
+      className={`h-full border-r transition-colors overflow-y-auto flex-shrink-0 ${
         theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'
       }`}
       style={{ width: '207px' }}

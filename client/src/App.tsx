@@ -26,6 +26,7 @@ const BoardManagement = lazy(() => import('./pages/admin/BoardManagement'));
 const AdminBoardMembers = lazy(() => import('./pages/admin/BoardMembers'));
 const AdminSettings = lazy(() => import('./pages/admin/Settings'));
 const AdminUsers = lazy(() => import('./pages/admin/Users'));
+const UserDashboard = lazy(() => import('./pages/user/Dashboard'));
 const UserBoardsPage = lazy(() => import('./pages/user/BoardsPage'));
 const UserRoadmapPage = lazy(() => import('./pages/user/RoadmapPage'));
 const UserBoardDetail = lazy(() => import('./pages/user/BoardDetail'));
@@ -60,8 +61,8 @@ function App() {
       <Suspense fallback={null}>
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={!isAuthenticated ? <LoginPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/boards" />} />
-          <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/boards" />} />
+          <Route path="/login" element={!isAuthenticated ? <LoginPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/dashboard" />} />
+          <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/dashboard" />} />
           <Route path="/invite/:token" element={<InvitePage />} />
 
           {/* User Routes */}
@@ -153,9 +154,13 @@ function App() {
           } />
 
           {/* User Protected Routes */}
+          <Route path="/user/dashboard" element={
+            isAuthenticated || hasInviteAccess() ? <><UserDashboard /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          } />
           <Route path="/user/boards" element={
             isAuthenticated || hasInviteAccess() ? <><UserBoardsPage /><Toaster position="top-right" /></> : <Navigate to="/login" />
           } />
+
           <Route path="/user/roadmap" element={
             isAuthenticated || hasInviteAccess() ? <><UserRoadmapPage /><Toaster position="top-right" /></> : <Navigate to="/login" />
           } />

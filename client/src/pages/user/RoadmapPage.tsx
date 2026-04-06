@@ -97,19 +97,15 @@ export default function UserRoadmapPage() {
   if (loading) {
     return (
       <UserLayout>
-        <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-          <div className="p-8">
-            <div className="text-center py-12">Loading roadmap...</div>
-          </div>
-        </div>
+        <div className="text-center py-12">Loading roadmap...</div>
       </UserLayout>
     );
   }
 
   return (
     <UserLayout>
-      <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-        <div className="p-8">
+      <div>
+        <div className="pb-8">
           {/* Header */}
           <div className="mb-6">
             <h1 className={`text-4xl font-bold mb-2 ${
@@ -135,10 +131,9 @@ export default function UserRoadmapPage() {
           </div>
 
           {/* Kanban Board */}
-          <div className="overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 320px)' }}>
-            <div className="grid gap-4 h-full" style={{
-              gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
-              minHeight: 'calc(100vh - 320px)',
+          <div className="overflow-x-auto pb-4">
+            <div className="flex gap-4" style={{
+              minWidth: `${STATUS_ORDER.length * 280}px`,
             }}>
               {STATUS_ORDER.map((status) => {
                 const filteredPosts = getFilteredPosts(status);
@@ -147,11 +142,12 @@ export default function UserRoadmapPage() {
                 return (
                   <div
                     key={status}
-                    className={`rounded-lg border border-t-[3px] ${config.borderColor} flex flex-col overflow-hidden ${
+                    className={`rounded-lg border border-t-[3px] ${config.borderColor} flex flex-col overflow-hidden flex-shrink-0 ${
                       theme === 'dark'
                         ? 'border-gray-700'
                         : 'border-gray-200'
                     }`}
+                    style={{ width: '260px', minHeight: '400px' }}
                   >
                     {/* Column Header */}
                     <div className={`px-4 pt-4 pb-3 ${
