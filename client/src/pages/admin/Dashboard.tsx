@@ -25,12 +25,12 @@ interface Post {
 }
 
 const STAT_CONFIG: Record<string, { iconColor: string; glowColor: string; icon: React.ElementType }> = {
-  'Total Posts':    { iconColor: 'text-blue-400',   glowColor: 'rgba(96,165,250,0.2)',  icon: MessageSquare },
-  'Total Votes':    { iconColor: 'text-cyan-400',   glowColor: 'rgba(34,211,238,0.2)',  icon: ThumbsUp },
-  'Total Users':    { iconColor: 'text-purple-400', glowColor: 'rgba(167,139,250,0.2)', icon: Users },
-  'Active Users':   { iconColor: 'text-orange-400', glowColor: 'rgba(251,146,60,0.2)',  icon: TrendingUp },
-  'Total Boards':   { iconColor: 'text-green-500',  glowColor: 'rgba(34,197,94,0.2)',   icon: Layout },
-  'Total Comments': { iconColor: 'text-indigo-400', glowColor: 'rgba(129,140,248,0.2)', icon: BarChart2 },
+  'Total Posts':    { iconColor: 'text-blue-400',   glowColor: 'rgba(96,165,250,0.12)',  icon: MessageSquare },
+  'Total Votes':    { iconColor: 'text-cyan-400',   glowColor: 'rgba(34,211,238,0.12)',  icon: ThumbsUp },
+  'Total Users':    { iconColor: 'text-purple-400', glowColor: 'rgba(167,139,250,0.12)', icon: Users },
+  'Active Users':   { iconColor: 'text-orange-400', glowColor: 'rgba(251,146,60,0.12)',  icon: TrendingUp },
+  'Total Boards':   { iconColor: 'text-green-500',  glowColor: 'rgba(34,197,94,0.12)',   icon: Layout },
+  'Total Comments': { iconColor: 'text-indigo-400', glowColor: 'rgba(129,140,248,0.12)', icon: BarChart2 },
 };
 
 export default function AdminDashboard() {
@@ -123,7 +123,7 @@ export default function AdminDashboard() {
                       top: '50%',
                       transform: 'translateY(-50%) rotate(45deg)',
                       borderRadius: '16px',
-                      background: d ? 'rgba(255,255,255,0.08)' : '#f4f6f8',
+                      background: cfg.glowColor,
                     }}
                   >
                     <Icon className={`w-7 h-7 ${cfg.iconColor}`} style={{ transform: 'rotate(-45deg)', marginRight: '14px' }} />
