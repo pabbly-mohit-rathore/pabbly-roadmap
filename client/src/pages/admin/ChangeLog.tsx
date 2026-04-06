@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit2, Send, X, Search, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, Edit2, Send, X, Search, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';

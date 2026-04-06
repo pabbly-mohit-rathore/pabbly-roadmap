@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExt from '@tiptap/extension-underline';
@@ -8,9 +8,24 @@ import Placeholder from '@tiptap/extension-placeholder';
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading2,
   List, ListOrdered, Code, Link as LinkIcon,
-  Image as ImageIcon, Video, Upload
+  Image as ImageIcon, Video, Upload, MousePointerClick
 } from 'lucide-react';
 import useThemeStore from '../store/themeStore';
+import { ButtonExtension, type ButtonAttributes } from './ButtonExtension';
+import ButtonConfigModal from './ButtonConfigModal';
+
+function TB({ icon: Icon, action, active, title, dark }: { icon: any; action: () => void; active?: boolean; title: string; dark?: boolean }) {
+  return (
+    <button onClick={action} title={title} type="button"
+      className={`p-1 rounded transition ${
+        active
+          ? dark ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-900'
+          : dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-700'
+      }`}>
+      <Icon className="w-4 h-4" />
+    </button>
+  );
+}
 
 interface CommentEditorProps {
   onSubmit: (html: string) => void;
@@ -25,10 +40,11 @@ export default function CommentEditor({
   placeholder = 'Write a comment...',
   buttonLabel = 'Public Comment',
   submitting = false,
-  compact = false,
 }: CommentEditorProps) {
   const theme = useThemeStore((state) => state.theme);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showButtonModal, setShowButtonModal] = useState(false);
+  const [editingButtonAttrs, setEditingButtonAttrs] = useState<Partial<ButtonAttributes> | undefined>(undefined);
   const d = theme === 'dark';
 
   const editor = useEditor({
@@ -43,10 +59,12 @@ export default function CommentEditor({
       LinkExt.configure({ openOnClick: false }),
       ImageExt.configure({ HTMLAttributes: { class: 'max-w-full rounded-lg my-2' } }),
       Placeholder.configure({ placeholder }),
+      ButtonExtension,
     ],
     editorProps: {
       attributes: {
-        class: `outline-none ${compact ? 'min-h-[60px]' : 'min-h-[100px]'} px-4 py-3 text-sm`,
+        class: 'outline-none px-4 py-3 text-sm',
+        style: 'min-height: 200px; max-height: 600px; overflow-y: auto;',
       },
     },
   });
@@ -82,6 +100,27 @@ export default function CommentEditor({
     e.target.value = '';
   };
 
+  const handleInsertButton = (attrs: ButtonAttributes) => {
+    if (!editor) return;
+    editor.chain().focus().insertButton(attrs).run();
+  };
+
+  // Listen for double-click edit events on button nodes
+  const editorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.attrs) {
+        setEditingButtonAttrs(detail.attrs);
+        setShowButtonModal(true);
+      }
+    };
+    el.addEventListener('edit-button-node', handler);
+    return () => el.removeEventListener('edit-button-node', handler);
+  }, []);
+
   const addVideo = () => {
     const url = prompt('Enter video URL (YouTube/Vimeo):');
     if (url && editor) {
@@ -98,36 +137,26 @@ export default function CommentEditor({
 
   if (!editor) return null;
 
-  const TB = ({ icon: Icon, action, active, title }: { icon: any; action: () => void; active?: boolean; title: string }) => (
-    <button onClick={action} title={title} type="button"
-      className={`p-1 rounded transition ${
-        active
-          ? d ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-900'
-          : d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-700'
-      }`}>
-      <Icon className="w-4 h-4" />
-    </button>
-  );
-
   return (
-    <div className={`rounded-lg border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+    <div ref={editorRef} className={`rounded-lg border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
       {/* Editor Content */}
-      <EditorContent editor={editor} className={d ? 'text-white' : 'text-gray-900'} />
+      <EditorContent editor={editor} className={`${d ? 'text-white' : 'text-gray-900'} comment-editor-content`} />
 
       {/* Toolbar + Submit */}
       <div className={`flex items-center justify-between px-3 py-2 border-t ${d ? 'border-gray-700' : 'border-gray-100'}`}>
         <div className="flex items-center gap-0.5">
-          <TB icon={Bold} title="Bold" action={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} />
-          <TB icon={Italic} title="Italic" action={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} />
-          <TB icon={UnderlineIcon} title="Underline" action={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} />
-          <TB icon={Heading2} title="Heading" action={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading')} />
-          <TB icon={List} title="Bullet List" action={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} />
-          <TB icon={ListOrdered} title="Ordered List" action={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} />
-          <TB icon={Code} title="Code" action={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')} />
-          <TB icon={LinkIcon} title="Link" action={addLink} active={editor.isActive('link')} />
-          <TB icon={ImageIcon} title="Image" action={addImage} />
-          <TB icon={Video} title="Video" action={addVideo} />
-          <TB icon={Upload} title="Upload" action={addImage} />
+          <TB dark={d} icon={Bold} title="Bold" action={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} />
+          <TB dark={d} icon={Italic} title="Italic" action={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} />
+          <TB dark={d} icon={UnderlineIcon} title="Underline" action={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} />
+          <TB dark={d} icon={Heading2} title="Heading" action={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading')} />
+          <TB dark={d} icon={List} title="Bullet List" action={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} />
+          <TB dark={d} icon={ListOrdered} title="Ordered List" action={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} />
+          <TB dark={d} icon={Code} title="Code" action={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')} />
+          <TB dark={d} icon={LinkIcon} title="Link" action={addLink} active={editor.isActive('link')} />
+          <TB dark={d} icon={ImageIcon} title="Image" action={addImage} />
+          <TB dark={d} icon={Video} title="Video" action={addVideo} />
+          <TB dark={d} icon={Upload} title="Upload" action={addImage} />
+          <TB dark={d} icon={MousePointerClick} title="Button" action={() => { setEditingButtonAttrs(undefined); setShowButtonModal(true); }} />
         </div>
 
         <button onClick={handleSubmit} disabled={submitting} type="button"
@@ -137,6 +166,13 @@ export default function CommentEditor({
       </div>
 
       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,video/*" className="hidden" />
+
+      <ButtonConfigModal
+        isOpen={showButtonModal}
+        onClose={() => setShowButtonModal(false)}
+        onInsert={handleInsertButton}
+        initialAttrs={editingButtonAttrs}
+      />
     </div>
   );
 }

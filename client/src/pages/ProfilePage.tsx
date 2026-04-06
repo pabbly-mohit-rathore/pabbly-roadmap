@@ -14,7 +14,6 @@ interface UserProfile {
 
 export default function ProfilePage() {
   const theme = useThemeStore((state) => state.theme);
-  const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
   const [profile, setProfile] = useState<UserProfile | null>(null);

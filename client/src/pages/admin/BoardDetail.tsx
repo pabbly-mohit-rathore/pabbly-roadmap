@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, X, ThumbsUp, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, X, ThumbsUp, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -15,6 +15,7 @@ interface Post {
   id: string;
   title: string;
   slug: string;
+  description: string;
   status: string;
   type: string;
   voteCount: number;

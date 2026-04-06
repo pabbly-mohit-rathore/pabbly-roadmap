@@ -1,11 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useEffect } from 'react';
 import Navbar from './components/layout/Navbar';
 import AdminLayout from './components/admin/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import HomePage from './pages/HomePage';
 import BoardPage from './pages/BoardPage';
 import PostDetailPage from './pages/PostDetailPage';
 import RoadmapPage from './pages/RoadmapPage';
@@ -37,18 +36,6 @@ function hasInviteAccess() {
     key.startsWith('invite_')
   );
   return hasInviteInLocalStorage;
-}
-
-// Route wrapper for protected routes - allow access with invite token
-function ProtectedUserRoute({ Component }: { Component: React.ComponentType }) {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const hasInvite = hasInviteAccess();
-
-  if (!isAuthenticated && !hasInvite) {
-    return <Navigate to="/login" />;
-  }
-
-  return <Component />;
 }
 
 function App() {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ThumbsUp, ChevronLeft, Trash2, Heart, X } from 'lucide-react';
+import { ThumbsUp, Trash2, Heart, X } from 'lucide-react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -72,7 +72,6 @@ export default function UserPostDetail() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
-  const [refreshTimestamp, setRefreshTimestamp] = useState(0);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -81,14 +80,6 @@ export default function UserPostDetail() {
   const hasInviteAccess = () => {
     return Object.keys(localStorage || {}).some(key => key.startsWith('invite_'));
   };
-
-  // Refresh timestamps every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshTimestamp(Date.now());
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     fetchPost();
@@ -350,41 +341,6 @@ export default function UserPostDetail() {
   return (
     <UserLayout>
       <div className={`${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-        {/* Header */}
-        <div
-          className={`border-b ${
-            theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-          } sticky top-16 z-10`}
-        >
-          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            <button
-              onClick={() => navigate(-1)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                theme === 'dark'
-                  ? 'hover:bg-gray-800 text-gray-400'
-                  : 'hover:bg-gray-100 text-gray-600'
-              }`}
-            >
-              <ChevronLeft className="w-5 h-5" />
-              Back
-            </button>
-
-            <button
-              onClick={handleVote}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
-                isVoted
-                  ? 'bg-black text-white'
-                  : theme === 'dark'
-                  ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <ThumbsUp className="w-4 h-4" />
-              {post?.voteCount || 0}
-            </button>
-          </div>
-        </div>
-
         {/* Content */}
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="grid grid-cols-3 gap-8">
@@ -396,15 +352,30 @@ export default function UserPostDetail() {
                 <>
                   {/* Post Header */}
                   <div className="mb-6">
-                    <h1
-                      className={`text-3xl font-bold mb-3 ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}
-                    >
-                      {post?.title}
-                    </h1>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleVote}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors font-medium ${
+                          isVoted
+                            ? 'bg-black text-white'
+                            : theme === 'dark'
+                            ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        <ThumbsUp className="w-4 h-4" />
+                        <span className="text-sm">{post?.voteCount || 0}</span>
+                      </button>
+                      <h1
+                        className={`text-3xl font-bold ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}
+                      >
+                        {post?.title}
+                      </h1>
+                    </div>
 
-                    <div className="flex gap-2 mb-4">
+                    <div className="flex gap-2 mb-4 mt-3">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(
                           post?.type || ''

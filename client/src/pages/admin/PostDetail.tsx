@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { ThumbsUp, Pin, ChevronLeft, Trash2, Heart, MessageCircle } from 'lucide-react';
+import { ThumbsUp, Pin, Trash2, Heart, Plus, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
@@ -73,17 +73,12 @@ export default function AdminPostDetail() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
-  const [refreshTimestamp, setRefreshTimestamp] = useState(0);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
 
-  // Refresh timestamps every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshTimestamp(Date.now());
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
+
 
   // Fetch post if not passed via navigation state
   useEffect(() => {
@@ -167,6 +162,51 @@ export default function AdminPostDetail() {
     } catch (error) {
       console.error('Error pinning post:', error);
       toast.error('Failed to pin post');
+    }
+  };
+
+  const fetchAvailableTags = async () => {
+    if (!post?.board?.id) return;
+    try {
+      const response = await api.get(`/tags?boardId=${post.board.id}`);
+      if (response.data.success) {
+        setAvailableTags(response.data.data.tags || response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching tags:', error);
+    }
+  };
+
+  const handleAddTag = async (tagId: string) => {
+    try {
+      const response = await api.post('/tags/assign', { postId: post?.id, tagId });
+      if (response.data.success) {
+        // Refresh post to get updated tags
+        const postResponse = await api.get(`/posts/${postId}`);
+        if (postResponse.data.success) {
+          setPost(postResponse.data.data.post);
+        }
+        toast.success('Tag added');
+      }
+    } catch (error) {
+      console.error('Error adding tag:', error);
+      toast.error('Failed to add tag');
+    }
+    setShowTagDropdown(false);
+  };
+
+  const handleRemoveTag = async (tagId: string) => {
+    try {
+      const response = await api.post('/tags/remove', { postId: post?.id, tagId });
+      if (response.data.success) {
+        setPost((prev) =>
+          prev ? { ...prev, tags: prev.tags?.filter((t) => t.tag.id !== tagId) } : null
+        );
+        toast.success('Tag removed');
+      }
+    } catch (error) {
+      console.error('Error removing tag:', error);
+      toast.error('Failed to remove tag');
     }
   };
 
@@ -368,57 +408,6 @@ export default function AdminPostDetail() {
 
   return (
     <div className={`${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-      {/* Header */}
-      <div
-        className={`border-b ${
-          theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-        } sticky top-0 z-10`}
-      >
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-              theme === 'dark'
-                ? 'hover:bg-gray-800 text-gray-400'
-                : 'hover:bg-gray-100 text-gray-600'
-            }`}
-          >
-            <ChevronLeft className="w-5 h-5" />
-            Back
-          </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePin}
-              className={`p-2 rounded-lg transition-colors ${
-                post?.isPinned
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : theme === 'dark'
-                  ? 'hover:bg-gray-800 text-gray-400'
-                  : 'hover:bg-gray-100 text-gray-600'
-              }`}
-              title={post?.isPinned ? 'Unpin post' : 'Pin post'}
-            >
-              <Pin className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={handleVote}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
-                isVoted
-                  ? 'bg-black text-white'
-                  : theme === 'dark'
-                  ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <ThumbsUp className="w-4 h-4" />
-              {post?.voteCount || 0}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="grid grid-cols-3 gap-8">
@@ -430,15 +419,45 @@ export default function AdminPostDetail() {
               <>
                 {/* Post Header */}
                 <div className="mb-6">
-                  <h1
-                    className={`text-3xl font-bold mb-3 ${
-                      theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    }`}
-                  >
-                    {post?.title}
-                  </h1>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleVote}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors font-medium ${
+                          isVoted
+                            ? 'bg-black text-white'
+                            : theme === 'dark'
+                            ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        <ThumbsUp className="w-4 h-4" />
+                        <span className="text-sm">{post?.voteCount || 0}</span>
+                      </button>
+                      <h1
+                        className={`text-3xl font-bold ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}
+                      >
+                        {post?.title}
+                      </h1>
+                    </div>
+                    <button
+                      onClick={handlePin}
+                      className={`p-2 rounded-lg transition-colors ${
+                        post?.isPinned
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : theme === 'dark'
+                          ? 'hover:bg-gray-800 text-gray-400'
+                          : 'hover:bg-gray-100 text-gray-600'
+                      }`}
+                      title={post?.isPinned ? 'Unpin post' : 'Pin post'}
+                    >
+                      <Pin className="w-5 h-5" />
+                    </button>
+                  </div>
 
-                  <div className="flex gap-2 mb-4">
+                  <div className="flex gap-2 mb-4 mt-3">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(
                         post?.type || ''
@@ -1022,28 +1041,94 @@ export default function AdminPostDetail() {
                   TAGS
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {post?.tags && post.tags.length > 0 ? (
-                    post.tags.map((postTag) => (
-                      <span
-                        key={postTag.tag.id}
-                        className="px-2 py-1 rounded-full text-xs font-semibold"
-                        style={{
-                          backgroundColor: postTag.tag.color + '20',
-                          color: postTag.tag.color,
-                          border: `1px solid ${postTag.tag.color}`,
-                        }}
+                  {post?.tags && post.tags.length > 0 && post.tags.map((postTag) => (
+                    <span
+                      key={postTag.tag.id}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold group"
+                      style={{
+                        backgroundColor: postTag.tag.color + '20',
+                        color: postTag.tag.color,
+                        border: `1px solid ${postTag.tag.color}`,
+                      }}
+                    >
+                      {postTag.tag.name}
+                      <button
+                        onClick={() => handleRemoveTag(postTag.tag.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/10 rounded-full p-0.5"
                       >
-                        {postTag.tag.name}
-                      </span>
-                    ))
-                  ) : (
-                    <p
-                      className={`text-sm ${
-                        theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                {/* Add tag button */}
+                <div className="relative mt-2">
+                  <button
+                    onClick={() => {
+                      if (showTagDropdown) {
+                        setShowTagDropdown(false);
+                      } else {
+                        fetchAvailableTags();
+                        setShowTagDropdown(true);
+                      }
+                    }}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+                      theme === 'dark'
+                        ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-300'
+                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add tag
+                  </button>
+                  {showTagDropdown && (
+                    <div
+                      className={`absolute left-0 top-full mt-1 w-48 rounded-lg border shadow-lg z-20 py-1 ${
+                        theme === 'dark'
+                          ? 'bg-gray-800 border-gray-700'
+                          : 'bg-white border-gray-200'
                       }`}
                     >
-                      No tags
-                    </p>
+                      {availableTags.length > 0 ? (
+                        (() => {
+                          const assignedIds = new Set(post?.tags?.map((t) => t.tag.id) || []);
+                          const unassigned = availableTags.filter((t) => !assignedIds.has(t.id));
+                          if (unassigned.length === 0) {
+                            return (
+                              <p className={`px-3 py-2 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                All tags assigned
+                              </p>
+                            );
+                          }
+                          return unassigned.map((tag) => (
+                            <button
+                              key={tag.id}
+                              onClick={() => handleAddTag(tag.id)}
+                              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
+                                theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <span
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: tag.color }}
+                              />
+                              <span className={theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}>
+                                {tag.name}
+                              </span>
+                            </button>
+                          ));
+                        })()
+                      ) : (
+                        <button
+                          onClick={() => { setShowTagDropdown(false); navigate('/admin/board-management'); }}
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                            theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          No tags created — Go to Tags
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

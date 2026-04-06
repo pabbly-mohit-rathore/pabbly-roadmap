@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ThumbsUp, ArrowLeft } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { ThumbsUp } from 'lucide-react';
 import useThemeStore from '../store/themeStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -30,8 +30,6 @@ interface Comment {
 export default function PostDetailPage() {
   const theme = useThemeStore((state) => state.theme);
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
-
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,19 +162,6 @@ export default function PostDetailPage() {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Back Button */}
-        <button
-          onClick={() => post.board?.slug ? navigate(`/board/${post.board.slug}`) : navigate('/')}
-          className={`flex items-center gap-2 mb-6 px-4 py-2 rounded-lg transition-colors ${
-            theme === 'dark'
-              ? 'text-gray-400 hover:bg-gray-800'
-              : 'text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
-
         {/* Post Header */}
         <div className={`p-6 rounded-lg border mb-6 ${
           theme === 'dark'

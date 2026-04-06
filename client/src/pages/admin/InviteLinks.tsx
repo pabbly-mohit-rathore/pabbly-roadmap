@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Copy, Trash2, X, Eye } from 'lucide-react';
+import { Copy, Trash2, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';

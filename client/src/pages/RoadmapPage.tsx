@@ -106,18 +106,7 @@ export default function RoadmapPage() {
     return colors[type] || 'bg-gray-100 text-gray-800';
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: { [key: string]: string } = {
-      open: 'bg-blue-100 text-blue-800',
-      under_review: 'bg-yellow-100 text-yellow-800',
-      planned: 'bg-purple-100 text-purple-800',
-      in_progress: 'bg-orange-100 text-orange-800',
-      live: 'bg-green-100 text-green-800',
-      closed: 'bg-gray-100 text-gray-800',
-      hold: 'bg-red-100 text-red-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
+
 
   const getStatusLabel = (status: string) => {
     return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
