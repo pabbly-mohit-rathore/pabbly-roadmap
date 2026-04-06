@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ThumbsUp, MessageCircle, ArrowUpRight } from 'lucide-react';
+import { ThumbsUp, MessageCircle, ArrowUpRight, MessageSquare, Users, Layout, TrendingUp, BarChart2 } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 
@@ -24,13 +24,13 @@ interface Post {
   };
 }
 
-const STAT_CONFIG: Record<string, { color: string; sub: string }> = {
-  'Total Posts': { color: 'text-blue-600', sub: 'All feedback posts' },
-  'Total Votes': { color: 'text-green-600', sub: 'Votes received' },
-  'Total Users': { color: 'text-purple-600', sub: 'Registered users' },
-  'Active Users': { color: 'text-orange-500', sub: 'Active this period' },
-  'Total Boards': { color: 'text-red-500', sub: 'Product boards' },
-  'Total Comments': { color: 'text-indigo-600', sub: 'Comments made' },
+const STAT_CONFIG: Record<string, { iconBg: string; iconColor: string; icon: React.ElementType }> = {
+  'Total Posts':    { iconBg: 'bg-blue-50',   iconColor: 'text-blue-400',   icon: MessageSquare },
+  'Total Votes':    { iconBg: 'bg-cyan-50',   iconColor: 'text-cyan-400',   icon: ThumbsUp },
+  'Total Users':    { iconBg: 'bg-purple-50', iconColor: 'text-purple-400', icon: Users },
+  'Active Users':   { iconBg: 'bg-orange-50', iconColor: 'text-orange-400', icon: TrendingUp },
+  'Total Boards':   { iconBg: 'bg-green-50',  iconColor: 'text-green-500',  icon: Layout },
+  'Total Comments': { iconBg: 'bg-indigo-50', iconColor: 'text-indigo-400', icon: BarChart2 },
 };
 
 export default function AdminDashboard() {
@@ -94,16 +94,29 @@ export default function AdminDashboard() {
         <div className="text-center py-12">Loading dashboard...</div>
       ) : (
         <>
-          {/* Stats Cards - Pabbly PM Style */}
+          {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {statsCards.map((card) => {
-              const cfg = STAT_CONFIG[card.label] || { color: 'text-gray-900', sub: '' };
+              const cfg = STAT_CONFIG[card.label] || { iconBg: 'bg-gray-50', iconColor: 'text-gray-400', icon: BarChart2 };
+              const Icon = cfg.icon;
               return (
                 <div key={card.label}
-                  className={`p-5 rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-                  <p className={`text-sm font-medium mb-2 ${d ? 'text-gray-300' : 'text-gray-600'}`}>{card.label}</p>
-                  <p className={`text-3xl font-bold mb-1 ${cfg.color}`}>{card.value ?? 0}</p>
-                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>{cfg.sub}</p>
+                  className={`relative p-5 rounded-2xl border flex items-start justify-between overflow-hidden ${
+                    d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+                  }`}
+                  style={{ boxShadow: d ? 'none' : '0 1px 8px rgba(0,0,0,0.05)' }}
+                >
+                  <div>
+                    <p className={`text-4xl font-extrabold mb-1.5 tracking-tight ${d ? 'text-white' : 'text-gray-900'}`}>
+                      {card.value ?? 0}
+                    </p>
+                    <p className={`text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>{card.label}</p>
+                  </div>
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                    d ? 'bg-gray-700' : cfg.iconBg
+                  }`}>
+                    <Icon className={`w-6 h-6 ${cfg.iconColor}`} />
+                  </div>
                 </div>
               );
             })}
