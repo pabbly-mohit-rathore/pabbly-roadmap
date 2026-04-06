@@ -157,7 +157,7 @@ export default function AdminReporting() {
         className={`relative flex items-center justify-between overflow-hidden rounded-2xl border ${
           theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
         }`}
-        style={{ padding: '20px 24px', boxShadow: theme === 'dark' ? 'none' : '0 2px 12px rgba(0,0,0,0.06)' }}
+        style={{ padding: '24px 20px 24px 24px', background: theme === 'dark' ? undefined : '#FFFFFF', boxShadow: theme === 'dark' ? 'none' : '0 2px 12px rgba(0,0,0,0.06)' }}
       >
         <div className="relative z-10">
           <p className="font-extrabold mb-1 leading-none" style={{ fontSize: '28px', color: theme === 'dark' ? '#fff' : '#1c252e' }}>

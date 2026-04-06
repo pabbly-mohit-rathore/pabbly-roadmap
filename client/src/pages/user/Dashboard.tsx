@@ -143,7 +143,7 @@ export default function UserDashboard() {
                 className={`relative flex items-center justify-between overflow-hidden rounded-2xl border ${
                   d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
                 }`}
-                style={{ padding: '20px 24px', boxShadow: d ? 'none' : '0 2px 12px rgba(0,0,0,0.06)' }}
+                style={{ padding: '24px 20px 24px 24px', background: d ? undefined : '#FFFFFF', boxShadow: d ? 'none' : '0 2px 12px rgba(0,0,0,0.06)' }}
               >
                 {/* Left: number + label */}
                 <div className="relative z-10">
