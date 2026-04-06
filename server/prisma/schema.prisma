@@ -23,7 +23,8 @@ datasource db {
 model User {
   id            String    @id @default(uuid())   // Unique ID — UUID format (random string)
   email         String    @unique                 // Email unique honi chahiye
-  password      String                            // Hashed password (bcrypt)
+  password      String?                           // Hashed password (bcrypt) — null for Google users
+  googleId      String?   @unique                 // Google OAuth ID
   name          String
   avatar        String?                           // ? matlab optional field
   phone         String?

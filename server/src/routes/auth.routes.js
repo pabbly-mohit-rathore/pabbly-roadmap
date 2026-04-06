@@ -27,6 +27,7 @@ const {
   changePassword,
   forgotPassword,
   resetPassword,
+  googleLogin,
 } = require('../controllers/auth.controller');
 
 // ──────────────────────────────────────
@@ -100,6 +101,7 @@ const resetPasswordRules = [
 // Public
 router.post('/register', registerRules, validate, register);
 router.post('/login', loginRules, validate, login);
+router.post('/google', googleLogin);
 router.post('/refresh-token', refreshToken);
 router.post('/forgot-password', forgotPasswordRules, validate, forgotPassword);
 router.post('/reset-password', resetPasswordRules, validate, resetPassword);

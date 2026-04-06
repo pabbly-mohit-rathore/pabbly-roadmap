@@ -137,9 +137,15 @@ const login = async (req, res, next) => {
       });
     }
 
-    // Step 3: Password match karo
-    // bcrypt.compare plain password ko hashed password se compare karta hai
-    // "Admin@123" vs "$2a$12$LJ3m5..." → true ya false
+    // Step 3: Check if this is a Google-only account
+    if (!user.password) {
+      return res.status(401).json({
+        success: false,
+        message: 'This account uses Google sign-in. Please continue with Google.',
+      });
+    }
+
+    // Step 4: Password match karo
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -454,6 +460,88 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// 9. GOOGLE LOGIN — Google OAuth se login/register karo
+//
+// Frontend se aayega: { credential } (Google JWT token)
+// Server karega:
+//   1. Google token verify karo
+//   2. User dhundho ya banao
+//   3. Apna JWT token bhejo
+// ============================================================
+const googleLogin = async (req, res, next) => {
+  try {
+    const { accessToken: googleAccessToken, role: requestedRole } = req.body;
+
+    if (!googleAccessToken) {
+      return res.status(400).json({ success: false, message: 'Google access token is required.' });
+    }
+
+    // Google userinfo API se user ka data lo
+    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${googleAccessToken}` },
+    });
+
+    if (!response.ok) {
+      return res.status(401).json({ success: false, message: 'Invalid Google token.' });
+    }
+
+    const { sub: googleId, email, name, picture } = await response.json();
+
+    // Pehle email ya googleId se user dhundho
+    let user = await prisma.user.findFirst({
+      where: { OR: [{ googleId }, { email }] },
+    });
+
+    if (user) {
+      // Agar googleId nahi tha (email se registered tha) toh link karo
+      if (!user.googleId) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { googleId, avatar: user.avatar || picture },
+        });
+      }
+      if (!user.isActive) {
+        return res.status(403).json({ success: false, message: 'Your account has been deactivated.' });
+      }
+    } else {
+      // Naya user banao
+      const validRole = requestedRole === 'admin' ? 'admin' : 'user';
+      user = await prisma.user.create({
+        data: {
+          name,
+          email,
+          googleId,
+          avatar: picture,
+          role: validRole,
+          emailVerified: true,
+        },
+      });
+    }
+
+    const accessToken = generateAccessToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id);
+
+    res.json({
+      success: true,
+      message: 'Login successful.',
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          avatar: user.avatar,
+        },
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -463,4 +551,5 @@ module.exports = {
   changePassword,
   forgotPassword,
   resetPassword,
+  googleLogin,
 };
