@@ -143,11 +143,10 @@ export default function AdminDashboard() {
             <table className="w-full">
               <thead>
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Upvote</th>
-                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Post</th>
-                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
-                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Board</th>
-                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Comments</th>
+                  {['Upvote', 'Post', 'Status', 'Board', 'Comments'].map(h => (
+                    <th key={h} className={`px-5 py-3 text-left font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
+                      style={{ fontSize: '14px', color: d ? undefined : '#1C252E' }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
