@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import useThemeStore from '../store/themeStore';
 import useAuthStore from '../store/authStore';
 import api from '../services/api';
@@ -22,7 +22,15 @@ interface Board {
   name: string;
 }
 
-const STATUS_ORDER = ['open', 'under_review', 'planned', 'in_progress', 'live', 'closed', 'hold'];
+const STATUS_ORDER = ['under_review', 'planned', 'in_progress', 'live', 'hold'];
+
+const STATUS_CONFIG: Record<string, { label: string; dotColor: string; borderColor: string }> = {
+  under_review: { label: 'Under Review', dotColor: 'bg-yellow-500', borderColor: 'border-t-yellow-500' },
+  planned: { label: 'Planned', dotColor: 'bg-purple-500', borderColor: 'border-t-purple-500' },
+  in_progress: { label: 'In Progress', dotColor: 'bg-orange-500', borderColor: 'border-t-orange-500' },
+  live: { label: 'Live', dotColor: 'bg-green-500', borderColor: 'border-t-green-500' },
+  hold: { label: 'On Hold', dotColor: 'bg-red-500', borderColor: 'border-t-red-500' },
+};
 
 export default function RoadmapPage() {
   const theme = useThemeStore((state) => state.theme);
@@ -34,6 +42,7 @@ export default function RoadmapPage() {
   const [loading, setLoading] = useState(true);
   const [board, setBoard] = useState<Board | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [columnSearches, setColumnSearches] = useState<Record<string, string>>({});
 
   const boardId = searchParams.get('board');
   const inviteToken = searchParams.get('invite');
@@ -49,12 +58,10 @@ export default function RoadmapPage() {
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = { status: 'open,under_review,planned,in_progress,live' };
+      const params: any = { status: 'under_review,planned,in_progress,live,hold' };
 
-      // If boardId is provided, fetch only posts from that board
       if (boardId) {
         params.boardId = boardId;
-        // Try to get board details from localStorage first
         const storedBoard = localStorage.getItem(`invite_board_${boardId}`);
         if (storedBoard) {
           try {
@@ -86,7 +93,6 @@ export default function RoadmapPage() {
       const redeemInvite = async () => {
         try {
           await api.post('/invite-links/redeem', { token: inviteToken });
-          // Clear invite params from URL after redemption
           navigate(`/?board=${boardId}`, { replace: true });
         } catch (error) {
           console.error('Error redeeming invite link:', error);
@@ -96,28 +102,28 @@ export default function RoadmapPage() {
     }
   }, [isAuthenticated, inviteToken, boardId, navigate]);
 
-  const getTypeColor = (type: string) => {
-    const colors: { [key: string]: string } = {
-      feature: 'bg-indigo-100 text-indigo-800',
-      bug: 'bg-red-100 text-red-800',
-      improvement: 'bg-blue-100 text-blue-800',
-      integration: 'bg-green-100 text-green-800',
-    };
-    return colors[type] || 'bg-gray-100 text-gray-800';
-  };
-
-
-
-  const getStatusLabel = (status: string) => {
-    return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  };
-
   const postsByStatus = STATUS_ORDER.reduce((acc, status) => {
     acc[status] = posts.filter(post => post.status === status);
     return acc;
   }, {} as Record<string, Post[]>);
 
-  const visibleStatuses = STATUS_ORDER.filter(status => status !== 'closed' && status !== 'hold');
+  const getFilteredPosts = (status: string): Post[] => {
+    let filtered = postsByStatus[status] || [];
+    const colSearch = columnSearches[status];
+    if (colSearch) {
+      const q = colSearch.toLowerCase();
+      filtered = filtered.filter(p => p.title.toLowerCase().includes(q));
+    }
+    return filtered;
+  };
+
+  const handlePostClick = (post: Post) => {
+    if (isInviteMode) {
+      setShowLoginModal(true);
+      return;
+    }
+    window.location.href = `/post/${post.slug}`;
+  };
 
   if (loading) {
     return (
@@ -128,14 +134,6 @@ export default function RoadmapPage() {
       </div>
     );
   }
-
-  const handlePostClick = (post: Post) => {
-    if (isInviteMode) {
-      setShowLoginModal(true);
-      return;
-    }
-    window.location.href = `/post/${post.slug}`;
-  };
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
@@ -150,100 +148,166 @@ export default function RoadmapPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className={`border-b ${
-        theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-6">
           <h1 className={`text-4xl font-bold mb-2 ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
-            {board ? board.name : 'Product Roadmap'}
+            Roadmap
           </h1>
           <p className={`text-sm ${
             theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
           }`}>
-            {board ? `Posts and feedback for ${board.name}` : 'See what\'s coming next — items are organized by status'}
+            {board ? `Posts and feedback for ${board.name}` : 'View your product roadmap by status'}
           </p>
         </div>
-      </div>
 
-      {/* Kanban Board */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 auto-rows-min">
-          {visibleStatuses.map((status) => (
-            <div key={status}>
-              <div className="mb-4">
-                <h2 className={`text-sm font-bold mb-2 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  {getStatusLabel(status)}
-                  <span className={`ml-2 inline-block px-2 py-1 rounded text-xs font-semibold ${
-                    theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'
-                  }`}>
-                    {postsByStatus[status].length}
-                  </span>
-                </h2>
-              </div>
-
-              <div className="space-y-3">
-                {postsByStatus[status].length > 0 ? (
-                  postsByStatus[status].map((post) => (
-                    <div
-                      key={post.id}
-                      onClick={() => handlePostClick(post)}
-                      className={`p-4 rounded-lg border block transition-all hover:shadow-md cursor-pointer ${
-                        theme === 'dark'
-                          ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
-                          : 'bg-white border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <h3 className={`font-medium text-sm mb-2 line-clamp-2 ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {post.title}
-                      </h3>
-
-                      <div className="flex gap-2 mb-3 flex-wrap">
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${getTypeColor(post.type)}`}>
-                          {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
-                        </span>
-                      </div>
-
-                      <div className={`flex items-center justify-between text-xs ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        <div className="flex gap-3">
-                          <span>👍 {post.voteCount}</span>
-                          <span>💬 {post.commentCount}</span>
-                        </div>
-                        <span>{post.author.name}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className={`p-3 text-center rounded-lg text-xs ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 text-gray-400'
-                      : 'bg-gray-50 text-gray-500'
-                  }`}>
-                    No items
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+        {/* Info Bar */}
+        <div className={`flex items-center gap-2 px-4 py-3 rounded-lg mb-6 text-sm ${
+          theme === 'dark'
+            ? 'bg-blue-900/20 text-blue-300 border border-blue-800'
+            : 'bg-blue-50 text-blue-700 border border-blue-200'
+        }`}>
+          <span>💡</span>
+          <span>Browse items by status to see what's coming next.</span>
         </div>
 
-        {posts.length === 0 && (
-          <div className={`p-12 text-center rounded-lg border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-gray-400'
-              : 'bg-white border-gray-200 text-gray-500'
-          }`}>
-            No items on the roadmap yet
+        {/* Kanban Board */}
+        <div className="overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 320px)' }}>
+          <div className="grid gap-4 h-full" style={{
+            gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
+            minHeight: 'calc(100vh - 320px)',
+          }}>
+            {STATUS_ORDER.map((status) => {
+              const filteredPosts = getFilteredPosts(status);
+              const config = STATUS_CONFIG[status];
+
+              return (
+                <div
+                  key={status}
+                  className={`rounded-lg border border-t-[3px] ${config.borderColor} flex flex-col overflow-hidden ${
+                    theme === 'dark'
+                      ? 'border-gray-700'
+                      : 'border-gray-200'
+                  }`}
+                >
+                  {/* Column Header */}
+                  <div className={`px-4 pt-4 pb-3 ${
+                    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+                  }`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${config.dotColor}`} />
+                        <h2 className={`text-sm font-bold ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {config.label}
+                        </h2>
+                      </div>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                        theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {filteredPosts.length}
+                      </span>
+                    </div>
+
+                    {/* Column Search */}
+                    <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600'
+                        : 'bg-gray-50 border-gray-200'
+                    }`}>
+                      <Search className="w-3.5 h-3.5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search..."
+                        value={columnSearches[status] || ''}
+                        onChange={(e) => setColumnSearches(prev => ({ ...prev, [status]: e.target.value }))}
+                        className={`bg-transparent text-xs outline-none w-full ${
+                          theme === 'dark' ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cards */}
+                  <div className={`flex-1 px-3 pb-3 pt-3 space-y-2.5 overflow-y-auto ${
+                    theme === 'dark' ? 'bg-gray-850' : 'bg-[#f5f5f5]'
+                  }`}>
+                    {filteredPosts.length > 0 ? (
+                      filteredPosts.map((post) => (
+                        <div
+                          key={post.id}
+                          onClick={() => handlePostClick(post)}
+                          className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                            theme === 'dark'
+                              ? 'bg-gray-750 border-gray-600 hover:border-gray-500'
+                              : 'bg-white border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          {/* ID Badge */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                              {post.slug?.substring(0, 12).toUpperCase() || post.id.substring(0, 8)}
+                            </span>
+                          </div>
+
+                          {/* Title */}
+                          <p className={`text-sm font-medium mb-4 line-clamp-2 leading-snug ${
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {post.title}
+                          </p>
+
+                          {/* Separator */}
+                          <div className={`border-t mb-3 ${
+                            theme === 'dark' ? 'border-gray-600' : 'border-gray-100'
+                          }`} />
+
+                          {/* Footer */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-orange-500">
+                              {new Date(post.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <div className={`flex gap-2 text-[10px] mr-1 ${
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                              }`}>
+                                <span>👍{post.voteCount || 0}</span>
+                                <span>💬{post.commentCount || 0}</span>
+                              </div>
+
+                              {/* Author Avatar */}
+                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[10px] font-bold">
+                                {post.author?.name?.charAt(0)?.toUpperCase() || '?'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className={`text-center py-12 text-xs ${
+                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                      }`}>
+                        <div className={`w-10 h-10 mx-auto mb-2 rounded-lg flex items-center justify-center ${
+                          theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
+                        }`}>
+                          <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        No items yet
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Login Required Modal */}

@@ -69,7 +69,7 @@ export default function AdminReporting() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchBoards();
+    Promise.all([fetchBoards(), fetchAll()]);
   }, []);
 
   useEffect(() => {
@@ -103,12 +103,12 @@ export default function AdminReporting() {
       if (staleRes.data.success) setStalePosts(staleRes.data.data.posts);
       if (boardRes.data.success) setBoardData(boardRes.data.data);
       if (adminRes.data.success) setAdmins(adminRes.data.data.admins);
-      fetchActivityLogs();
     } catch (error) {
       console.error('Error fetching reporting:', error);
     } finally {
       setLoading(false);
     }
+    fetchActivityLogs();
   };
 
   const fetchActivityLogs = async () => {

@@ -67,8 +67,7 @@ export default function AdminRoadmap() {
 
   useEffect(() => {
     if (selectedBoard) {
-      fetchRoadmap();
-      fetchTags();
+      Promise.all([fetchRoadmap(), fetchTags()]);
     }
   }, [selectedBoard]);
 

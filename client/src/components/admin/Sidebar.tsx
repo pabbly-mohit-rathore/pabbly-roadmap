@@ -1,12 +1,24 @@
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, MessageSquare, MapPin, Users, Grid3x3, Settings } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
+import useTeamAccessStore from '../../store/teamAccessStore';
+import useAuthStore from '../../store/authStore';
 
-export default function AdminSidebar() {
+interface SidebarProps {
+  accessBarHeight?: number;
+}
+
+export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
   const location = useLocation();
   const theme = useThemeStore((state) => state.theme);
+  const { isTeamAccess, accessLevel } = useTeamAccessStore();
+  const { user } = useAuthStore();
 
-  const menuItems = [
+  const isRealAdmin = user?.role === 'admin';
+  const isTeamMember = isTeamAccess && !isRealAdmin;
+
+  // Full admin menu
+  const allMenuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
     { label: 'Feedback', icon: MessageSquare, path: '/admin/feedback' },
     { label: 'Roadmap', icon: MapPin, path: '/admin/roadmap' },
@@ -15,14 +27,28 @@ export default function AdminSidebar() {
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
   ];
 
+  // Filter menu based on team access level
+  let menuItems = allMenuItems;
+  if (isTeamMember) {
+    if (accessLevel === 'admin') {
+      // Admin access: Users visible, everything else too
+      menuItems = allMenuItems;
+    } else {
+      // Manager access: no Users
+      menuItems = allMenuItems.filter(item =>
+        item.label !== 'Users'
+      );
+    }
+  }
+
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
     <aside
-      className={`fixed top-16 left-0 z-40 border-r transition-colors overflow-y-auto ${
+      className={`fixed left-0 z-40 border-r transition-colors overflow-y-auto ${
         theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'
       }`}
-      style={{ width: '207px', height: 'calc(100vh - 64px)' }}
+      style={{ width: '207px', top: `${64 + accessBarHeight}px`, height: `calc(100vh - 64px - ${accessBarHeight}px)` }}
     >
       <div className={`h-px w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`} />
 

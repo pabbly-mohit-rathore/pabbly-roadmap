@@ -70,8 +70,7 @@ export default function AdminFeedback() {
   });
 
   useEffect(() => {
-    fetchBoards();
-    fetchPosts();
+    Promise.all([fetchBoards(), fetchPosts()]);
   }, [statusFilter, typeFilter, boardFilter]);
 
   const fetchBoards = async () => {

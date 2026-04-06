@@ -1,41 +1,41 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import Navbar from './components/layout/Navbar';
 import AdminLayout from './components/admin/Layout';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import BoardPage from './pages/BoardPage';
-import PostDetailPage from './pages/PostDetailPage';
-import RoadmapPage from './pages/RoadmapPage';
-import ProfilePage from './pages/ProfilePage';
-import InvitePage from './pages/InvitePage';
-import AdminDashboard from './pages/admin/Dashboard';
-import AdminFeedback from './pages/admin/Feedback';
-import AdminRoadmap from './pages/admin/Roadmap';
-import AdminBoardDetail from './pages/admin/BoardDetail';
-import AdminPostDetail from './pages/admin/PostDetail';
-import ChangelogEditor from './pages/admin/ChangelogEditor';
-import ChangelogView from './pages/admin/ChangelogView';
-import BoardManagement from './pages/admin/BoardManagement';
-import AdminBoardMembers from './pages/admin/BoardMembers';
-import AdminSettings from './pages/admin/Settings';
-import AdminUsers from './pages/admin/Users';
-import UserBoardsPage from './pages/user/BoardsPage';
-import UserRoadmapPage from './pages/user/RoadmapPage';
-import UserBoardDetail from './pages/user/BoardDetail';
-import UserPostDetail from './pages/user/PostDetail';
-import UserChangelog from './pages/user/Changelog';
-import UserChangelogDetail from './pages/user/ChangelogDetail';
 import useThemeStore from './store/themeStore';
 import useAuthStore from './store/authStore';
+import useTeamAccessStore from './store/teamAccessStore';
+
+// Lazy load all pages
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const BoardPage = lazy(() => import('./pages/BoardPage'));
+const PostDetailPage = lazy(() => import('./pages/PostDetailPage'));
+const RoadmapPage = lazy(() => import('./pages/RoadmapPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const InvitePage = lazy(() => import('./pages/InvitePage'));
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
+const AdminFeedback = lazy(() => import('./pages/admin/Feedback'));
+const AdminRoadmap = lazy(() => import('./pages/admin/Roadmap'));
+const AdminBoardDetail = lazy(() => import('./pages/admin/BoardDetail'));
+const AdminPostDetail = lazy(() => import('./pages/admin/PostDetail'));
+const ChangelogEditor = lazy(() => import('./pages/admin/ChangelogEditor'));
+const ChangelogView = lazy(() => import('./pages/admin/ChangelogView'));
+const BoardManagement = lazy(() => import('./pages/admin/BoardManagement'));
+const AdminBoardMembers = lazy(() => import('./pages/admin/BoardMembers'));
+const AdminSettings = lazy(() => import('./pages/admin/Settings'));
+const AdminUsers = lazy(() => import('./pages/admin/Users'));
+const UserBoardsPage = lazy(() => import('./pages/user/BoardsPage'));
+const UserRoadmapPage = lazy(() => import('./pages/user/RoadmapPage'));
+const UserBoardDetail = lazy(() => import('./pages/user/BoardDetail'));
+const UserPostDetail = lazy(() => import('./pages/user/PostDetail'));
+const UserChangelog = lazy(() => import('./pages/user/Changelog'));
+const UserChangelogDetail = lazy(() => import('./pages/user/ChangelogDetail'));
 
 // Helper to check if user has invite access
 function hasInviteAccess() {
-  const hasInviteInLocalStorage = Object.keys(localStorage || {}).some(key =>
-    key.startsWith('invite_')
-  );
-  return hasInviteInLocalStorage;
+  return Object.keys(localStorage || {}).some(key => key.startsWith('invite_'));
 }
 
 function App() {
@@ -43,6 +43,8 @@ function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
+  const isTeamAccess = useTeamAccessStore((state) => state.isTeamAccess);
+  const canAccessAdmin = isAdmin || isTeamAccess;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -55,127 +57,81 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={!isAuthenticated ? <LoginPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/boards" />} />
-        <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/boards" />} />
-        <Route path="/invite/:token" element={<InvitePage />} />
+      <Suspense fallback={null}>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={!isAuthenticated ? <LoginPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/boards" />} />
+          <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/boards" />} />
+          <Route path="/invite/:token" element={<InvitePage />} />
 
-        {/* User Routes */}
-        <Route path="/" element={
-          isAuthenticated ? (
-            isAdmin ? (
-              <Navigate to="/admin/dashboard" />
+          {/* User Routes */}
+          <Route path="/" element={
+            isAuthenticated ? (
+              isAdmin ? (
+                <Navigate to="/admin/dashboard" />
+              ) : (
+                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                  <Navbar />
+                  <RoadmapPage />
+                  <Toaster position="top-right" />
+                </div>
+              )
             ) : (
-              <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar />
-                <RoadmapPage />
-                <Toaster position="top-right" />
-              </div>
+              <Navigate to="/login" />
             )
-          ) : (
-            <Navigate to="/login" />
-          )
-        } />
+          } />
 
-        <Route
-          path="/board/:slug"
-          element={
+          <Route path="/board/:slug" element={
             isAuthenticated ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar />
-                <BoardPage />
-                <Toaster position="top-right" />
+                <Navbar /><BoardPage /><Toaster position="top-right" />
               </div>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+            ) : <Navigate to="/login" />
+          } />
 
-        <Route
-          path="/post/:slug"
-          element={
+          <Route path="/post/:slug" element={
             isAuthenticated ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar />
-                <PostDetailPage />
-                <Toaster position="top-right" />
+                <Navbar /><PostDetailPage /><Toaster position="top-right" />
               </div>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+            ) : <Navigate to="/login" />
+          } />
 
-        <Route
-          path="/roadmap"
-          element={
+          <Route path="/roadmap" element={
             isAuthenticated ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar />
-                <RoadmapPage />
-                <Toaster position="top-right" />
+                <Navbar /><RoadmapPage /><Toaster position="top-right" />
               </div>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+            ) : <Navigate to="/login" />
+          } />
 
-        <Route
-          path="/profile"
-          element={
+          <Route path="/profile" element={
             isAuthenticated ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar />
-                <ProfilePage />
-                <Toaster position="top-right" />
+                <Navbar /><ProfilePage /><Toaster position="top-right" />
               </div>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+            ) : <Navigate to="/login" />
+          } />
 
-        {/* Changelog Editor - Full width, no sidebar */}
-        <Route
-          path="/admin/changelog/:id/edit"
-          element={
-            isAuthenticated && isAdmin ? (
+          {/* Changelog Editor - Full width, no sidebar */}
+          <Route path="/admin/changelog/:id/edit" element={
+            isAuthenticated && canAccessAdmin ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar />
-                <ChangelogEditor />
-                <Toaster position="top-right" />
+                <Navbar /><ChangelogEditor /><Toaster position="top-right" />
               </div>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+            ) : <Navigate to="/login" />
+          } />
 
-        {/* Changelog View - Full width with AdminLayout */}
-        <Route
-          path="/admin/changelog/:id/view"
-          element={
-            isAuthenticated && isAdmin ? (
-              <>
-                <AdminLayout>
-                  <ChangelogView />
-                </AdminLayout>
-                <Toaster position="top-right" />
-              </>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+          {/* Changelog View */}
+          <Route path="/admin/changelog/:id/view" element={
+            isAuthenticated && canAccessAdmin ? (
+              <><AdminLayout><ChangelogView /></AdminLayout><Toaster position="top-right" /></>
+            ) : <Navigate to="/login" />
+          } />
 
-        {/* Admin Routes */}
-        <Route
-          path="/admin/*"
-          element={
-            isAuthenticated && isAdmin ? (
+          {/* Admin Routes */}
+          <Route path="/admin/*" element={
+            isAuthenticated && canAccessAdmin ? (
               <>
                 <AdminLayout>
                   <Routes>
@@ -193,100 +149,33 @@ function App() {
                 </AdminLayout>
                 <Toaster position="top-right" />
               </>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+            ) : <Navigate to="/login" />
+          } />
 
-        {/* User Protected Routes - Allow with invite access */}
-        <Route
-          path="/user/boards"
-          element={
-            isAuthenticated || hasInviteAccess() ? (
-              <>
-                <UserBoardsPage />
-                <Toaster position="top-right" />
-              </>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+          {/* User Protected Routes */}
+          <Route path="/user/boards" element={
+            isAuthenticated || hasInviteAccess() ? <><UserBoardsPage /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          } />
+          <Route path="/user/roadmap" element={
+            isAuthenticated || hasInviteAccess() ? <><UserRoadmapPage /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          } />
+          <Route path="/user/boards/:boardId" element={
+            isAuthenticated || hasInviteAccess() ? <><UserBoardDetail /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          } />
+          <Route path="/user/posts/:slug" element={
+            isAuthenticated || hasInviteAccess() ? <><UserPostDetail /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          } />
+          <Route path="/user/changelog" element={
+            isAuthenticated || hasInviteAccess() ? <><UserChangelog /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          } />
+          <Route path="/user/changelog/:id" element={
+            isAuthenticated || hasInviteAccess() ? <><UserChangelogDetail /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          } />
 
-        <Route
-          path="/user/roadmap"
-          element={
-            isAuthenticated || hasInviteAccess() ? (
-              <>
-                <UserRoadmapPage />
-                <Toaster position="top-right" />
-              </>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-
-        <Route
-          path="/user/boards/:boardId"
-          element={
-            isAuthenticated || hasInviteAccess() ? (
-              <>
-                <UserBoardDetail />
-                <Toaster position="top-right" />
-              </>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-
-        <Route
-          path="/user/posts/:slug"
-          element={
-            isAuthenticated || hasInviteAccess() ? (
-              <>
-                <UserPostDetail />
-                <Toaster position="top-right" />
-              </>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-
-        {/* User Changelog Routes */}
-        <Route
-          path="/user/changelog"
-          element={
-            isAuthenticated || hasInviteAccess() ? (
-              <>
-                <UserChangelog />
-                <Toaster position="top-right" />
-              </>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-        <Route
-          path="/user/changelog/:id"
-          element={
-            isAuthenticated || hasInviteAccess() ? (
-              <>
-                <UserChangelogDetail />
-                <Toaster position="top-right" />
-              </>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to={isAdmin ? "/admin/dashboard" : "/"} />} />
-      </Routes>
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to={isAdmin ? "/admin/dashboard" : "/"} />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

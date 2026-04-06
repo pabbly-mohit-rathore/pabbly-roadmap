@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Plus, X, ThumbsUp, MoreVertical } from 'lucide-react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
@@ -38,14 +38,18 @@ export default function UserBoardDetail() {
   const theme = useThemeStore((state) => state.theme);
   const { user, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const { boardId } = useParams<{ boardId: string }>();
 
-  const [board, setBoard] = useState<Board | null>(null);
+  // Use board data from navigation state immediately if available
+  const [board, setBoard] = useState<Board | null>((location.state as any)?.board || null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [boardLoading, setBoardLoading] = useState(!(location.state as any)?.board);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginModalMessage, setLoginModalMessage] = useState('Sign in to interact with posts');
   const [votedPostIds, setVotedPostIds] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -63,14 +67,17 @@ export default function UserBoardDetail() {
 
   const fetchBoard = async () => {
     try {
+      // Only show loading if we don't already have board data
+      if (!board) setBoardLoading(true);
       const response = await api.get('/boards');
       if (response.data.success) {
         const found = response.data.data.boards.find((b: Board) => b.id === boardId);
-        setBoard(found || null);
+        if (found) setBoard(found);
       }
     } catch (error) {
       console.error('Error fetching board:', error);
-      toast.error('Failed to load board');
+    } finally {
+      setBoardLoading(false);
     }
   };
 
@@ -142,6 +149,11 @@ export default function UserBoardDetail() {
   };
 
   const handleDeletePost = async (postId: string) => {
+    if (!isAuthenticated) {
+      setLoginModalMessage('Sign in to manage posts');
+      setShowLoginModal(true);
+      return;
+    }
     if (!confirm('Are you sure you want to delete this post?')) return;
 
     try {
@@ -157,8 +169,8 @@ export default function UserBoardDetail() {
   };
 
   const handleVote = async (postId: string) => {
-    // Show modal for unauthenticated users or users with only invite access
-    if (!isAuthenticated && hasInviteAccess()) {
+    if (!isAuthenticated) {
+      setLoginModalMessage('Sign in to vote on posts');
       setShowLoginModal(true);
       return;
     }
@@ -228,7 +240,13 @@ export default function UserBoardDetail() {
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}
                 >
-                  {board?.name || 'Loading...'}
+                  {boardLoading ? (
+                    <div className={`h-10 w-48 rounded animate-pulse ${
+                      theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                    }`} />
+                  ) : (
+                    board?.name || 'Board'
+                  )}
                 </h1>
               </div>
               {board?.description && (
@@ -242,7 +260,14 @@ export default function UserBoardDetail() {
               )}
             </div>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => {
+                if (!isAuthenticated) {
+                  setLoginModalMessage('Sign in to create a post');
+                  setShowLoginModal(true);
+                  return;
+                }
+                setShowCreateModal(true);
+              }}
               className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -681,7 +706,7 @@ export default function UserBoardDetail() {
                 <p className={`text-sm mb-8 ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  Sign in to vote on posts
+                  {loginModalMessage}
                 </p>
 
                 <button

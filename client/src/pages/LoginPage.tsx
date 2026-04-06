@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { SquareCheckBig } from 'lucide-react';
+import { SquareCheckBig, Shield, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
@@ -8,6 +8,7 @@ import useAuthStore from '../store/authStore';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loginAs, setLoginAs] = useState<'admin' | 'user'>('user');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
@@ -44,12 +45,13 @@ export default function LoginPage() {
       // Check if there's a redirect URL stored in localStorage
       const redirectUrl = localStorage.getItem('loginRedirect');
 
-      // Admin → admin page, User → user boards page
-      if (user.role === 'admin') {
+      // Navigate based on selected role tab
+      if (loginAs === 'admin' && user.role === 'admin') {
         navigate('/admin/dashboard');
+      } else if (loginAs === 'admin' && user.role !== 'admin') {
+        toast.error('This account does not have admin access.');
+        return;
       } else {
-        // Regular users always go to /user/boards
-        // But use redirectUrl if it was set (from invite link flow)
         const finalUrl = redirectUrl || '/user/boards';
         if (redirectUrl) {
           localStorage.removeItem('loginRedirect');
@@ -83,6 +85,34 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 text-center mb-6">
             Sign in to continue to Pabbly Roadmap
           </p>
+
+          {/* Role Selector */}
+          <div className="flex bg-gray-100 rounded-2xl p-1 mb-6">
+            <button
+              type="button"
+              onClick={() => setLoginAs('user')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                loginAs === 'user'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <User className="w-4 h-4" />
+              Login as User
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginAs('admin')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                loginAs === 'admin'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              Login as Admin
+            </button>
+          </div>
 
           {/* Google Button */}
           <button

@@ -137,8 +137,7 @@ export default function UserPostDetail() {
   };
 
   const handleVote = async () => {
-    // Show modal for unauthenticated users or users with only invite access
-    if (!isAuthenticated && hasInviteAccess()) {
+    if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
     }
@@ -163,8 +162,7 @@ export default function UserPostDetail() {
   };
 
   const handleAddComment = async (htmlContent?: string) => {
-    // Show modal for unauthenticated users or users with only invite access
-    if (!isAuthenticated && hasInviteAccess()) {
+    if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
     }
@@ -239,8 +237,7 @@ export default function UserPostDetail() {
   };
 
   const handleLikeComment = async (commentId: string) => {
-    // Show modal for unauthenticated users or users with only invite access
-    if (!isAuthenticated && hasInviteAccess()) {
+    if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
     }
@@ -264,8 +261,7 @@ export default function UserPostDetail() {
   };
 
   const handleReply = async (parentId: string) => {
-    // Show modal for unauthenticated users or users with only invite access
-    if (!isAuthenticated && hasInviteAccess()) {
+    if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
     }

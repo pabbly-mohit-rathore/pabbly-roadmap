@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ThumbsUp, MessageCircle, ArrowUpRight } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 
@@ -109,48 +110,53 @@ export default function AdminDashboard() {
           </div>
 
           {/* Top Posts - Table */}
-          <div className={`rounded-xl border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div className="px-4 py-4">
+          <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className="px-5 py-4">
               <h2 className={`text-lg font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Top Posts (Most Voted)</h2>
             </div>
             <table className="w-full">
-              <thead className={d ? 'bg-gray-700' : 'bg-gray-50'}>
-                <tr>
-                  {['#', 'Title', 'Status', 'Votes', 'Comments'].map(h => (
-                    <th key={h} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
-                  ))}
+              <thead>
+                <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
+                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider w-12 ${d ? 'text-gray-400' : 'text-gray-500'}`}>S.No</th>
+                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Title</th>
+                  <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
+                  <th className={`px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider w-28 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Votes</th>
+                  <th className={`px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider w-28 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Comments</th>
+                  <th className={`px-5 py-3 w-10`}></th>
                 </tr>
               </thead>
               <tbody>
                 {topPosts.length > 0 ? topPosts.map((post, index) => (
                   <tr key={post.id} onClick={() => navigate(`/admin/posts/${post.slug}`)}
-                    className={`border-t transition cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
-                    <td className="px-4 py-3.5">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                        index === 0 ? 'bg-yellow-100 text-yellow-700'
-                        : index === 1 ? 'bg-gray-100 text-gray-600'
-                        : index === 2 ? 'bg-orange-100 text-orange-700'
-                        : d ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        {index + 1}
-                      </div>
+                    className={`border-t transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-100 hover:bg-gray-50'}`}>
+                    <td className={`px-5 py-4 text-sm font-medium ${d ? 'text-blue-400' : 'text-blue-600'}`}>{index + 1}</td>
+                    <td className={`px-5 py-4 text-sm font-medium max-w-xs truncate ${d ? 'text-white' : 'text-gray-900'}`}>
+                      {post.title}
                     </td>
-                    <td className={`px-4 py-3.5 text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold capitalize ${getStatusColor(post.status)}`}>
+                    <td className="px-5 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ${getStatusColor(post.status)}`}>
                         {post.status.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className={`px-4 py-3.5 text-sm font-semibold ${d ? 'text-teal-400' : 'text-teal-600'}`}>
-                      👍 {post._count.votes}
+                    <td className="px-5 py-4 text-center">
+                      <div className={`inline-flex items-center gap-1.5 text-sm font-semibold ${d ? 'text-blue-400' : 'text-blue-600'}`}>
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                        {post._count.votes}
+                      </div>
                     </td>
-                    <td className={`px-4 py-3.5 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                      💬 {post._count.comments}
+                    <td className="px-5 py-4 text-center">
+                      <div className={`inline-flex items-center gap-1.5 text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        {post._count.comments}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <ArrowUpRight className={`w-4 h-4 ${d ? 'text-gray-600' : 'text-gray-300'}`} />
                     </td>
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={5} className={`px-4 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No posts yet</td>
+                    <td colSpan={6} className={`px-5 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No posts yet</td>
                   </tr>
                 )}
               </tbody>

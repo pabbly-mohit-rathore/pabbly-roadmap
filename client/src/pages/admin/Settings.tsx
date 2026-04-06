@@ -1,32 +1,49 @@
-import { useState } from 'react';
-import { BarChart3, Tags as TagsIcon, Settings as SettingsIcon } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { BarChart3, Tags as TagsIcon, Settings as SettingsIcon, Users } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
+import useAuthStore from '../../store/authStore';
+import useTeamAccessStore from '../../store/teamAccessStore';
 import AdminReporting from './Reporting';
 import AdminTags from './Tags';
+import AdminTeamMembers from './TeamMembers';
 
-const TABS = [
+const ALL_TABS = [
   { id: 'activity-log', label: 'Activity Log', icon: BarChart3 },
   { id: 'tags', label: 'Tags', icon: TagsIcon },
+  { id: 'team-members', label: 'Team Members', icon: Users },
   { id: 'general', label: 'General', icon: SettingsIcon },
 ];
 
 export default function AdminSettings() {
   const theme = useThemeStore((state) => state.theme);
   const { setTheme } = useThemeStore();
-  const [activeTab, setActiveTab] = useState('activity-log');
+  const { user } = useAuthStore();
+  const { isTeamAccess } = useTeamAccessStore();
   const d = theme === 'dark';
+
+  const isRealAdmin = user?.role === 'admin';
+  const isTeamMember = isTeamAccess && !isRealAdmin;
+
+  // Hide Team Members and General tabs for team access users
+  const tabs = useMemo(() => {
+    if (isTeamMember) {
+      return ALL_TABS.filter(t => t.id !== 'team-members' && t.id !== 'general');
+    }
+    return ALL_TABS;
+  }, [isTeamMember]);
+
+  const [activeTab, setActiveTab] = useState('activity-log');
 
   return (
     <div>
-      {/* Header */}
       <h1 className={`text-4xl font-bold mb-3 ${d ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
       <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-        Manage activity logs, tags, and application settings.
+        Manage activity logs, tags{!isTeamMember ? ', team members, and application settings' : ' and more'}.
       </p>
 
       {/* Tabs */}
       <div className="flex items-center gap-6 mt-5 mb-5">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
           return (
@@ -49,9 +66,9 @@ export default function AdminSettings() {
       {/* Tab Content */}
       {activeTab === 'activity-log' && <AdminReporting />}
       {activeTab === 'tags' && <AdminTags />}
-      {activeTab === 'general' && (
+      {activeTab === 'team-members' && !isTeamMember && <AdminTeamMembers />}
+      {activeTab === 'general' && !isTeamMember && (
         <div>
-          {/* Theme Settings */}
           <div className={`p-6 rounded-lg border mb-8 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             <h2 className={`text-xl font-bold mb-6 ${d ? 'text-white' : 'text-gray-900'}`}>Appearance</h2>
             <div>
@@ -60,20 +77,15 @@ export default function AdminSettings() {
                 <button onClick={() => setTheme('light')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     theme === 'light' ? 'bg-black text-white' : d ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}>
-                  Light
-                </button>
+                  }`}>Light</button>
                 <button onClick={() => setTheme('dark')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     theme === 'dark' ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}>
-                  Dark
-                </button>
+                  }`}>Dark</button>
               </div>
             </div>
           </div>
 
-          {/* System Info */}
           <div className={`p-6 rounded-lg border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             <h2 className={`text-xl font-bold mb-6 ${d ? 'text-white' : 'text-gray-900'}`}>System Information</h2>
             <div className="space-y-4">

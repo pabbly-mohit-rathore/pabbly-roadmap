@@ -7,12 +7,12 @@ export default function UserSidebar() {
   const theme = useThemeStore((state) => state.theme);
 
   const menuItems = [
-    { label: 'Boards', icon: Grid3x3, path: '/user/boards' },
+    { label: 'Board Management', icon: Grid3x3, path: '/user/boards' },
     { label: 'Roadmap', icon: MapPin, path: '/user/roadmap' },
     { label: 'Changelog', icon: History, path: '/user/changelog' },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   return (
     <aside
@@ -21,7 +21,6 @@ export default function UserSidebar() {
       }`}
       style={{ width: '207px' }}
     >
-      {/* Top underline/border */}
       <div className={`h-px w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`} />
 
       <nav className="p-3">

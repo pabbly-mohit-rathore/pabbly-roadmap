@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquareText, Eye, Bell, LogOut, Sun, Moon, Settings, MapPin, ChevronDown, Layout } from 'lucide-react';
+import { MessageSquareText, Eye, Bell, LogOut, Sun, Moon, Settings, ChevronDown, Layout } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
 export default function Navbar() {
@@ -55,19 +55,6 @@ export default function Navbar() {
                 title="Public View"
               >
                 <Eye className="w-5 h-5" />
-              </Link>
-
-              {/* Roadmap */}
-              <Link
-                to="/roadmap"
-                className={`p-2.5 rounded-lg transition-colors duration-200 ${
-                  theme === 'dark'
-                    ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-                title="Roadmap"
-              >
-                <MapPin className="w-5 h-5" />
               </Link>
 
               {/* Notifications */}
