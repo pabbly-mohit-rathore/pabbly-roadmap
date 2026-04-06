@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Grid3x3, MapPin, History } from 'lucide-react';
+import { LayoutDashboard, Grid3x3, MapPin, History, Settings } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 
 export default function UserSidebar() {
@@ -8,9 +8,10 @@ export default function UserSidebar() {
 
   const menuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/user/dashboard' },
-    { label: 'Board Management', icon: Grid3x3, path: '/user/boards' },
+    { label: 'Boards', icon: Grid3x3, path: '/user/boards' },
     { label: 'Roadmap', icon: MapPin, path: '/user/roadmap' },
     { label: 'Changelog', icon: History, path: '/user/changelog' },
+    { label: 'Settings', icon: Settings, path: '/user/settings' },
   ];
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');

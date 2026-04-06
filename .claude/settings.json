@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push:*)",
+      "Bash(git commit -m 'fix: board card letter initial shown directly without inner box:*)",
+      "Bash(git commit -m 'fix: equal width buttons and 16px font on board cards:*)",
+      "Bash(git commit -m 'fix: same CSS for both board card buttons:*)",
+      "Bash(git commit -m 'fix: grey button border, image fills full icon area:*)",
+      "Bash(git commit -m 'remove: Board Managers & Permissions section from board detail:*)",
+      "Bash(git commit -m 'feat: user Settings page with Team Member + General Settings tabs, rename sidebar item to Boards:*)"
+    ]
+  }
+}

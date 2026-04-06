@@ -33,6 +33,7 @@ const UserBoardDetail = lazy(() => import('./pages/user/BoardDetail'));
 const UserPostDetail = lazy(() => import('./pages/user/PostDetail'));
 const UserChangelog = lazy(() => import('./pages/user/Changelog'));
 const UserChangelogDetail = lazy(() => import('./pages/user/ChangelogDetail'));
+const UserSettings = lazy(() => import('./pages/user/Settings'));
 
 // Helper to check if user has invite access
 function hasInviteAccess() {
@@ -175,6 +176,9 @@ function App() {
           } />
           <Route path="/user/changelog/:id" element={
             isAuthenticated || hasInviteAccess() ? <><UserChangelogDetail /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          } />
+          <Route path="/user/settings" element={
+            isAuthenticated || hasInviteAccess() ? <><UserSettings /><Toaster position="top-right" /></> : <Navigate to="/login" />
           } />
 
           {/* Fallback */}
