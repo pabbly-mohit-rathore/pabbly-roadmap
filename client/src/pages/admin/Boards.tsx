@@ -195,12 +195,9 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                       {board.icon ? (
                         <img src={board.icon} alt={board.name} className="w-20 h-20 object-contain rounded-2xl" />
                       ) : (
-                        <div
-                          className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-md"
-                          style={{ backgroundColor: boardColor }}
-                        >
+                        <span className="text-6xl font-bold" style={{ color: boardColor }}>
                           {initial}
-                        </div>
+                        </span>
                       )}
                     </div>
 
