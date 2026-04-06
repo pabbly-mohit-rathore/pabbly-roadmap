@@ -160,16 +160,16 @@ export default function UserDashboard() {
                 <div
                   className="absolute flex items-center justify-center"
                   style={{
-                    width: '80px',
-                    height: '80px',
-                    right: '-22px',
+                    width: '110px',
+                    height: '110px',
+                    right: '-30px',
                     top: '50%',
                     transform: 'translateY(-50%) rotate(45deg)',
                     borderRadius: '16px',
                     background: card.glowColor,
                   }}
                 >
-                  <Icon className={`w-7 h-7 ${card.iconColor}`} style={{ transform: 'rotate(-45deg)', marginRight: '14px' }} />
+                  <Icon className={`w-7 h-7 ${card.iconColor}`} style={{ transform: 'rotate(-45deg)', marginRight: '20px' }} />
                 </div>
               </div>
             );
