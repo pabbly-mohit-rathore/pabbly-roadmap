@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ThumbsUp, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ThumbsUp, Calendar, ChevronLeft, ChevronRight, MessageSquare, Star, MessageCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
@@ -143,32 +143,50 @@ export default function AdminReporting() {
 
   const totalLogPages = Math.ceil(logTotal / logRowsPerPage);
 
-  const statColors: Record<string, string> = {
-    'Posts': 'text-blue-600',
-    'Votes': 'text-green-600',
-    'Comments': 'text-purple-600',
+  const STAT_CFG: Record<string, { icon: React.ElementType; iconColor: string; glowColor: string }> = {
+    'Posts':    { icon: MessageSquare,  iconColor: 'text-blue-400',   glowColor: 'linear-gradient(180deg, rgba(96,165,250,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
+    'Votes':    { icon: ThumbsUp,       iconColor: 'text-cyan-400',   glowColor: 'linear-gradient(180deg, rgba(34,211,238,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
+    'Comments': { icon: MessageCircle,  iconColor: 'text-purple-400', glowColor: 'linear-gradient(180deg, rgba(167,139,250,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
   };
 
-  const statSubs: Record<string, string> = {
-    'Posts': 'Total posts created',
-    'Votes': 'Total votes received',
-    'Comments': 'Total comments made',
+  const StatCard = ({ label, count, change }: { label: string; count: number; change: number }) => {
+    const cfg = STAT_CFG[label] || STAT_CFG['Posts'];
+    const Icon = cfg.icon;
+    return (
+      <div
+        className={`relative flex items-center justify-between overflow-hidden rounded-2xl border ${
+          theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+        }`}
+        style={{ padding: '20px 24px', boxShadow: theme === 'dark' ? 'none' : '0 2px 12px rgba(0,0,0,0.06)' }}
+      >
+        <div className="relative z-10">
+          <p className="font-extrabold mb-1 leading-none" style={{ fontSize: '28px', color: theme === 'dark' ? '#fff' : '#1c252e' }}>
+            {count}
+          </p>
+          <p className={`text-sm font-medium mt-1.5 ${theme === 'dark' ? 'text-gray-400' : ''}`} style={theme !== 'dark' ? { color: '#637381' } : {}}>
+            {label}
+          </p>
+          {change !== 0 && (
+            <span className={`text-xs font-semibold mt-1 block ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {change >= 0 ? '↑' : '↓'} {Math.abs(change)}%
+            </span>
+          )}
+        </div>
+        <div
+          className="absolute flex items-center justify-center"
+          style={{
+            width: '80px', height: '80px',
+            right: '-22px', top: '50%',
+            transform: 'translateY(-50%) rotate(45deg)',
+            borderRadius: '16px',
+            background: cfg.glowColor,
+          }}
+        >
+          <Icon className={`w-7 h-7 ${cfg.iconColor}`} style={{ transform: 'rotate(-45deg)', marginRight: '14px' }} />
+        </div>
+      </div>
+    );
   };
-
-  const StatCard = ({ label, count, change }: { label: string; count: number; change: number }) => (
-    <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-      <p className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{label}</p>
-      <p className={`text-3xl font-bold mb-1 ${statColors[label] || (theme === 'dark' ? 'text-white' : 'text-gray-900')}`}>{count}</p>
-      <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-        {statSubs[label] || ''}
-        {change !== 0 && (
-          <span className={`ml-2 font-semibold ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-            {change >= 0 ? '↑' : '↓'} {Math.abs(change)}%
-          </span>
-        )}
-      </p>
-    </div>
-  );
 
   const getStatusColor = (status: string) => {
     const c: Record<string, string> = {
