@@ -182,7 +182,7 @@ export default function UserBoardsPage() {
                             style={{ backgroundColor: boardColor + '22' }}
                           >
                             {board.icon ? (
-                              <img src={board.icon} alt={board.name} className="w-20 h-20 object-contain rounded-2xl" />
+                              <img src={board.icon} alt={board.name} className="w-full h-full object-cover" />
                             ) : (
                               <span className="text-6xl font-bold" style={{ color: boardColor }}>
                                 {initial}
@@ -207,7 +207,7 @@ export default function UserBoardsPage() {
                               className={`w-full py-2.5 rounded-xl border-2 font-semibold uppercase tracking-wide transition-colors ${
                                 d
                                   ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white'
-                                  : 'border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white'
+                                  : 'border-gray-300 text-gray-700 hover:border-gray-500 hover:text-gray-900'
                               }`}
                               style={{ fontSize: '16px' }}
                             >
