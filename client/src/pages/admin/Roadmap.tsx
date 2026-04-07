@@ -129,7 +129,7 @@ export default function AdminRoadmap() {
     try {
       const response = await api.put(`/posts/${draggedPost.id}/status`, { status: newStatus });
       if (response.data.success) {
-        fetchRoadmap();
+        fetchBoardData(selectedBoard);
       }
     } catch (error) {
       console.error('Error changing status:', error);
