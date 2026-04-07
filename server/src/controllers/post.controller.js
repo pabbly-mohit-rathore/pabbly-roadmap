@@ -36,7 +36,19 @@ const getPosts = async (req, res, next) => {
     const take = Math.min(parseInt(limit), 50);
 
     const where = {};
-    if (boardId) where.boardId = boardId;
+
+    // Admin ko sirf apne boards ke posts dikhe
+    if (req.user && req.user.role === 'admin') {
+      const adminBoards = await prisma.board.findMany({
+        where: { createdById: req.user.userId },
+        select: { id: true },
+      });
+      const adminBoardIds = adminBoards.map(b => b.id);
+      where.boardId = boardId ? (adminBoardIds.includes(boardId) ? boardId : 'none') : { in: adminBoardIds };
+    } else if (boardId) {
+      where.boardId = boardId;
+    }
+
     if (status) {
       where.status = {
         in: status.split(',')
@@ -312,7 +324,12 @@ const changePostStatus = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Post not found.' });
     }
 
-    if (role !== 'admin') {
+    if (role === 'admin') {
+      const board = await prisma.board.findUnique({ where: { id: post.boardId } });
+      if (board?.createdById !== userId) {
+        return res.status(403).json({ success: false, message: 'You can only manage posts in your own boards.' });
+      }
+    } else {
       const isBoardManager = await prisma.boardMember.findUnique({
         where: { userId_boardId: { userId, boardId: post.boardId } },
       });
@@ -364,7 +381,12 @@ const togglePinPost = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Post not found.' });
     }
 
-    if (role !== 'admin') {
+    if (role === 'admin') {
+      const board = await prisma.board.findUnique({ where: { id: post.boardId } });
+      if (board?.createdById !== userId) {
+        return res.status(403).json({ success: false, message: 'You can only manage posts in your own boards.' });
+      }
+    } else {
       const isBoardManager = await prisma.boardMember.findUnique({
         where: { userId_boardId: { userId, boardId: post.boardId } },
       });
@@ -416,7 +438,12 @@ const mergePosts = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'One or both posts not found.' });
     }
 
-    if (role !== 'admin') {
+    if (role === 'admin') {
+      const board = await prisma.board.findUnique({ where: { id: targetPost.boardId } });
+      if (board?.createdById !== userId) {
+        return res.status(403).json({ success: false, message: 'You can only manage posts in your own boards.' });
+      }
+    } else {
       const isBoardManager = await prisma.boardMember.findUnique({
         where: { userId_boardId: { userId, boardId: targetPost.boardId } },
       });

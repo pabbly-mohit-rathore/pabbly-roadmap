@@ -95,6 +95,13 @@ const upvotePost = async (req, res, next) => {
       },
     });
 
+    // Real-time broadcast — sabko turant dikhega
+    const io = req.app.get('io');
+    io.to(`post:${postId}`).emit('vote-updated', {
+      postId,
+      voteCount: updatedPost.voteCount,
+    });
+
     res.json({
       success: true,
       message: existingVote ? 'Vote removed.' : 'Post upvoted successfully.',
@@ -174,6 +181,13 @@ const removeVote = async (req, res, next) => {
         postId,
         boardId: post.boardId,
       },
+    });
+
+    // Real-time broadcast
+    const io = req.app.get('io');
+    io.to(`post:${postId}`).emit('vote-updated', {
+      postId,
+      voteCount: updatedPost.voteCount,
     });
 
     res.json({

@@ -248,6 +248,13 @@ const addComment = async (req, res, next) => {
       });
     }
 
+    // Real-time broadcast — sabko turant dikhega
+    const io = req.app.get('io');
+    io.to(`post:${postId}`).emit('comment-added', {
+      postId,
+      comment,
+    });
+
     res.status(201).json({
       success: true,
       message: 'Comment added successfully.',
@@ -326,6 +333,13 @@ const updateComment = async (req, res, next) => {
       },
     });
 
+    // Real-time broadcast
+    const io = req.app.get('io');
+    io.to(`post:${comment.post.id}`).emit('comment-updated', {
+      postId: comment.post.id,
+      comment: updatedComment,
+    });
+
     res.json({
       success: true,
       message: 'Comment updated successfully.',
@@ -402,6 +416,13 @@ const deleteComment = async (req, res, next) => {
         postId: comment.post.id,
         boardId: comment.post.boardId,
       },
+    });
+
+    // Real-time broadcast
+    const io = req.app.get('io');
+    io.to(`post:${comment.post.id}`).emit('comment-deleted', {
+      postId: comment.post.id,
+      commentId: id,
     });
 
     res.json({

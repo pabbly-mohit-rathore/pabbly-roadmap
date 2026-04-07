@@ -48,6 +48,7 @@ model User {
   createdQuickResponses QuickResponse[]    // Quick response templates created
   changelogEntries     ChangelogEntry[]    // Changelog entries created by admin
   changelogLikes       ChangelogLike[]     // Changelog entries liked by user
+  createdBoards        Board[]             // Boards jo isne banaye
 
   @@map("users")  // Database mein table ka naam "users" hoga
 }
@@ -72,10 +73,12 @@ model Board {
   icon        String?
   color       String   @default("#6366f1")  // Default purple color
   order       Int      @default(0)          // Boards ko reorder karne ke liye
+  createdById String?                       // Kis admin ne banaya — null for old boards
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
+  createdBy        User?     @relation(fields: [createdById], references: [id])
   posts            Post[]
   tags             Tag[]
   members          BoardMember[]     // Managers of this board

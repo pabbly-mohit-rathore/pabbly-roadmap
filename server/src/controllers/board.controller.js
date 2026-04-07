@@ -25,8 +25,9 @@ const getBoards = async (req, res, next) => {
     let boards;
 
     if (role === 'admin') {
-      // Admin ko sab boards dikhe
+      // Admin ko sirf apne boards dikhe
       boards = await prisma.board.findMany({
+        where: { createdById: userId },
         orderBy: { order: 'asc' },
         select: {
           id: true,
@@ -118,7 +119,14 @@ const getBoardBySlug = async (req, res, next) => {
     }
 
     // Check: Kya user ko is board ka access hai?
-    if (role !== 'admin') {
+    if (role === 'admin') {
+      if (board.createdById !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have access to this board.',
+        });
+      }
+    } else {
       const hasAccess = await prisma.userBoardAccess.findUnique({
         where: {
           userId_boardId: {
@@ -191,6 +199,7 @@ const createBoard = async (req, res, next) => {
         description: description || '',
         icon: icon || '',
         color: color || '#6366f1',
+        createdById: userId,
       },
     });
 
@@ -239,8 +248,14 @@ const updateBoard = async (req, res, next) => {
     }
 
     // Check: Kya user ko edit permission hai?
-    if (role !== 'admin') {
-      // Board manager check karo
+    if (role === 'admin') {
+      if (board.createdById !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to edit this board.',
+        });
+      }
+    } else {
       const isBoardManager = await prisma.boardMember.findUnique({
         where: {
           userId_boardId: {
@@ -318,6 +333,14 @@ const deleteBoard = async (req, res, next) => {
       });
     }
 
+    // Check: Kya admin is board ka owner hai?
+    if (board.createdById !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only delete your own boards.',
+      });
+    }
+
     // Board delete karo (cascade delete hoga related posts, comments, etc.)
     await prisma.board.delete({
       where: { id },
@@ -360,10 +383,18 @@ const reorderBoards = async (req, res, next) => {
       });
     }
 
+    // Verify admin owns all these boards
+    const ownedBoards = await prisma.board.findMany({
+      where: { id: { in: boardIds }, createdById: userId },
+      select: { id: true },
+    });
+    const ownedIds = new Set(ownedBoards.map(b => b.id));
+    const filteredBoardIds = boardIds.filter(id => ownedIds.has(id));
+
     // Har board ka order update karo
-    for (let i = 0; i < boardIds.length; i++) {
+    for (let i = 0; i < filteredBoardIds.length; i++) {
       await prisma.board.update({
-        where: { id: boardIds[i] },
+        where: { id: filteredBoardIds[i] },
         data: { order: i },
       });
     }
@@ -372,7 +403,7 @@ const reorderBoards = async (req, res, next) => {
     const boards = await prisma.board.findMany({
       where: {
         id: {
-          in: boardIds,
+          in: filteredBoardIds,
         },
       },
       orderBy: { order: 'asc' },

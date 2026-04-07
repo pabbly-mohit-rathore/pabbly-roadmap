@@ -30,7 +30,7 @@ const getRoadmap = async (req, res, next) => {
     // Board dhundho
     const board = await prisma.board.findUnique({
       where: { id: boardId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, createdById: true },
     });
 
     if (!board) {
@@ -40,63 +40,40 @@ const getRoadmap = async (req, res, next) => {
       });
     }
 
-    // Check access: User should have access to this board
-    if (role !== 'admin') {
+    // Check access: Admin owns board, User has board access
+    if (role === 'admin') {
+      if (board.createdById !== undefined && board.createdById !== null && board.createdById !== userId) {
+        return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
+      }
+    } else {
       const hasAccess = await prisma.userBoardAccess.findUnique({
-        where: {
-          userId_boardId: {
-            userId,
-            boardId,
-          },
-        },
+        where: { userId_boardId: { userId, boardId } },
       });
-
       if (!hasAccess) {
-        return res.status(403).json({
-          success: false,
-          message: 'You do not have access to this board.',
-        });
+        return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
       }
     }
 
     // Determine sort order
-    let orderBy = { voteCount: 'desc' }; // Default: most voted
-    if (sort === 'latest') {
-      orderBy = { createdAt: 'desc' };
-    } else if (sort === 'oldest') {
-      orderBy = { createdAt: 'asc' };
-    } else if (sort === 'priority') {
-      orderBy = { priorityScore: 'desc' };
-    }
+    let orderBy = { voteCount: 'desc' };
+    if (sort === 'latest') orderBy = { createdAt: 'desc' };
+    else if (sort === 'oldest') orderBy = { createdAt: 'asc' };
+    else if (sort === 'priority') orderBy = { priorityScore: 'desc' };
 
-    // Get all posts for this board
+    // Get all posts for this board — use cached counts, skip _count
     const posts = await prisma.post.findMany({
-      where: {
-        boardId,
-        isPublic: true, // Only show public posts
-      },
+      where: { boardId, isPublic: true },
       select: {
         id: true,
         title: true,
         slug: true,
-        description: true,
         status: true,
         type: true,
-        priority: true,
-        priorityScore: true,
         voteCount: true,
         commentCount: true,
-        eta: true,
         createdAt: true,
         author: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-          },
-        },
-        _count: {
-          select: { votes: true, comments: true },
+          select: { name: true },
         },
       },
       orderBy,

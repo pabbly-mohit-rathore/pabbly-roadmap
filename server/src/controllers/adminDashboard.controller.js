@@ -17,7 +17,7 @@ const prisma = require('../config/database');
 // ============================================================
 const getDashboardStats = async (req, res, next) => {
   try {
-    const { role } = req.user;
+    const { userId, role } = req.user;
 
     if (role !== 'admin') {
       return res.status(403).json({
@@ -26,37 +26,38 @@ const getDashboardStats = async (req, res, next) => {
       });
     }
 
-    // Total posts
-    const totalPosts = await prisma.post.count();
-
-    // Total votes
-    const totalVotes = await prisma.vote.count();
-
-    // Total users
-    const totalUsers = await prisma.user.count();
-
-    // Total boards
-    const totalBoards = await prisma.board.count();
-
-    // Active users (users who have posted or voted in last 30 days)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const activeUsersData = await prisma.user.findMany({
-      where: {
-        OR: [
-          {
-            posts: {
-              some: { createdAt: { gte: thirtyDaysAgo } },
-            },
-          },
-          {
-            votes: {
-              some: { createdAt: { gte: thirtyDaysAgo } },
-            },
-          },
-        ],
-      },
+    // Admin ke apne boards dhundho
+    const adminBoards = await prisma.board.findMany({
+      where: { createdById: userId },
       select: { id: true },
     });
+    const boardIds = adminBoards.map(b => b.id);
+    const totalBoards = boardIds.length;
+
+    // Sab queries parallel mein chalao for speed
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [totalPosts, totalVotes, totalUsers, activeUsersData] = await Promise.all([
+      prisma.post.count({ where: { boardId: { in: boardIds } } }),
+      prisma.vote.count({ where: { post: { boardId: { in: boardIds } } } }),
+      prisma.user.count({
+        where: {
+          OR: [
+            { posts: { some: { boardId: { in: boardIds } } } },
+            { votes: { some: { post: { boardId: { in: boardIds } } } } },
+            { boardAccess: { some: { boardId: { in: boardIds } } } },
+          ],
+        },
+      }),
+      prisma.user.findMany({
+        where: {
+          OR: [
+            { posts: { some: { createdAt: { gte: thirtyDaysAgo }, boardId: { in: boardIds } } } },
+            { votes: { some: { createdAt: { gte: thirtyDaysAgo }, post: { boardId: { in: boardIds } } } } },
+          ],
+        },
+        select: { id: true },
+      }),
+    ]);
     const activeUsers = activeUsersData.length;
 
     // Engagement rate (posts + votes) / users
@@ -91,7 +92,7 @@ const getDashboardStats = async (req, res, next) => {
 // ============================================================
 const getTopVotedPosts = async (req, res, next) => {
   try {
-    const { role } = req.user;
+    const { userId, role } = req.user;
     const { limit = 10 } = req.query;
 
     if (role !== 'admin') {
@@ -102,6 +103,7 @@ const getTopVotedPosts = async (req, res, next) => {
     }
 
     const topPosts = await prisma.post.findMany({
+      where: { board: { createdById: userId } },
       select: {
         id: true,
         title: true,
@@ -124,11 +126,7 @@ const getTopVotedPosts = async (req, res, next) => {
           select: { userId: true },
         },
       },
-      orderBy: {
-        votes: {
-          _count: 'desc',
-        },
-      },
+      orderBy: { voteCount: 'desc' },
       take: parseInt(limit) || 10,
     });
 
@@ -154,7 +152,7 @@ const getTopVotedPosts = async (req, res, next) => {
 // ============================================================
 const getRecentActivities = async (req, res, next) => {
   try {
-    const { role } = req.user;
+    const { userId, role } = req.user;
     const { limit = 50, offset = 0 } = req.query;
 
     if (role !== 'admin') {
@@ -165,6 +163,7 @@ const getRecentActivities = async (req, res, next) => {
     }
 
     const activities = await prisma.activity.findMany({
+      where: { board: { createdById: userId } },
       include: {
         user: {
           select: { id: true, name: true, email: true, avatar: true },
@@ -178,7 +177,9 @@ const getRecentActivities = async (req, res, next) => {
       skip: parseInt(offset) || 0,
     });
 
-    const total = await prisma.activity.count();
+    const total = await prisma.activity.count({
+      where: { board: { createdById: userId } },
+    });
 
     res.json({
       success: true,
@@ -203,7 +204,7 @@ const getRecentActivities = async (req, res, next) => {
 // ============================================================
 const getBoardMembersOverview = async (req, res, next) => {
   try {
-    const { role } = req.user;
+    const { userId, role } = req.user;
 
     if (role !== 'admin') {
       return res.status(403).json({
@@ -213,6 +214,7 @@ const getBoardMembersOverview = async (req, res, next) => {
     }
 
     const boardMembers = await prisma.boardMember.findMany({
+      where: { board: { createdById: userId } },
       include: {
         user: {
           select: {
@@ -250,7 +252,7 @@ const getBoardMembersOverview = async (req, res, next) => {
 // ============================================================
 const getPostsByStatus = async (req, res, next) => {
   try {
-    const { role } = req.user;
+    const { userId, role } = req.user;
 
     if (role !== 'admin') {
       return res.status(403).json({
@@ -260,6 +262,7 @@ const getPostsByStatus = async (req, res, next) => {
     }
 
     const posts = await prisma.post.findMany({
+      where: { board: { createdById: userId } },
       select: {
         id: true,
         title: true,

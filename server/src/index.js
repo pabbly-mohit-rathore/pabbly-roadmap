@@ -31,8 +31,46 @@ const changelogRoutes = require('./routes/changelog.routes');
 const reportingRoutes = require('./routes/reporting.routes');
 const teamMemberRoutes = require('./routes/teamMember.routes');
 
+const http = require('http');
+const { Server } = require('socket.io');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// HTTP server + Socket.io setup
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      process.env.CLIENT_URL
+    ].filter(Boolean),
+    credentials: true,
+  },
+});
+
+// Socket.io ko globally accessible banao (controllers mein use hoga)
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  // User joins a post room (for real-time updates on that post)
+  socket.on('join-post', (postId) => {
+    socket.join(`post:${postId}`);
+  });
+
+  socket.on('leave-post', (postId) => {
+    socket.leave(`post:${postId}`);
+  });
+
+  // User joins board room (for real-time feed updates)
+  socket.on('join-board', (boardId) => {
+    socket.join(`board:${boardId}`);
+  });
+
+  socket.on('leave-board', (boardId) => {
+    socket.leave(`board:${boardId}`);
+  });
+});
 
 // ──────────────────────────────────────
 // MIDDLEWARE (har request pe chalte hain)
@@ -116,6 +154,6 @@ app.use(errorHandler);
 // ──────────────────────────────────────
 // SERVER START
 // ──────────────────────────────────────
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
