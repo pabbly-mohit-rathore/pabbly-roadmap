@@ -76,11 +76,11 @@ export default function AdminSettings() {
               <div className="flex gap-3">
                 <button onClick={() => setTheme('light')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    theme === 'light' ? 'bg-black text-white' : d ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    theme === 'light' ? 'bg-[#0c68e9] text-white' : d ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}>Light</button>
                 <button onClick={() => setTheme('dark')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    theme === 'dark' ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    theme === 'dark' ? 'bg-[#0c68e9] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}>Dark</button>
               </div>
             </div>

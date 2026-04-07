@@ -4,6 +4,7 @@ import { ThumbsUp, ArrowUpRight, MessageSquare, Users, Layout, TrendingUp, BarCh
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface DashboardStats {
   totalPosts: number;
@@ -107,7 +108,7 @@ export default function AdminDashboard() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12">Loading dashboard...</div>
+        <LoadingBar />
       ) : (
         <>
           {/* Stats Cards */}

@@ -4,6 +4,7 @@ import { ChevronLeft, Heart, Edit2 } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface ChangelogEntry {
   id: string;
@@ -66,7 +67,7 @@ export default function ChangelogView() {
     return config[type] || 'bg-gray-100 text-gray-700';
   };
 
-  if (loading) return <div className="text-center py-12">Loading...</div>;
+  if (loading) return <LoadingBar />;
   if (!entry) return <div className="text-center py-12">Entry not found</div>;
 
   return (

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Trash2, Edit2, Send, X, Search, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 import toast from 'react-hot-toast';
 
 interface Board {
@@ -198,7 +199,7 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-12">Loading...</div>
+        <LoadingBar />
       ) : (
         <div className={`rounded-lg border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <table className="w-full">
@@ -415,7 +416,7 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
 
               {/* Create Button */}
               <button onClick={handleCreate}
-                className="w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 font-semibold transition">
+                className="w-full px-4 py-3 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] font-semibold transition">
                 Create Changelog Post
               </button>
             </div>

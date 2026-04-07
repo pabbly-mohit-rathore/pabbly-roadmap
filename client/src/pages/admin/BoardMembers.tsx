@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface User {
   id: string;
@@ -144,7 +145,7 @@ export default function AdminBoardMembers() {
           <button
             onClick={() => setShowAddModal(true)}
             disabled={!selectedBoard || availableUsers.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Member
@@ -179,7 +180,7 @@ export default function AdminBoardMembers() {
 
       {/* Members List */}
       {loading ? (
-        <div className="text-center py-8">Loading members...</div>
+        <LoadingBar />
       ) : (
         <>
           {members.length > 0 ? (
@@ -340,7 +341,7 @@ export default function AdminBoardMembers() {
                 </button>
                 <button
                   onClick={handleAddMember}
-                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
                 >
                   Add Member
                 </button>

@@ -27,6 +27,7 @@ const AdminBoardMembers = lazy(() => import('./pages/admin/BoardMembers'));
 const AdminSettings = lazy(() => import('./pages/admin/Settings'));
 const AdminUsers = lazy(() => import('./pages/admin/Users'));
 const UserDashboard = lazy(() => import('./pages/user/Dashboard'));
+const UserFeatureRequests = lazy(() => import('./pages/user/FeatureRequests'));
 const UserBoardsPage = lazy(() => import('./pages/user/BoardsPage'));
 const UserRoadmapPage = lazy(() => import('./pages/user/RoadmapPage'));
 const UserBoardDetail = lazy(() => import('./pages/user/BoardDetail'));
@@ -157,6 +158,9 @@ function App() {
           {/* User Protected Routes */}
           <Route path="/user/dashboard" element={
             isAuthenticated || hasInviteAccess() ? <><UserDashboard /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          } />
+          <Route path="/user/feature-requests" element={
+            isAuthenticated || hasInviteAccess() ? <><UserFeatureRequests /><Toaster position="top-right" /></> : <Navigate to="/login" />
           } />
           <Route path="/user/boards" element={
             isAuthenticated || hasInviteAccess() ? <><UserBoardsPage /><Toaster position="top-right" /></> : <Navigate to="/login" />

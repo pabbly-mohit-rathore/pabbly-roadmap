@@ -5,6 +5,7 @@ import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 import toast from 'react-hot-toast';
 
 interface ChangelogEntry {
@@ -90,7 +91,7 @@ export default function UserChangelog() {
         </div>
 
         {loading ? (
-          <div className="text-center py-8">Loading...</div>
+          <LoadingBar />
         ) : (
           <div className={`rounded-lg border overflow-hidden ${
             theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'

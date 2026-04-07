@@ -4,6 +4,7 @@ import { Plus, X, ThumbsUp, MoreVertical, ChevronLeft, ChevronRight } from 'luci
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface Tag {
   id: string;
@@ -322,7 +323,7 @@ export default function AdminBoardDetail() {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
           >
             <Plus className="w-4 h-4" />
             Create Post
@@ -333,7 +334,7 @@ export default function AdminBoardDetail() {
 
       {/* Posts Table */}
       {loading ? (
-        <div className="text-center py-8">Loading posts...</div>
+        <LoadingBar />
       ) : (
         <div
           className={`rounded-lg border ${
@@ -390,7 +391,7 @@ export default function AdminBoardDetail() {
                         onClick={() => handleVote(post.id)}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors font-medium ${
                           votedPostIds.has(post.id)
-                            ? 'bg-black text-white'
+                            ? 'bg-[#0c68e9] text-white'
                             : theme === 'dark'
                             ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -801,7 +802,7 @@ export default function AdminBoardDetail() {
                 </button>
                 <button
                   onClick={handleCreatePost}
-                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
                 >
                   Create Post
                 </button>
@@ -1006,7 +1007,7 @@ export default function AdminBoardDetail() {
                 </button>
                 <button
                   onClick={handleEditPost}
-                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
                 >
                   Update Post
                 </button>

@@ -3,6 +3,7 @@ import { Search, Shield, X, Copy, Check, ChevronLeft, ChevronRight, MoreVertical
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface BoardInfo {
   board: {
@@ -135,7 +136,7 @@ export default function AdminUsers() {
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-12">Loading users...</div>
+        <LoadingBar />
       ) : (
         <div className={`rounded-lg border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <table className="w-full">

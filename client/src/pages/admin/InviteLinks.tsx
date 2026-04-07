@@ -3,6 +3,7 @@ import { Copy, Trash2, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface InviteLink {
   id: string;
@@ -145,7 +146,7 @@ export default function AdminInviteLinks({ triggerCreate }: { triggerCreate?: nu
 
       {/* Links List */}
       {loading ? (
-        <div className="text-center py-8">Loading links...</div>
+        <LoadingBar />
       ) : (
         <>
           {links.length > 0 ? (
@@ -390,7 +391,7 @@ export default function AdminInviteLinks({ triggerCreate }: { triggerCreate?: nu
                 </button>
                 <button
                   onClick={handleCreateLink}
-                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
                 >
                   Generate
                 </button>

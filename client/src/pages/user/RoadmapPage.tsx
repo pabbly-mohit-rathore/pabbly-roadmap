@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface Post {
   id: string;
@@ -97,7 +98,7 @@ export default function UserRoadmapPage() {
   if (loading) {
     return (
       <UserLayout>
-        <div className="text-center py-12">Loading roadmap...</div>
+        <LoadingBar />
       </UserLayout>
     );
   }
@@ -121,7 +122,7 @@ export default function UserRoadmapPage() {
           </div>
 
           {/* Info Bar */}
-          <div className={`flex items-center gap-2 px-4 py-3 rounded-lg mb-6 text-sm ${
+          <div className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg mb-6 text-sm ${
             theme === 'dark'
               ? 'bg-blue-900/20 text-blue-300 border border-blue-800'
               : 'bg-blue-50 text-blue-700 border border-blue-200'
@@ -131,9 +132,10 @@ export default function UserRoadmapPage() {
           </div>
 
           {/* Kanban Board */}
-          <div className="overflow-x-auto pb-4">
-            <div className="flex gap-4" style={{
-              minWidth: `${STATUS_ORDER.length * 280}px`,
+          <div className="overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 320px)' }}>
+            <div className="grid gap-4 h-full" style={{
+              gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
+              minHeight: 'calc(100vh - 320px)',
             }}>
               {STATUS_ORDER.map((status) => {
                 const filteredPosts = getFilteredPosts(status);
@@ -142,12 +144,11 @@ export default function UserRoadmapPage() {
                 return (
                   <div
                     key={status}
-                    className={`rounded-lg border border-t-[3px] ${config.borderColor} flex flex-col overflow-hidden flex-shrink-0 ${
+                    className={`rounded-lg border border-t-[3px] ${config.borderColor} flex flex-col overflow-hidden ${
                       theme === 'dark'
                         ? 'border-gray-700'
                         : 'border-gray-200'
                     }`}
-                    style={{ width: '260px', minHeight: '400px' }}
                   >
                     {/* Column Header */}
                     <div className={`px-4 pt-4 pb-3 ${

@@ -7,6 +7,8 @@ import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import CommentEditor from '../../components/CommentEditor';
+import LoadingBar from '../../components/ui/LoadingBar';
+import useSocket from '../../hooks/useSocket';
 
 interface Tag {
   id: string;
@@ -81,6 +83,32 @@ export default function AdminPostDetail() {
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
 
 
+
+  // Real-time updates via Socket.io
+  useSocket({
+    postId: post?.id,
+    onVoteUpdated: (data) => {
+      if (post && data.postId === post.id) {
+        setPost(prev => prev ? { ...prev, voteCount: data.voteCount } : prev);
+        init(data.postId, data.voteCount, votes[data.postId]?.voted ?? false);
+      }
+    },
+    onCommentAdded: (data) => {
+      if (post && data.postId === post.id) {
+        fetchComments();
+      }
+    },
+    onCommentUpdated: (data) => {
+      if (post && data.postId === post.id) {
+        fetchComments();
+      }
+    },
+    onCommentDeleted: (data) => {
+      if (post && data.postId === post.id) {
+        fetchComments();
+      }
+    },
+  });
 
   // Fetch post if not passed via navigation state
   useEffect(() => {
@@ -405,7 +433,7 @@ export default function AdminPostDetail() {
           {/* Main Content - Left */}
           <div className="col-span-2">
             {loading ? (
-              <div className="text-center py-12">Loading post...</div>
+              <LoadingBar />
             ) : (
               <>
                 {/* Post Header */}
@@ -513,7 +541,7 @@ export default function AdminPostDetail() {
                                   <textarea value={editText} onChange={(e) => setEditText(e.target.value)}
                                     className={`w-full px-3 py-2 rounded-lg border mb-2 ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'}`} rows={3} />
                                   <div className="flex gap-2">
-                                    <button onClick={() => handleEditComment(comment.id)} className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800">Save</button>
+                                    <button onClick={() => handleEditComment(comment.id)} className="px-3 py-1 bg-[#0c68e9] text-white text-sm rounded hover:bg-[#0b5dd0]">Save</button>
                                     <button onClick={() => setEditingCommentId(null)} className={`px-3 py-1 text-sm rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
                                   </div>
                                 </div>
@@ -547,7 +575,7 @@ export default function AdminPostDetail() {
                                   <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." rows={2}
                                     className={`w-full px-3 py-2 rounded-lg border mb-2 text-sm ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'}`} />
                                   <div className="flex gap-2">
-                                    <button onClick={() => handleReply(comment.id)} className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800">Reply</button>
+                                    <button onClick={() => handleReply(comment.id)} className="px-3 py-1 bg-[#0c68e9] text-white text-sm rounded hover:bg-[#0b5dd0]">Reply</button>
                                     <button onClick={() => { setReplyingToId(null); setReplyText(''); }} className={`px-3 py-1 text-sm rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
                                   </div>
                                 </div>
@@ -585,7 +613,7 @@ export default function AdminPostDetail() {
                                               <textarea value={editText} onChange={(e) => setEditText(e.target.value)}
                                                 className={`w-full px-2 py-1 rounded text-sm border mb-2 ${theme === 'dark' ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-200'}`} rows={2} />
                                               <div className="flex gap-2">
-                                                <button onClick={() => handleEditComment(reply.id)} className="px-2 py-1 bg-black text-white text-xs rounded hover:bg-gray-800">Save</button>
+                                                <button onClick={() => handleEditComment(reply.id)} className="px-2 py-1 bg-[#0c68e9] text-white text-xs rounded hover:bg-[#0b5dd0]">Save</button>
                                                 <button onClick={() => setEditingCommentId(null)} className={`px-2 py-1 text-xs rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-600' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
                                               </div>
                                             </div>
@@ -613,7 +641,7 @@ export default function AdminPostDetail() {
                                               <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." rows={2}
                                                 className={`w-full px-2 py-1 rounded text-sm border mb-2 ${theme === 'dark' ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-200'}`} />
                                               <div className="flex gap-2">
-                                                <button onClick={() => handleReply(reply.id)} className="px-2 py-1 bg-black text-white text-xs rounded hover:bg-gray-800">Reply</button>
+                                                <button onClick={() => handleReply(reply.id)} className="px-2 py-1 bg-[#0c68e9] text-white text-xs rounded hover:bg-[#0b5dd0]">Reply</button>
                                                 <button onClick={() => { setReplyingToId(null); setReplyText(''); }} className={`px-2 py-1 text-xs rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-600' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
                                               </div>
                                             </div>

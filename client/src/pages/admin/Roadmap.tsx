@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface Post {
   id: string;
@@ -62,47 +63,48 @@ export default function AdminRoadmap() {
   const [columnSearches, setColumnSearches] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetchBoards();
+    const init = async () => {
+      try {
+        const response = await api.get('/boards');
+        if (response.data.success) {
+          const boardList = response.data.data.boards;
+          setBoards(boardList);
+          if (boardList.length > 0) {
+            const firstBoardId = boardList[0].id;
+            setSelectedBoard(firstBoardId);
+            // Fetch roadmap + tags in parallel immediately
+            const [roadmapRes, tagsRes] = await Promise.all([
+              api.get(`/roadmap?boardId=${firstBoardId}`),
+              api.get('/tags', { params: { boardId: firstBoardId } }),
+            ]);
+            if (roadmapRes.data.success) setRoadmap(roadmapRes.data.data.roadmap);
+            if (tagsRes.data.success) setTags(tagsRes.data.data.tags || []);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing roadmap:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, []);
 
   useEffect(() => {
-    if (selectedBoard) {
-      Promise.all([fetchRoadmap(), fetchTags()]);
+    if (selectedBoard && boards.length > 0 && selectedBoard !== boards[0]?.id) {
+      fetchBoardData(selectedBoard);
     }
   }, [selectedBoard]);
 
-  const fetchBoards = async () => {
-    try {
-      const response = await api.get('/boards');
-      if (response.data.success) {
-        setBoards(response.data.data.boards);
-        if (response.data.data.boards.length > 0) {
-          setSelectedBoard(response.data.data.boards[0].id);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching boards:', error);
-    }
-  };
-
-  const fetchTags = async () => {
-    try {
-      const response = await api.get('/tags', { params: { boardId: selectedBoard } });
-      if (response.data.success) {
-        setTags(response.data.data.tags || []);
-      }
-    } catch (error) {
-      console.error('Error fetching tags:', error);
-    }
-  };
-
-  const fetchRoadmap = async () => {
+  const fetchBoardData = async (boardId: string) => {
     try {
       setLoading(true);
-      const response = await api.get(`/roadmap?boardId=${selectedBoard}`);
-      if (response.data.success) {
-        setRoadmap(response.data.data.roadmap);
-      }
+      const [roadmapRes, tagsRes] = await Promise.all([
+        api.get(`/roadmap?boardId=${boardId}`),
+        api.get('/tags', { params: { boardId } }),
+      ]);
+      if (roadmapRes.data.success) setRoadmap(roadmapRes.data.data.roadmap);
+      if (tagsRes.data.success) setTags(tagsRes.data.data.tags || []);
     } catch (error) {
       console.error('Error fetching roadmap:', error);
     } finally {
@@ -280,7 +282,7 @@ export default function AdminRoadmap() {
       </div>
 
       {/* Info Bar */}
-      <div className={`flex items-center gap-2 px-4 py-3 rounded-lg mb-6 text-sm ${
+      <div className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg mb-6 text-sm ${
         theme === 'dark'
           ? 'bg-blue-900/20 text-blue-300 border border-blue-800'
           : 'bg-blue-50 text-blue-700 border border-blue-200'
@@ -291,7 +293,7 @@ export default function AdminRoadmap() {
 
       {/* Kanban Board */}
       {loading ? (
-        <div className="text-center py-12">Loading roadmap...</div>
+        <LoadingBar />
       ) : (
         <div className="overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 320px)' }}>
           <div className="grid gap-4 h-full" style={{

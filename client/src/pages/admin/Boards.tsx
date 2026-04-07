@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, X, Upload } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 import toast from 'react-hot-toast';
 
 interface Board {
@@ -170,7 +171,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
 
       {/* Boards Grid */}
       {loading ? (
-        <div className="text-center py-8">Loading boards...</div>
+        <LoadingBar />
       ) : (
         <>
           {boards.length > 0 ? (
@@ -254,7 +255,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
               <p className="mb-4">No boards created yet</p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Create First Board
@@ -386,7 +387,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                 </button>
                 <button
                   onClick={handleCreateBoard}
-                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
                 >
                   Create Board
                 </button>
@@ -488,7 +489,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                       theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                     }`}>Cancel</button>
                   <button onClick={handleUpdateBoard}
-                    className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors text-sm">
+                    className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors text-sm">
                     Update Board
                   </button>
                 </div>

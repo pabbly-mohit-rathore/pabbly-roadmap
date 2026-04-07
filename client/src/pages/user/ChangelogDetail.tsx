@@ -5,6 +5,7 @@ import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 import toast from 'react-hot-toast';
 
 interface ChangelogEntry {
@@ -73,7 +74,7 @@ export default function UserChangelogDetail() {
   };
 
   if (loading) {
-    return <UserLayout><div className="text-center py-12">Loading...</div></UserLayout>;
+    return <UserLayout><LoadingBar /></UserLayout>;
   }
 
   if (!entry) {

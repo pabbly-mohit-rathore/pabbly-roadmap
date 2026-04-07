@@ -4,6 +4,7 @@ import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface Board {
   id: string;
@@ -95,9 +96,7 @@ export default function UserBoardsPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-8">
-            <p className={d ? 'text-gray-400' : 'text-gray-600'}>Loading boards...</p>
-          </div>
+          <LoadingBar />
         ) : (
           <>
             {boards.length > 0 ? (

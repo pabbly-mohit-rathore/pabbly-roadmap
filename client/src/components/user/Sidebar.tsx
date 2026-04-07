@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Grid3x3, MapPin, History, Settings } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Grid3x3, MapPin, History, Settings } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 
 export default function UserSidebar() {
@@ -8,6 +8,7 @@ export default function UserSidebar() {
 
   const menuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/user/dashboard' },
+    { label: 'Feature Request', icon: MessageSquare, path: '/user/feature-requests' },
     { label: 'Boards', icon: Grid3x3, path: '/user/boards' },
     { label: 'Roadmap', icon: MapPin, path: '/user/roadmap' },
     { label: 'Changelog', icon: History, path: '/user/changelog' },
@@ -37,8 +38,8 @@ export default function UserSidebar() {
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200 font-medium text-sm ${
                     active
                       ? theme === 'dark'
-                        ? 'bg-black text-white'
-                        : 'bg-black text-white'
+                        ? 'bg-emerald-700 text-white'
+                        : 'bg-emerald-600 text-white'
                       : theme === 'dark'
                       ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-300'
                       : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'

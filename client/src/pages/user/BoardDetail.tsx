@@ -5,6 +5,7 @@ import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 import toast from 'react-hot-toast';
 
 interface Tag {
@@ -273,7 +274,7 @@ export default function UserBoardDetail() {
 
         {/* Posts Table */}
         {loading ? (
-          <div className="text-center py-8">Loading posts...</div>
+          <LoadingBar />
         ) : (
           <div
             className={`rounded-lg border ${

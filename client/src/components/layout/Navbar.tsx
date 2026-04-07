@@ -18,7 +18,7 @@ export default function Navbar() {
           {/* Left side — Logo */}
           <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-black rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 bg-emerald-600 rounded-lg flex items-center justify-center">
                 <MessageSquareText className="w-5 h-5 text-white" />
               </div>
               <span className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Pabbly Roadmap</span>
@@ -29,40 +29,46 @@ export default function Navbar() {
           {isAuthenticated ? (
             // ──── Logged in navbar ────
             <div className="flex items-center gap-1">
-              {/* Admin only buttons */}
+              {/* Toggle between Admin/User view */}
               {user?.role === 'admin' && (
                 <>
-                  {/* Admin Dashboard */}
-                  <Link
-                    to="/admin/dashboard"
-                    className={`p-2.5 rounded-lg transition-colors duration-200 ${
-                      theme === 'dark'
-                        ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                    title="Admin Dashboard"
-                  >
-                    <Layout className="w-5 h-5" />
-                  </Link>
-
-                  {/* User View */}
-                  <Link
-                    to="/user/boards"
-                    className={`p-2.5 rounded-lg transition-colors duration-200 ${
-                      theme === 'dark'
-                        ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                    title="User View"
-                  >
-                    <Eye className="w-5 h-5" />
-                  </Link>
+                  {location.pathname.startsWith('/admin') ? (
+                    <Link
+                      to="/user/dashboard"
+                      className={`flex items-center gap-3 pl-2 pr-1.5 py-1.5 rounded-lg border transition-colors duration-200 ${
+                        theme === 'dark'
+                          ? 'border-gray-700 text-gray-300 bg-gray-800'
+                          : 'border-gray-200 text-gray-600 bg-gray-50'
+                      }`}
+                      title="User View"
+                    >
+                      <span className="text-sm font-medium">User View</span>
+                      <div className={`w-7 h-7 rounded-md flex items-center justify-center shadow-sm ${theme === 'dark' ? 'bg-gray-600' : 'bg-white border border-gray-200'}`}>
+                        <Eye className="w-3.5 h-3.5" />
+                      </div>
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/admin/dashboard"
+                      className={`flex items-center gap-3 pl-2 pr-1.5 py-1.5 rounded-lg border transition-colors duration-200 ${
+                        theme === 'dark'
+                          ? 'border-gray-700 text-gray-300 bg-gray-800'
+                          : 'border-gray-200 text-gray-600 bg-gray-50'
+                      }`}
+                      title="Admin Dashboard"
+                    >
+                      <span className="text-sm font-medium">Admin View</span>
+                      <div className={`w-7 h-7 rounded-md flex items-center justify-center shadow-sm ${theme === 'dark' ? 'bg-gray-600' : 'bg-white border border-gray-200'}`}>
+                        <Layout className="w-3.5 h-3.5" />
+                      </div>
+                    </Link>
+                  )}
                 </>
               )}
 
               {/* Notifications */}
               <button
-                className={`relative p-2.5 rounded-lg transition-colors duration-200 ${
+                className={`relative p-2.5 ml-2 rounded-lg transition-colors duration-200 ${
                   theme === 'dark'
                     ? 'text-gray-400 hover:text-white hover:bg-gray-800'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'

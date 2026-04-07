@@ -27,7 +27,7 @@ export default function BoardManagement() {
           <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{currentTab.description}</p>
         </div>
         <button onClick={() => setTriggerAction(prev => prev + 1)}
-          className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition shrink-0">
+          className="flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition shrink-0">
           <Plus className="w-4 h-4" /> {currentTab.btnLabel}
         </button>
       </div>

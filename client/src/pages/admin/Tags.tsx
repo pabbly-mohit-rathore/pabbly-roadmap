@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface Tag {
   id: string;
@@ -133,7 +134,7 @@ export default function AdminTags() {
         <div className="flex items-center justify-end">
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
+            className="flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0]"
           >
             <Plus className="w-4 h-4" />
             Create Tag
@@ -158,7 +159,7 @@ export default function AdminTags() {
       </div>
 
       {loading ? (
-        <div className="text-center py-8">Loading tags...</div>
+        <LoadingBar />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {tags.map((tag) => (
@@ -286,7 +287,7 @@ export default function AdminTags() {
                 </button>
                 <button
                   onClick={handleCreateTag}
-                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
+                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0]"
                 >
                   Create
                 </button>
@@ -369,7 +370,7 @@ export default function AdminTags() {
                 </button>
                 <button
                   onClick={handleUpdateTag}
-                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
+                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0]"
                 >
                   Update
                 </button>

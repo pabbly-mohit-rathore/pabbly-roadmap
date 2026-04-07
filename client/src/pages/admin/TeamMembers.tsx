@@ -5,6 +5,7 @@ import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 import toast from 'react-hot-toast';
 
 interface TeamMember {
@@ -138,32 +139,57 @@ export default function AdminTeamMembers() {
     return m.user.email.toLowerCase().includes(q) || m.user.name.toLowerCase().includes(q);
   });
 
+  const STAT_CONFIG: Record<string, { iconColor: string; glowColor: string }> = {
+    'Unique Team Members Added': { iconColor: 'text-orange-400', glowColor: 'linear-gradient(180deg, rgba(251,146,60,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
+    'Boards Shared by You':     { iconColor: 'text-green-500',  glowColor: 'linear-gradient(180deg, rgba(34,197,94,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
+    'Boards Shared With You':   { iconColor: 'text-blue-400',   glowColor: 'linear-gradient(180deg, rgba(96,165,250,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
+  };
+
   const statCards = [
-    { label: 'Unique Team Members Added', value: stats.uniqueTeamMembers, icon: Users, gradient: 'from-orange-400 to-orange-500' },
-    { label: 'Boards Shared by You', value: stats.boardsSharedByYou, icon: Share2, gradient: 'from-green-400 to-green-500' },
-    { label: 'Boards Shared With You', value: stats.boardsSharedWithYou, icon: FolderInput, gradient: 'from-blue-400 to-blue-500' },
+    { label: 'Unique Team Members Added', value: stats.uniqueTeamMembers, icon: Users },
+    { label: 'Boards Shared by You', value: stats.boardsSharedByYou, icon: Share2 },
+    { label: 'Boards Shared With You', value: stats.boardsSharedWithYou, icon: FolderInput },
   ];
 
   if (loading) {
-    return <div className="text-center py-12">Loading team members...</div>;
+    return <LoadingBar />;
   }
 
   return (
     <div className="space-y-8">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {statCards.map((card, i) => {
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {statCards.map((card) => {
           const Icon = card.icon;
+          const cfg = STAT_CONFIG[card.label];
           return (
-            <div key={i} className={`p-6 rounded-xl border flex items-center justify-between ${
-              d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-            }`}>
-              <div>
-                <p className={`text-4xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>{card.value}</p>
-                <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{card.label}</p>
+            <div key={card.label}
+              className={`relative flex items-center justify-between overflow-hidden rounded-2xl border ${
+                d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+              }`}
+              style={{ padding: '24px 20px 24px 24px', boxShadow: d ? 'none' : '0 2px 12px rgba(0,0,0,0.06)' }}
+            >
+              <div className="relative z-10">
+                <p className={`font-extrabold mb-1 leading-none ${d ? 'text-white' : ''}`}
+                  style={{ fontSize: '28px', color: d ? undefined : '#1c252e' }}>
+                  {card.value}
+                </p>
+                <p className={`text-sm font-medium mt-1.5 ${d ? 'text-gray-400' : ''}`}
+                  style={!d ? { color: '#637381' } : {}}>{card.label}</p>
               </div>
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center`}>
-                <Icon className="w-6 h-6 text-white" />
+              <div
+                className="absolute flex items-center justify-center"
+                style={{
+                  width: '110px',
+                  height: '110px',
+                  right: '-30px',
+                  top: '50%',
+                  transform: 'translateY(-50%) rotate(45deg)',
+                  borderRadius: '16px',
+                  background: cfg.glowColor,
+                }}
+              >
+                <Icon className={`w-7 h-7 ${cfg.iconColor}`} style={{ transform: 'rotate(-45deg)', marginRight: '20px' }} />
               </div>
             </div>
           );
@@ -193,7 +219,7 @@ export default function AdminTeamMembers() {
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white text-sm font-medium rounded-lg hover:bg-[#0b5dd0] transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add Team Member
@@ -448,7 +474,7 @@ export default function AdminTeamMembers() {
               <div className="flex gap-3 justify-end pt-2">
                 <button
                   onClick={handleAddMember}
-                  className="px-6 py-2.5 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                  className="px-6 py-2.5 bg-[#0c68e9] text-white text-sm font-medium rounded-lg hover:bg-[#0b5dd0] transition-colors"
                 >
                   Add
                 </button>
@@ -504,7 +530,7 @@ export default function AdminTeamMembers() {
               </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button onClick={handleUpdateAccess}
-                  className="px-5 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">
+                  className="px-5 py-2 bg-[#0c68e9] text-white text-sm font-medium rounded-lg hover:bg-[#0b5dd0] transition-colors">
                   Update
                 </button>
                 <button onClick={() => setShowUpdateModal(null)}

@@ -6,8 +6,10 @@ import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 import toast from 'react-hot-toast';
 import CommentEditor from '../../components/CommentEditor';
+import useSocket from '../../hooks/useSocket';
 
 interface Tag {
   id: string;
@@ -77,6 +79,32 @@ export default function UserPostDetail() {
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Real-time updates via Socket.io
+  useSocket({
+    postId: post?.id,
+    onVoteUpdated: (data) => {
+      if (post && data.postId === post.id) {
+        setPost(prev => prev ? { ...prev, voteCount: data.voteCount } : prev);
+        init(data.postId, data.voteCount, votes[data.postId]?.voted ?? false);
+      }
+    },
+    onCommentAdded: (data) => {
+      if (post && data.postId === post.id) {
+        fetchComments();
+      }
+    },
+    onCommentUpdated: (data) => {
+      if (post && data.postId === post.id) {
+        fetchComments();
+      }
+    },
+    onCommentDeleted: (data) => {
+      if (post && data.postId === post.id) {
+        fetchComments();
+      }
+    },
+  });
 
   useEffect(() => {
     fetchPost();
@@ -325,7 +353,7 @@ export default function UserPostDetail() {
             {/* Main Content - Left */}
             <div className="col-span-2">
               {loading ? (
-                <div className="text-center py-12">Loading post...</div>
+                <LoadingBar />
               ) : (
                 <>
                   {/* Post Header */}

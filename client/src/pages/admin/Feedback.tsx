@@ -4,6 +4,7 @@ import { Plus, X, Edit2, Pin, Trash2, Search, ChevronLeft, ChevronRight, MoreVer
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface Post {
   id: string;
@@ -207,7 +208,7 @@ export default function AdminFeedback() {
           <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredPosts.length} posts</p>
         </div>
         <button onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition">
+          className="flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition">
           <Plus className="w-4 h-4" /> Create Post
         </button>
       </div>
@@ -258,7 +259,7 @@ export default function AdminFeedback() {
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-12">Loading...</div>
+        <LoadingBar />
       ) : (
         <div className={`rounded-lg border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <table className="w-full">
@@ -474,7 +475,7 @@ export default function AdminFeedback() {
                 <button onClick={() => setShowCreateModal(false)}
                   className={`px-4 py-2 rounded-lg border ${d ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 hover:bg-gray-50'}`}>Cancel</button>
                 <button onClick={handleCreatePost}
-                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 font-semibold">Create Post</button>
+                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] font-semibold">Create Post</button>
               </div>
             </div>
           </div>
@@ -529,7 +530,7 @@ export default function AdminFeedback() {
                 <button onClick={() => { setShowEditModal(false); setSelectedPost(null); }}
                   className={`px-4 py-2 rounded-lg border ${d ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 hover:bg-gray-50'}`}>Cancel</button>
                 <button onClick={handleUpdatePost}
-                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 font-semibold">Update Post</button>
+                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] font-semibold">Update Post</button>
               </div>
             </div>
           </div>

@@ -6,6 +6,7 @@ import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface Board {
   id: string;
@@ -115,7 +116,7 @@ export default function UserDashboard() {
   if (loading) {
     return (
       <UserLayout>
-        <div className="text-center py-12 text-gray-400">Loading dashboard...</div>
+        <LoadingBar />
       </UserLayout>
     );
   }

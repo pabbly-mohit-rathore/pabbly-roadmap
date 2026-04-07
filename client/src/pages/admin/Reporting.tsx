@@ -3,6 +3,7 @@ import { ThumbsUp, Calendar, ChevronLeft, ChevronRight, MessageSquare, MessageCi
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
 
 interface ActivityData {
   posts: { count: number; change: number };
@@ -198,7 +199,7 @@ export default function AdminReporting() {
     return c[status] || 'bg-gray-100 text-gray-700';
   };
 
-  if (loading) return <div className="text-center py-12">Loading reporting...</div>;
+  if (loading) return <LoadingBar />;
 
   const d = theme === 'dark';
 
