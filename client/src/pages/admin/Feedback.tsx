@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, Edit2, Pin, Trash2, Search, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react';
+import { Plus, X, Edit2, Pin, Trash2, Search, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, FileText, Clock, Eye, Zap, Rocket, XCircle, PauseCircle, MessageSquare, Bug, Puzzle, Inbox, ArrowUpRight } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
+import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
+import LoadingButton from '../../components/ui/LoadingButton';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 
 interface Post {
   id: string;
   title: string;
+  description?: string;
   slug: string;
   status: string;
   type: string;
@@ -38,6 +42,24 @@ const STATUS_CONFIG: Record<string, { dot: string; bg: string; text: string }> =
   hold: { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-700' },
 };
 
+const EMPTY_STATE_CONFIG: Record<string, { icon: React.ElementType; title: string; description: string }> = {
+  all: { icon: FileText, title: 'No Posts Created!', description: 'No posts created yet. Create your first post to get started.' },
+  open: { icon: Inbox, title: 'No Open Posts', description: 'There are no open posts at the moment. New posts will appear here.' },
+  under_review: { icon: Eye, title: 'No Posts Under Review', description: 'No posts are currently under review. Posts moved to review will show up here.' },
+  planned: { icon: Clock, title: 'No Planned Posts', description: 'No posts have been planned yet. Plan a post to see it here.' },
+  in_progress: { icon: Zap, title: 'No Posts In Progress', description: 'No posts are currently in progress. Active work will appear here.' },
+  live: { icon: Rocket, title: 'No Live Posts', description: 'No posts are live yet. Completed posts will show up here.' },
+  closed: { icon: XCircle, title: 'No Closed Posts', description: 'No posts have been closed. Resolved posts will appear here.' },
+  hold: { icon: PauseCircle, title: 'No Posts On Hold', description: 'No posts are on hold right now. Paused posts will show up here.' },
+};
+
+const EMPTY_TYPE_CONFIG: Record<string, { icon: React.ElementType; title: string; description: string }> = {
+  feature: { icon: MessageSquare, title: 'No Feature Requests', description: 'No feature requests found. Feature requests from users will appear here.' },
+  bug: { icon: Bug, title: 'No Bug Reports', description: 'No bug reports found. Reported bugs will appear here.' },
+  improvement: { icon: Zap, title: 'No Improvements', description: 'No improvement suggestions found. Improvement ideas will appear here.' },
+  integration: { icon: Puzzle, title: 'No Integration Requests', description: 'No integration requests found. Integration ideas will appear here.' },
+};
+
 const PRIORITY_CONFIG: Record<string, string> = {
   none: 'bg-gray-400',
   low: 'bg-green-500',
@@ -48,10 +70,13 @@ const PRIORITY_CONFIG: Record<string, string> = {
 
 export default function AdminFeedback() {
   const theme = useThemeStore((state) => state.theme);
+  const { init, toggle, votes } = useVoteStore();
   const navigate = useNavigate();
+  const [animatingPosts, setAnimatingPosts] = useState<Set<string>>(new Set());
   const [posts, setPosts] = useState<Post[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -60,8 +85,15 @@ export default function AdminFeedback() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const tabsRef = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [denseMode, setDenseMode] = useState(false);
+  const [rowsDropOpen, setRowsDropOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -70,9 +102,25 @@ export default function AdminFeedback() {
     priority: 'none',
   });
 
+  const isInitialLoad = useRef(true);
+
   useEffect(() => {
-    Promise.all([fetchBoards(), fetchPosts()]);
-  }, [statusFilter, typeFilter, boardFilter]);
+    Promise.all([fetchBoards(), fetchPosts(isInitialLoad.current)]);
+    isInitialLoad.current = false;
+  }, [statusFilter, boardFilter]);
+
+  useEffect(() => {
+    const el = tabsRef.current[typeFilter];
+    if (el) {
+      const parent = el.parentElement;
+      if (parent) {
+        const parentRect = parent.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        setIndicatorStyle({ left: elRect.left - parentRect.left, width: elRect.width });
+      }
+    }
+  }, [typeFilter, loading]);
+
 
   const fetchBoards = async () => {
     try {
@@ -88,52 +136,63 @@ export default function AdminFeedback() {
     }
   };
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
+      else setTableLoading(true);
       const params: Record<string, string> = {};
       if (statusFilter !== 'all') params.status = statusFilter;
-      if (typeFilter !== 'all') params.type = typeFilter;
       if (boardFilter !== 'all') params.boardId = boardFilter;
 
       const response = await api.get('/posts', { params });
       if (response.data.success) {
-        setPosts(response.data.data.posts);
+        const fetchedPosts = response.data.data.posts;
+        setPosts(fetchedPosts);
+        fetchedPosts.forEach((p: Post & { hasVoted?: boolean }) => init(p.id, p.voteCount ?? 0, p.hasVoted ?? false));
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
     } finally {
       setLoading(false);
+      setTableLoading(false);
     }
   };
 
   const filteredPosts = posts.filter((post) =>
-    post.title.toLowerCase().includes(searchQuery.toLowerCase())
+    post.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    (typeFilter === 'all' || post.type === typeFilter)
   );
 
   const paginatedPosts = filteredPosts.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
   const totalPages = Math.ceil(filteredPosts.length / rowsPerPage);
 
   const handleCreatePost = async () => {
-    if (!formData.title.trim() || !formData.boardId) {
-      toast.error('Title and Board are required');
+    const errors: Record<string, string> = {};
+    if (!formData.title.trim()) errors.title = 'Title is required';
+    if (!formData.boardId) errors.boardId = 'Please select a board';
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
+    setFormErrors({});
+    setCreating(true);
     try {
-      const response = await api.post('/posts', formData);
+      const response = await api.post('/posts', { ...formData, isDraft: true });
       if (response.data.success) {
         setShowCreateModal(false);
         setFormData({ title: '', description: '', type: 'feature', boardId: boards[0]?.id || '', priority: 'none' });
-        fetchPosts();
-        toast.success('Post created');
+        navigate(`/admin/posts/${response.data.data.post.id}/edit`);
       }
     } catch (error) {
       toast.error('Failed to create post');
+    } finally {
+      setCreating(false);
     }
   };
 
   const handleUpdatePost = async () => {
     if (!selectedPost) return;
+    setUpdating(true);
     try {
       const response = await api.put(`/posts/${selectedPost.id}`, {
         title: formData.title,
@@ -149,6 +208,8 @@ export default function AdminFeedback() {
       }
     } catch (error) {
       toast.error('Failed to update post');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -163,13 +224,10 @@ export default function AdminFeedback() {
     }
   };
 
-  const handleChangeStatus = async (postId: string, newStatus: string) => {
-    try {
-      await api.put(`/posts/${postId}/status`, { status: newStatus });
-      fetchPosts();
-    } catch (error) {
-      toast.error('Failed to change status');
-    }
+  const handleVote = (postId: string) => {
+    toggle(postId);
+    setAnimatingPosts(prev => { const next = new Set(prev); next.add(postId); return next; });
+    setTimeout(() => setAnimatingPosts(prev => { const next = new Set(prev); next.delete(postId); return next; }), 400);
   };
 
   const handleTogglePin = async (postId: string, isPinned: boolean) => {
@@ -195,56 +253,48 @@ export default function AdminFeedback() {
     setPage(0);
   };
 
-  const hasFilters = searchQuery || statusFilter !== 'all' || typeFilter !== 'all' || boardFilter !== 'all';
+  const hasFilters = statusFilter !== 'all' || typeFilter !== 'all' || boardFilter !== 'all';
 
   const d = theme === 'dark';
 
   return (
     <div>
+      <style>{`@keyframes slideUpCount { 0% { opacity: 0; transform: translateY(8px) scale(0.85); } 60% { opacity: 1; transform: translateY(-2px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } }`}</style>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className={`text-2xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Feedback Management</h1>
+          <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>Feedback Management</h1>
           <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredPosts.length} posts</p>
         </div>
-        <button onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition">
-          <Plus className="w-4 h-4" /> Create Post
+        <button onClick={() => { setShowCreateModal(true); setFormErrors({}); }}
+          className="flex items-center gap-2 bg-[#0C68E9] text-white rounded-lg hover:bg-[#0b5dd0] transition" style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+          <Plus className="w-5 h-5" /> Create Post
         </button>
       </div>
 
       {/* Filters */}
       <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border flex-1 min-w-[180px] max-w-[280px] ${
+        <div className="flex flex-wrap items-center gap-4">
+          <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[180px] max-w-[380px] ${
             d ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-          }`}>
+          }`} style={{ padding: '0 14px', height: '48px' }}>
             <Search className="w-4 h-4 text-gray-400" />
             <input type="text" placeholder="Search by title..." value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
               className={`bg-transparent text-sm outline-none w-full ${d ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`} />
           </div>
 
-          {[
-            { value: statusFilter, set: setStatusFilter, label: 'All Status', options: ['open', 'under_review', 'planned', 'in_progress', 'live', 'closed', 'hold'] },
-            { value: typeFilter, set: setTypeFilter, label: 'All Types', options: ['feature', 'bug', 'improvement', 'integration'] },
-          ].map(({ value, set, label, options }, i) => (
-            <select key={i} value={value} onChange={(e) => { set(e.target.value); setPage(0); }}
-              className={`px-3 py-2 rounded-lg border text-sm ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`}>
-              <option value="all">{label}</option>
-              {options.map(o => <option key={o} value={o}>{o.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
-            </select>
-          ))}
+          <CustomDropdown label="Status" value={statusFilter}
+            options={[{ value: 'all', label: 'All Status' }, ...['open', 'under_review', 'planned', 'in_progress', 'live', 'closed', 'hold'].map(o => ({ value: o, label: o.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }))]}
+            onChange={(v) => { setStatusFilter(v); setPage(0); }} />
 
-          <select value={boardFilter} onChange={(e) => { setBoardFilter(e.target.value); setPage(0); }}
-            className={`px-3 py-2 rounded-lg border text-sm ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`}>
-            <option value="all">All Boards</option>
-            {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+          <CustomDropdown label="Board" value={boardFilter}
+            options={[{ value: 'all', label: 'All Boards' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
+            onChange={(v) => { setBoardFilter(v); setPage(0); }} />
 
           {hasFilters && (
-            <button onClick={clearFilters} className="flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:text-red-600">
-              <X className="w-4 h-4" /> Clear Filters
+            <button onClick={clearFilters} className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors" style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+              <X className="w-5 h-5" /> Clear Filters
             </button>
           )}
         </div>
@@ -261,88 +311,163 @@ export default function AdminFeedback() {
       {loading ? (
         <LoadingBar />
       ) : (
-        <div className={`rounded-lg border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <table className="w-full">
-            <thead className={d ? 'bg-gray-700' : 'bg-gray-50'}>
-              <tr>
-                <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Title</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Priority</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Type</th>
-                <th className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Votes</th>
-                <th className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Comments</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Author</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Created</th>
-                <th className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Actions</th>
+        <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          {/* Title */}
+          <div style={{ padding: '24px 24px 16px 24px' }}>
+            <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>
+              {statusFilter === 'all' ? 'All Posts' : `${statusFilter.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Posts`}
+            </h2>
+          </div>
+          {/* Title Divider */}
+          <div className={`border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} />
+          {/* Type Tabs */}
+          <div className={`relative flex items-end border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ height: '48px', paddingLeft: '24px', gap: '40px' }}>
+            {[
+              { key: 'all', label: 'All', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
+              { key: 'feature', label: 'Feature', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
+              { key: 'bug', label: 'Bug', badgeBg: 'bg-red-100', badgeText: 'text-red-700', darkBadgeBg: 'bg-red-900/40', darkBadgeText: 'text-red-300' },
+              { key: 'improvement', label: 'Improvement', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', darkBadgeBg: 'bg-orange-900/40', darkBadgeText: 'text-orange-300' },
+              { key: 'integration', label: 'Integration', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', darkBadgeBg: 'bg-purple-900/40', darkBadgeText: 'text-purple-300' },
+            ].map((tab) => {
+              const isActive = typeFilter === tab.key;
+              const count = tab.key === 'all' ? posts.length : posts.filter(p => p.type === tab.key).length;
+              return (
+                <button key={tab.key}
+                  ref={(el) => { tabsRef.current[tab.key] = el; }}
+                  onClick={() => { setTypeFilter(tab.key); setPage(0); }}
+                  className={`flex items-center gap-1.5 pb-3 text-sm font-semibold transition-colors ${
+                    isActive
+                      ? (d ? 'text-white' : 'text-gray-900')
+                      : (d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')
+                  }`}>
+                  {tab.label}
+                  <span className={`inline-flex items-center justify-center min-w-[24px] h-[24px] px-1 rounded-md text-[11px] font-bold ${
+                    d ? `${tab.darkBadgeBg} ${tab.darkBadgeText}` : `${tab.badgeBg} ${tab.badgeText}`
+                  }`}>{count}</span>
+                </button>
+              );
+            })}
+            {/* Sliding indicator */}
+            <div
+              className={`absolute bottom-0 h-0.5 ${d ? 'bg-white' : 'bg-gray-900'}`}
+              style={{
+                left: indicatorStyle.left,
+                width: indicatorStyle.width,
+                transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            />
+          </div>
+
+          <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
+                {['Upvote', 'Title', 'Status', 'Comments', 'Author', 'Created', 'Actions'].map((h, i) => (
+                  <th key={h}
+                    className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                    style={{
+                      fontSize: '14px',
+                      color: d ? undefined : '#1C252E',
+                      textAlign: i === 3 ? 'center' as const : i === 6 ? 'right' as const : 'left' as const,
+                      width: i === 0 ? '120px' : i === 2 ? '150px' : i === 3 ? '330px' : i === 4 ? '250px' : i === 5 ? '180px' : i === 6 ? '60px' : undefined,
+                    }}>
+                    <div style={{
+                      paddingLeft: i === 0 ? '24px' : '16px',
+                      paddingRight: i === 6 ? '24px' : '16px',
+                    }}>{h}</div>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {paginatedPosts.length > 0 ? (
+              {tableLoading ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div className={`flex items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
+                      <div className="w-8 h-8 border-[3px] border-gray-200 border-t-[#0c68e9] rounded-full animate-spin" />
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedPosts.length > 0 ? (
                 paginatedPosts.map((post) => {
                   const sc = STATUS_CONFIG[post.status] || STATUS_CONFIG.open;
                   return (
                     <tr key={post.id}
                       onClick={() => navigate(`/admin/posts/${post.slug}`)}
-                      className={`border-t cursor-pointer transition ${d ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
-                      {/* Title */}
-                      <td className="px-4 py-3.5">
+                      className={`border-b border-dashed cursor-pointer transition-colors ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
+                      {/* Upvote */}
+                      <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px', paddingRight: '12px', width: '120px' }}
+                        onClick={(e) => { e.stopPropagation(); handleVote(post.id); }}>
+                        <div
+                          className="inline-flex flex-col items-center justify-center h-11 rounded-lg border font-bold cursor-pointer overflow-hidden"
+                          style={{
+                            width: '56px',
+                            fontSize: '13px',
+                            gap: '1px',
+                            backgroundColor: votes[post.id]?.voted ? '#1c252e' : 'transparent',
+                            borderColor: votes[post.id]?.voted ? '#1c252e' : (d ? '#4b5563' : '#e5e7eb'),
+                            color: votes[post.id]?.voted ? '#ffffff' : (d ? '#d1d5db' : '#374151'),
+                          }}
+                          onMouseEnter={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = '#1c252e'; }}
+                          onMouseLeave={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = d ? '#4b5563' : '#e5e7eb'; }}
+                        >
+                          <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
+                          <span
+                            key={votes[post.id]?.count}
+                            style={{ animation: animatingPosts.has(post.id) ? 'slideUpCount 0.35s cubic-bezier(0.34,1.56,0.64,1)' : 'none', display: 'block' }}
+                          >
+                            {votes[post.id]?.count ?? post.voteCount ?? 0}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Title + Description */}
+                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} px-5 max-w-0 overflow-hidden`}>
                         <div className="flex items-center gap-2">
                           {post.isPinned && <Pin className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500 shrink-0" />}
-                          <span className={`text-sm font-medium truncate max-w-[280px] ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</span>
+                          <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
                         </div>
+                        {post.description && (
+                          <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
+                        )}
                       </td>
 
                       {/* Status */}
-                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                        <select value={post.status}
-                          onChange={(e) => handleChangeStatus(post.id, e.target.value)}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border-0 cursor-pointer ${sc.bg} ${sc.text}`}>
-                          {Object.entries(STATUS_CONFIG).map(([key]) => (
-                            <option key={key} value={key}>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
-                          ))}
-                        </select>
-                      </td>
-
-                      {/* Priority */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2.5 h-2.5 rounded-full ${PRIORITY_CONFIG[post.priority] || 'bg-gray-400'}`} />
-                          <span className={`text-xs capitalize ${d ? 'text-gray-400' : 'text-gray-600'}`}>{post.priority}</span>
-                        </div>
-                      </td>
-
-                      {/* Type */}
-                      <td className="px-4 py-3.5">
-                        <span className={`text-xs capitalize ${d ? 'text-gray-400' : 'text-gray-600'}`}>{post.type}</span>
-                      </td>
-
-                      {/* Votes */}
-                      <td className={`px-4 py-3.5 text-center text-sm font-semibold ${d ? 'text-teal-400' : 'text-teal-600'}`}>
-                        {post.voteCount}
+                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
+                        <span className={`inline-block px-2.5 py-1 rounded-full text-[13px] font-semibold ${sc.bg} ${sc.text}`}>
+                          {post.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                        </span>
                       </td>
 
                       {/* Comments */}
-                      <td className={`px-4 py-3.5 text-center text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-center text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
                         {post.commentCount}
                       </td>
 
                       {/* Author */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
+                        <div className="flex items-center gap-2 group/author">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
                             {post.author.name[0].toUpperCase()}
                           </div>
-                          <span className={`text-xs ${d ? 'text-gray-400' : 'text-gray-600'}`}>{post.author.name}</span>
+                          <div className="relative">
+                            <span className={`text-sm truncate block ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ maxWidth: '100px' }}>{post.author.name}</span>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/author:flex flex-col items-center z-50 pointer-events-none">
+                              <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                                {post.author.name}
+                              </div>
+                              <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900 -mt-[1px]" />
+                            </div>
+                          </div>
                         </div>
                       </td>
 
                       {/* Created */}
-                      <td className={`px-4 py-3.5 text-xs whitespace-nowrap ${d ? 'text-gray-500' : 'text-gray-400'}`}>
+                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm whitespace-nowrap ${d ? 'text-gray-500' : 'text-gray-400'}`}>
                         {new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
 
                       {/* Actions */}
-                      <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }} onClick={(e) => e.stopPropagation()}>
                         <div className="relative inline-block">
                           <button onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
                             className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
@@ -350,21 +475,42 @@ export default function AdminFeedback() {
                           </button>
 
                           {openMenuId === post.id && (
-                            <div className={`absolute right-0 top-full mt-1 w-36 rounded-lg shadow-xl border z-50 py-1 ${
-                              d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
-                            }`}>
-                              <button onClick={() => { openEditModal(post); setOpenMenuId(null); }}
-                                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${d ? 'hover:bg-gray-600 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
-                                <Edit2 className="w-3.5 h-3.5" /> Edit
-                              </button>
-                              <button onClick={() => { handleTogglePin(post.id, post.isPinned); setOpenMenuId(null); }}
-                                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${d ? 'hover:bg-gray-600 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
-                                <Pin className="w-3.5 h-3.5" /> {post.isPinned ? 'Unpin' : 'Pin'}
-                              </button>
-                              <button onClick={() => { handleDeletePost(post.id); setOpenMenuId(null); }}
-                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-red-500 hover:bg-red-50">
-                                <Trash2 className="w-3.5 h-3.5" /> Delete
-                              </button>
+                            <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${
+                              d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'
+                            }`} style={{ minWidth: '180px' }}>
+                              {/* Arrow pointer */}
+                              <div className={`absolute -top-2 right-[8px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} style={{ filter: d ? 'none' : 'drop-shadow(0 -2px 2px rgba(0,0,0,0.06))' }} />
+                              <div className="relative group/edit">
+                                <button onClick={() => { openEditModal(post); setOpenMenuId(null); }}
+                                  className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-100 text-gray-800'}`}>
+                                  <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
+                                </button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/edit:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click to edit post</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
+                              <div className="relative group/pin">
+                                <button onClick={() => { handleTogglePin(post.id, post.isPinned); setOpenMenuId(null); }}
+                                  className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-100 text-gray-800'}`}>
+                                  <Pin className={`w-[18px] h-[18px] ${d ? 'text-gray-400' : 'text-gray-600'}`} /> {post.isPinned ? 'Unpin' : 'Pin'}
+                                </button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/pin:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">{post.isPinned ? 'Unpin this post' : 'Pin this post'}</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
+                              <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
+                              <div className="relative group/del">
+                                <button onClick={() => { handleDeletePost(post.id); setOpenMenuId(null); }}
+                                  className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
+                                  <Trash2 className="w-[18px] h-[18px]" /> Delete
+                                </button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/del:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Delete this post</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -372,32 +518,63 @@ export default function AdminFeedback() {
                     </tr>
                   );
                 })
-              ) : (
+              ) : (() => {
+                const emptyConfig = typeFilter !== 'all'
+                  ? EMPTY_TYPE_CONFIG[typeFilter] || EMPTY_STATE_CONFIG.all
+                  : EMPTY_STATE_CONFIG[statusFilter] || EMPTY_STATE_CONFIG.all;
+                const EmptyIcon = emptyConfig.icon;
+                return (
                 <tr>
-                  <td colSpan={9} className={`px-4 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                    No feedback found
+                  <td colSpan={7}>
+                    <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
+                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                        <EmptyIcon className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
+                      </div>
+                      <p className={`text-base font-semibold mb-1 ${d ? 'text-gray-300' : 'text-gray-600'}`}>{emptyConfig.title}</p>
+                      <p className={`text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>{emptyConfig.description}</p>
+                    </div>
                   </td>
                 </tr>
-              )}
+                );
+              })()}
             </tbody>
           </table>
 
           {/* Pagination */}
-          {filteredPosts.length > 0 && (
-            <div className={`flex items-center justify-between px-4 py-3 border-t ${d ? 'border-gray-700' : 'border-gray-200'}`}>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs ${d ? 'text-gray-400' : 'text-gray-500'}`}>Rows per page:</span>
-                <select value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
-                  className={`px-2 py-1 rounded border text-xs ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'}`}>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
+          <div className="flex items-center justify-between px-6 py-3">
               <div className="flex items-center gap-3">
-                <span className={`text-xs ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, filteredPosts.length)} of {filteredPosts.length}
+                <button onClick={() => setDenseMode(!denseMode)}
+                  className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                </button>
+                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                  <div className="relative" ref={(el) => { if (el) el.dataset.rowsDropdown = 'true'; }}>
+                    <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
+                      className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
+                      {rowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${rowsDropOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {rowsDropOpen && (
+                      <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${
+                        d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
+                      }`}>
+                        {[10, 25, 50, 100].map(n => (
+                          <button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
+                            className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
+                              rowsPerPage === n
+                                ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
+                                : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
+                            }`}>{n}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {filteredPosts.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, filteredPosts.length)}` : '0–0'} of {filteredPosts.length}
                 </span>
                 <div className="flex gap-1">
                   <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
@@ -411,71 +588,90 @@ export default function AdminFeedback() {
                 </div>
               </div>
             </div>
-          )}
         </div>
       )}
 
-      {/* Close menu on click outside */}
+      {/* Close menu/dropdown on click outside */}
       {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
+      {rowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setRowsDropOpen(false)} />}
 
       {/* Create Post Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full max-w-md ${d ? 'bg-gray-900' : 'bg-white'}`}>
-            <div className={`flex items-center justify-between p-6 border-b ${d ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
+            <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Create New Post</h2>
               <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="space-y-5" style={{ padding: '24px' }}>
+              {/* Title */}
               <div>
-                <label className={`block text-sm font-medium mb-1 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Title *</label>
-                <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Post title" className={`w-full px-3 py-2 rounded-lg border ${d ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`} />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Board *</label>
-                <select value={formData.boardId} onChange={(e) => setFormData({ ...formData, boardId: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-lg border ${d ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`}>
-                  <option value="">Select Board</option>
-                  {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Type</label>
-                  <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-lg border ${d ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`}>
-                    <option value="feature">Feature</option>
-                    <option value="bug">Bug</option>
-                    <option value="improvement">Improvement</option>
-                    <option value="integration">Integration</option>
-                  </select>
+                <div className="relative">
+                  <input type="text" value={formData.title} placeholder=" "
+                    onChange={(e) => { setFormData({ ...formData, title: e.target.value }); if (formErrors.title) setFormErrors(prev => { const n = { ...prev }; delete n.title; return n; }); }}
+                    style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                      formErrors.title
+                        ? (d ? 'border-red-500 bg-gray-800 text-white' : 'border-red-500 bg-white text-gray-900')
+                        : (d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400')
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                    top-1/2 -translate-y-1/2
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${formErrors.title ? 'text-red-500' : (d ? 'text-gray-400' : 'text-gray-500')}
+                    ${d ? 'bg-gray-900' : 'bg-white'}`}>Title *</span>
                 </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Priority</label>
-                  <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-lg border ${d ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`}>
-                    <option value="none">None</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical</option>
-                  </select>
-                </div>
+                {formErrors.title
+                  ? <p className="text-red-500 text-xs" style={{ margin: '8px 14px 0' }}>{formErrors.title}</p>
+                  : <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Enter the title for your post.</p>
+                }
               </div>
+
+              {/* Description */}
               <div>
-                <label className={`block text-sm font-medium mb-1 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Description</label>
-                <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Post description" rows={4}
-                  className={`w-full px-3 py-2 rounded-lg border ${d ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`} />
+                <div className="relative">
+                  <input type="text" value={formData.description} placeholder=" "
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                    top-1/2 -translate-y-1/2
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Description</span>
+                </div>
+                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Short description for your post.</p>
               </div>
+
+              {/* Board */}
+              <div>
+                <CustomDropdown label="Board *" value={formData.boardId}
+                  options={[{ value: '', label: 'Select Board' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
+                  onChange={(v) => { setFormData({ ...formData, boardId: v }); if (formErrors.boardId) setFormErrors(prev => { const n = { ...prev }; delete n.boardId; return n; }); }}
+                  minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} />
+                {formErrors.boardId
+                  ? <p className="text-red-500 text-xs" style={{ margin: '8px 14px 0' }}>{formErrors.boardId}</p>
+                  : <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Select the board for this post.</p>
+                }
+              </div>
+
+              <div>
+                <CustomDropdown label="Type" value={formData.type}
+                  options={[{ value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
+                  onChange={(v) => setFormData({ ...formData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} />
+                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Select the type of post.</p>
+              </div>
+
               <div className="flex gap-3 justify-end pt-2">
-                <button onClick={() => setShowCreateModal(false)}
-                  className={`px-4 py-2 rounded-lg border ${d ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 hover:bg-gray-50'}`}>Cancel</button>
-                <button onClick={handleCreatePost}
-                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] font-semibold">Create Post</button>
+                <button onClick={() => { setShowCreateModal(false); setFormErrors({}); }}
+                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
+                <LoadingButton loading={creating} onClick={handleCreatePost}
+                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Next</LoadingButton>
               </div>
             </div>
           </div>
@@ -485,52 +681,65 @@ export default function AdminFeedback() {
       {/* Edit Post Modal */}
       {showEditModal && selectedPost && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full max-w-md ${d ? 'bg-gray-900' : 'bg-white'}`}>
-            <div className={`flex items-center justify-between p-6 border-b ${d ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
+            <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Edit Post</h2>
               <button onClick={() => { setShowEditModal(false); setSelectedPost(null); }} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="space-y-5" style={{ padding: '24px' }}>
               <div>
-                <label className={`block text-sm font-medium mb-1 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Title</label>
-                <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-lg border ${d ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`} />
+                <div className="relative">
+                  <input type="text" value={formData.title} placeholder=" "
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                    top-1/2 -translate-y-1/2
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Title</span>
+                </div>
+                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Enter the title for your post.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Type</label>
-                  <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-lg border ${d ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`}>
-                    <option value="feature">Feature</option>
-                    <option value="bug">Bug</option>
-                    <option value="improvement">Improvement</option>
-                    <option value="integration">Integration</option>
-                  </select>
+                  <CustomDropdown label="Type" value={formData.type}
+                    options={[{ value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
+                    onChange={(v) => setFormData({ ...formData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} />
+                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Select the type of post.</p>
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Priority</label>
-                  <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-lg border ${d ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`}>
-                    <option value="none">None</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical</option>
-                  </select>
+                  <CustomDropdown label="Priority" value={formData.priority}
+                    options={[{ value: 'none', label: 'None' }, { value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' }]}
+                    onChange={(v) => setFormData({ ...formData, priority: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} />
+                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Set the priority level.</p>
                 </div>
               </div>
               <div>
-                <label className={`block text-sm font-medium mb-1 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Description</label>
-                <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={4}
-                  className={`w-full px-3 py-2 rounded-lg border ${d ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`} />
+                <div className="relative">
+                  <textarea value={formData.description} placeholder=" "
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={4} style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors resize-none ${
+                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                    top-3 translate-y-0
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Description</span>
+                </div>
+                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Add a detailed description for your post.</p>
               </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button onClick={() => { setShowEditModal(false); setSelectedPost(null); }}
-                  className={`px-4 py-2 rounded-lg border ${d ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 hover:bg-gray-50'}`}>Cancel</button>
-                <button onClick={handleUpdatePost}
-                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] font-semibold">Update Post</button>
+                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
+                <LoadingButton loading={updating} onClick={handleUpdatePost}
+                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Save</LoadingButton>
               </div>
             </div>
           </div>

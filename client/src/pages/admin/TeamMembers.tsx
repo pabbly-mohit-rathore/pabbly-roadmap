@@ -6,6 +6,7 @@ import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 import toast from 'react-hot-toast';
 
 interface TeamMember {
@@ -419,21 +420,14 @@ export default function AdminTeamMembers() {
 
               {/* Board Selection */}
               <div>
-                <label className={`block text-sm font-medium mb-1.5 ${d ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Select Board
-                </label>
-                <select
+                <CustomDropdown
+                  label="Board"
                   value={formData.boardId}
-                  onChange={(e) => setFormData({ ...formData, boardId: e.target.value })}
-                  className={`w-full px-4 py-2.5 rounded-lg border text-sm ${
-                    d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-                  }`}
-                >
-                  <option value="">Select Board</option>
-                  {boards.map((board) => (
-                    <option key={board.id} value={board.id}>{board.name}</option>
-                  ))}
-                </select>
+                  options={[{ value: '', label: 'Select Board' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
+                  onChange={(v) => setFormData({ ...formData, boardId: v })}
+                  minWidth="100%"
+                  bgClass={d ? 'bg-gray-800' : 'bg-white'}
+                />
                 <p className={`text-xs mt-1.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>
                   Select the board to be shared.
                 </p>
@@ -441,19 +435,14 @@ export default function AdminTeamMembers() {
 
               {/* Access Type */}
               <div>
-                <label className={`block text-sm font-medium mb-1.5 ${d ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Select Access Type
-                </label>
-                <select
+                <CustomDropdown
+                  label="Access Level"
                   value={formData.accessLevel}
-                  onChange={(e) => setFormData({ ...formData, accessLevel: e.target.value as 'admin' | 'manager' })}
-                  className={`w-full px-4 py-2.5 rounded-lg border text-sm ${
-                    d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-                  }`}
-                >
-                  <option value="admin">Admin Access (full access)</option>
-                  <option value="manager">Manager Access (limited access)</option>
-                </select>
+                  options={[{ value: 'admin', label: 'Admin Access (full access)' }, { value: 'manager', label: 'Manager Access (limited access)' }]}
+                  onChange={(v) => setFormData({ ...formData, accessLevel: v as 'admin' | 'manager' })}
+                  minWidth="100%"
+                  bgClass={d ? 'bg-gray-800' : 'bg-white'}
+                />
                 <p className={`text-xs mt-1.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>
                   Select the team member role: Admin Access (full access) or Manager Access (limited access).
                 </p>
@@ -516,17 +505,14 @@ export default function AdminTeamMembers() {
                 </div>
               </div>
               <div>
-                <label className={`block text-sm font-medium mb-1.5 ${d ? 'text-gray-300' : 'text-gray-700'}`}>Access Type</label>
-                <select
+                <CustomDropdown
+                  label="Access Level"
                   value={updateAccessLevel}
-                  onChange={(e) => setUpdateAccessLevel(e.target.value as 'admin' | 'manager')}
-                  className={`w-full px-4 py-2.5 rounded-lg border text-sm ${
-                    d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-                  }`}
-                >
-                  <option value="admin">Admin Access (full access)</option>
-                  <option value="manager">Manager Access (limited access)</option>
-                </select>
+                  options={[{ value: 'admin', label: 'Admin Access (full access)' }, { value: 'manager', label: 'Manager Access (limited access)' }]}
+                  onChange={(v) => setUpdateAccessLevel(v as 'admin' | 'manager')}
+                  minWidth="100%"
+                  bgClass={d ? 'bg-gray-800' : 'bg-white'}
+                />
               </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button onClick={handleUpdateAccess}

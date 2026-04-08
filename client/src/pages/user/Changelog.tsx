@@ -81,11 +81,11 @@ export default function UserChangelog() {
   return (
     <UserLayout>
       <div>
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className={`text-2xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             Changelog
           </h1>
-          <p className={`text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+          <p className={`text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
             Latest product updates and announcements
           </p>
         </div>

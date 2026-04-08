@@ -5,6 +5,7 @@ import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 
 interface Tag {
   id: string;
@@ -556,26 +557,21 @@ export default function AdminBoardDetail() {
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Rows per page:
-                </span>
-                <select
-                  value={rowsPerPage}
-                  onChange={(e) => {
-                    setRowsPerPage(Number(e.target.value));
+                <CustomDropdown
+                  label="Rows"
+                  value={String(rowsPerPage)}
+                  options={[
+                    { value: '10', label: '10' },
+                    { value: '25', label: '25' },
+                    { value: '50', label: '50' },
+                    { value: '100', label: '100' },
+                  ]}
+                  onChange={(v) => {
+                    setRowsPerPage(Number(v));
                     setPage(0);
                   }}
-                  className={`text-sm border rounded px-2 py-1 ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-200 text-gray-700'
-                  }`}
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+                  minWidth="80px"
+                />
               </div>
 
               <div className="flex items-center gap-4">
@@ -701,31 +697,19 @@ export default function AdminBoardDetail() {
 
               {/* Type */}
               <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    theme === 'dark'
-                      ? 'text-gray-300'
-                      : 'text-gray-700'
-                  }`}
-                >
-                  Type
-                </label>
-                <select
+                <CustomDropdown
+                  label="Type"
                   value={formData.type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, type: e.target.value })
-                  }
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-200'
-                  }`}
-                >
-                  <option value="feature">Feature</option>
-                  <option value="bug">Bug</option>
-                  <option value="improvement">Improvement</option>
-                  <option value="integration">Integration</option>
-                </select>
+                  options={[
+                    { value: 'feature', label: 'Feature' },
+                    { value: 'bug', label: 'Bug' },
+                    { value: 'improvement', label: 'Improvement' },
+                    { value: 'integration', label: 'Integration' },
+                  ]}
+                  onChange={(v) => setFormData({ ...formData, type: v })}
+                  minWidth="100%"
+                  bgClass={theme === 'dark' ? 'bg-gray-800' : 'bg-white'}
+                />
               </div>
 
               {/* Tags */}
@@ -906,31 +890,19 @@ export default function AdminBoardDetail() {
 
               {/* Type */}
               <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    theme === 'dark'
-                      ? 'text-gray-300'
-                      : 'text-gray-700'
-                  }`}
-                >
-                  Type
-                </label>
-                <select
+                <CustomDropdown
+                  label="Type"
                   value={editFormData.type}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, type: e.target.value })
-                  }
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-200'
-                  }`}
-                >
-                  <option value="feature">Feature</option>
-                  <option value="bug">Bug</option>
-                  <option value="improvement">Improvement</option>
-                  <option value="integration">Integration</option>
-                </select>
+                  options={[
+                    { value: 'feature', label: 'Feature' },
+                    { value: 'bug', label: 'Bug' },
+                    { value: 'improvement', label: 'Improvement' },
+                    { value: 'integration', label: 'Integration' },
+                  ]}
+                  onChange={(v) => setEditFormData({ ...editFormData, type: v })}
+                  minWidth="100%"
+                  bgClass={theme === 'dark' ? 'bg-gray-800' : 'bg-white'}
+                />
               </div>
 
               {/* Tags */}

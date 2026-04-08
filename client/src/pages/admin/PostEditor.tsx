@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Save, Send, Clock, ChevronLeft,
+  Save, Send, ChevronLeft,
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, Link as LinkIcon, Image as ImageIcon,
   Code, Heading1, Heading2, Quote, Minus, Undo2, Redo2, Code2,
@@ -21,13 +21,17 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
-import Highlight from '@tiptap/extension-highlight';
+import HighlightExt from '@tiptap/extension-highlight';
 import FontFamily from '@tiptap/extension-font-family';
 import { Extension, mergeAttributes, Node } from '@tiptap/core';
 import { HexColorPicker } from 'react-colorful';
 import useThemeStore from '../../store/themeStore';
+import api from '../../services/api';
+import LoadingBar from '../../components/ui/LoadingBar';
+import LoadingButton from '../../components/ui/LoadingButton';
+import toast from 'react-hot-toast';
 
-// FontSize extension (from Pabbly editor)
+// FontSize extension
 const FontSize = Extension.create({
   name: 'fontSize',
   addGlobalAttributes() {
@@ -56,12 +60,8 @@ const FontSize = Extension.create({
     };
   },
 });
-import api from '../../services/api';
-import LoadingBar from '../../components/ui/LoadingBar';
-import LoadingButton from '../../components/ui/LoadingButton';
-import toast from 'react-hot-toast';
 
-// Resizable Image Component with alignment
+// Resizable Image Component
 function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const align = node.attrs.align || 'left';
@@ -70,41 +70,26 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
     e.preventDefault();
     const startX = e.clientX;
     const startWidth = imgRef.current?.offsetWidth || 300;
-
     const onMouseMove = (ev: MouseEvent) => {
       const newWidth = Math.max(100, startWidth + (ev.clientX - startX));
       updateAttributes({ width: newWidth });
     };
-
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   };
 
   return (
-    <NodeViewWrapper data-drag-handle
-      style={{ textAlign: align, margin: '0.5rem 0' }}>
+    <NodeViewWrapper data-drag-handle style={{ textAlign: align, margin: '0.5rem 0' }}>
       <div className={`relative inline-block ${selected ? 'ring-2 ring-blue-500 rounded' : ''}`}>
-        <img
-          ref={imgRef}
-          src={node.attrs.src}
-          alt={node.attrs.alt || ''}
-          style={{
-            width: node.attrs.width ? `${node.attrs.width}px` : 'auto',
-            maxWidth: '100%',
-            display: 'block',
-          }}
-          className="rounded-lg"
-          draggable={false}
-        />
+        <img ref={imgRef} src={node.attrs.src} alt={node.attrs.alt || ''}
+          style={{ width: node.attrs.width ? `${node.attrs.width}px` : 'auto', maxWidth: '100%', display: 'block' }}
+          className="rounded-lg" draggable={false} />
         {selected && (
-          <div onMouseDown={handleMouseDown}
-            className="absolute right-0 bottom-0 w-4 h-4 bg-blue-500 rounded-tl"
-            style={{ cursor: 'se-resize' }} />
+          <div onMouseDown={handleMouseDown} className="absolute right-0 bottom-0 w-4 h-4 bg-blue-500 rounded-tl" style={{ cursor: 'se-resize' }} />
         )}
       </div>
     </NodeViewWrapper>
@@ -117,18 +102,10 @@ const ResizableImage = Node.create({
   atom: true,
   draggable: true,
   addAttributes() {
-    return {
-      src: { default: null },
-      alt: { default: null },
-      width: { default: null },
-      align: { default: 'left' },
-    };
+    return { src: { default: null }, alt: { default: null }, width: { default: null }, align: { default: 'left' } };
   },
   parseHTML() {
-    return [
-      { tag: 'div[data-type="resizable-image"] img', priority: 60 },
-      { tag: 'img[src]' },
-    ];
+    return [{ tag: 'div[data-type="resizable-image"] img', priority: 60 }, { tag: 'img[src]' }];
   },
   renderHTML({ HTMLAttributes }) {
     const w = HTMLAttributes.width ? `width: ${HTMLAttributes.width}px; max-width: 100%;` : 'max-width: 100%;';
@@ -136,45 +113,41 @@ const ResizableImage = Node.create({
     const textAlign = a === 'center' ? 'center' : a === 'right' ? 'right' : 'left';
     const margin = a === 'center' ? 'margin-left: auto; margin-right: auto;' : a === 'right' ? 'margin-left: auto;' : '';
     return ['div', { 'data-type': 'resizable-image', style: `text-align: ${textAlign}; margin: 0.5rem 0; clear: both;` },
-      ['img', mergeAttributes(HTMLAttributes, {
-        style: `${w} ${margin} display: block;`,
-        class: 'rounded-lg',
-        align: null,
-      })]
-    ];
+      ['img', mergeAttributes(HTMLAttributes, { style: `${w} ${margin} display: block;`, class: 'rounded-lg' })]];
   },
   addNodeView() { return ReactNodeViewRenderer(ResizableImageComponent); },
 });
 
-interface ChangelogEntry {
+interface Post {
   id: string;
   title: string;
-  content: string;
-  type: string;
+  content: string | null;
+  description: string;
   status: string;
-  allBoards: boolean;
-  publishedAt: string | null;
+  type: string;
+  priority: string;
+  isDraft: boolean;
+  board: { id: string; name: string; slug: string; color: string };
   author: { id: string; name: string };
-  boards: { board: { id: string; name: string; color: string } }[];
+  tags: { tag: { id: string; name: string; color: string } }[];
 }
 
 const FONT_SIZES = ['12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px'];
 const FONT_FAMILIES = ['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Courier New', 'Verdana'];
 
-export default function ChangelogEditor() {
+export default function PostEditor() {
   const theme = useThemeStore((state) => state.theme);
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isAdminRoute = window.location.pathname.startsWith('/admin');
+  const backPath = isAdminRoute ? '/admin/feedback' : '/user/feature-requests';
 
-  const [entry, setEntry] = useState<ChangelogEntry | null>(null);
+  const [post, setPost] = useState<Post | null>(null);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [scheduling, setScheduling] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [scheduleDate, setScheduleDate] = useState('');
   const [previewHtml, setPreviewHtml] = useState('');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
@@ -185,135 +158,92 @@ export default function ChangelogEditor() {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-        // @ts-ignore - disable if included in StarterKit to avoid duplicates
-        link: false,
-        underline: false,
-      }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: false, underline: false }),
       UnderlineExt,
       LinkExt.configure({ openOnClick: false, HTMLAttributes: { class: 'text-blue-600 underline' } }),
       ResizableImage,
-      Placeholder.configure({ placeholder: 'Write your changelog content here...' }),
+      Placeholder.configure({ placeholder: 'Write your post content here...' }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Table.configure({ resizable: true }),
       TableRow,
       TableCell.extend({ content: 'block+' }),
       TableHeader.extend({ content: 'block+' }),
-      TextStyle,
-      FontSize,
-      FontFamily,
-      Color,
-      Highlight.configure({ multicolor: true }),
+      TextStyle, FontSize, FontFamily, Color,
+      HighlightExt.configure({ multicolor: true }),
     ],
     onUpdate: ({ editor: e }) => {
       const html = e.getHTML();
-      requestAnimationFrame(() => {
-        setPreviewHtml(html);
-        triggerAutoSave();
-      });
+      requestAnimationFrame(() => { setPreviewHtml(html); triggerAutoSave(); });
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-6 py-4 ' +
-          (theme === 'dark' ? 'prose-invert' : ''),
+        class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-6 py-4 ' + (theme === 'dark' ? 'prose-invert' : ''),
       },
     },
   });
 
-  useEffect(() => { fetchEntry(); }, [id]);
+  useEffect(() => { fetchPost(); }, [id]);
   useEffect(() => {
-    if (editor && entry?.content) {
-      editor.commands.setContent(entry.content);
-      setPreviewHtml(entry.content);
+    if (editor && post?.content) {
+      editor.commands.setContent(post.content);
+      setPreviewHtml(post.content);
     }
-  }, [editor, entry]);
+  }, [editor, post]);
 
-  const fetchEntry = async () => {
+  const fetchPost = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/changelog/${id}`);
+      const response = await api.get(`/posts/by-id/${id}`);
       if (response.data.success) {
-        const data = response.data.data.entry;
-        setEntry(data);
+        const data = response.data.data.post;
+        setPost(data);
         setTitle(data.title);
       }
-    } catch (error) {
-      toast.error('Failed to load entry');
+    } catch {
+      toast.error('Failed to load post');
     } finally {
       setLoading(false);
     }
   };
 
-  // Auto-save: debounced 3s after last change
   const triggerAutoSave = () => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      autoSave();
-    }, 3000);
+    autoSaveTimerRef.current = setTimeout(() => autoSave(), 3000);
   };
 
   const autoSave = async () => {
     if (!id || !editor) return;
-    const content = editor.getHTML();
     try {
-      await api.put(`/changelog/${id}`, { title, content });
+      await api.put(`/posts/${id}`, { title, content: editor.getHTML() });
       setLastSaved(new Date().toLocaleTimeString());
-    } catch {
-      // silent fail for auto-save
-    }
+    } catch { /* silent */ }
   };
 
-  // Auto-save on title change too
-  useEffect(() => {
-    if (entry) triggerAutoSave();
-  }, [title]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    };
-  }, []);
+  useEffect(() => { if (post) triggerAutoSave(); }, [title]);
+  useEffect(() => { return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); }; }, []);
 
   const getEditorContent = () => previewHtml || editor?.getHTML() || '';
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      await api.put(`/changelog/${id}`, { title, content: getEditorContent() });
+      await api.put(`/posts/${id}`, { title, content: getEditorContent() });
       setLastSaved(new Date().toLocaleTimeString());
-      toast.success('Saved successfully!');
+      toast.success('Saved!');
     } catch { toast.error('Failed to save'); }
     finally { setSaving(false); }
   };
 
   const handlePublish = async () => {
-    if (!title.trim() || !getEditorContent().trim()) {
-      toast.error('Title and content are required');
-      return;
-    }
+    if (!title.trim()) { toast.error('Title is required'); return; }
     try {
       setPublishing(true);
-      await api.put(`/changelog/${id}`, { title, content: getEditorContent() });
-      await api.post(`/changelog/${id}/publish`);
-      toast.success('Published!');
-      navigate('/admin/changelog');
+      await api.put(`/posts/${id}`, { title, content: getEditorContent() });
+      await api.post(`/posts/${id}/publish`);
+      toast.success('Post published!');
+      navigate(backPath);
     } catch { toast.error('Failed to publish'); }
     finally { setPublishing(false); }
-  };
-
-  const handleSchedule = async () => {
-    if (!scheduleDate) { toast.error('Select a date'); return; }
-    try {
-      setScheduling(true);
-      await api.put(`/changelog/${id}`, { title, content: getEditorContent() });
-      await api.post(`/changelog/${id}/publish`, { scheduledAt: scheduleDate });
-      toast.success('Scheduled!');
-      setShowScheduleModal(false);
-      navigate('/admin/changelog');
-    } catch { toast.error('Failed to schedule'); }
-    finally { setScheduling(false); }
   };
 
   const addLink = () => {
@@ -343,15 +273,16 @@ export default function ChangelogEditor() {
 
   const setAlign = (alignment: string) => {
     if (!editor) return;
-    // Check if a resizableImage node is selected
     const { state } = editor;
     const { from } = state.selection;
     const node = state.doc.nodeAt(from);
     if (node?.type.name === 'resizableImage') {
-      // Update image alignment
-      editor.chain().focus().updateAttributes('resizableImage', { align: alignment }).run();
+      const pos = state.doc.resolve(from).before();
+      editor.chain().focus().command(({ tr }) => {
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, align: alignment });
+        return true;
+      }).run();
     } else {
-      // Normal text alignment
       editor.chain().focus().setTextAlign(alignment).run();
     }
   };
@@ -361,23 +292,15 @@ export default function ChangelogEditor() {
     const { state } = editor;
     const { from } = state.selection;
     const node = state.doc.nodeAt(from);
-    if (node?.type.name === 'resizableImage') {
-      return (node.attrs.align || 'left') === alignment;
-    }
+    if (node?.type.name === 'resizableImage') return (node.attrs.align || 'left') === alignment;
     return editor.isActive({ textAlign: alignment });
   };
 
-  const insertTable = () => {
-    editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-  };
+  const insertTable = () => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
 
   const getTypeBadge = (type: string) => {
-    const c: Record<string, string> = { new: 'bg-emerald-100 text-emerald-700', improved: 'bg-blue-100 text-blue-700', fixed: 'bg-orange-100 text-orange-700' };
+    const c: Record<string, string> = { feature: 'bg-blue-100 text-blue-700', bug: 'bg-red-100 text-red-700', improvement: 'bg-purple-100 text-purple-700', integration: 'bg-emerald-100 text-emerald-700' };
     return c[type] || 'bg-gray-100 text-gray-700';
-  };
-  const getStatusBadge = (status: string) => {
-    const c: Record<string, string> = { draft: 'bg-yellow-100 text-yellow-700', scheduled: 'bg-blue-100 text-blue-700', published: 'bg-green-100 text-green-700' };
-    return c[status] || 'bg-gray-100 text-gray-700';
   };
 
   if (loading) return <LoadingBar />;
@@ -402,14 +325,15 @@ export default function ChangelogEditor() {
         theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
       }`}>
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/admin/changelog')}
+          <button onClick={() => navigate(backPath)}
             className={`flex items-center gap-1 text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
-          {entry && (
+          {post && (
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-xs font-bold capitalize ${getStatusBadge(entry.status)}`}>{entry.status}</span>
-              <span className={`px-2 py-0.5 rounded text-xs font-bold capitalize ${getTypeBadge(entry.type)}`}>{entry.type}</span>
+              {post.isDraft && <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-100 text-yellow-700">Draft</span>}
+              <span className={`px-2 py-0.5 rounded text-xs font-bold capitalize ${getTypeBadge(post.type)}`}>{post.type}</span>
+              <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>in {post.board.name}</span>
             </div>
           )}
         </div>
@@ -425,13 +349,9 @@ export default function ChangelogEditor() {
             }`}>
             <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save'}
           </button>
-          <button onClick={() => setShowScheduleModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition">
-            <Clock className="w-4 h-4" /> Schedule
-          </button>
-          <LoadingButton loading={publishing} onClick={handlePublish}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#0c68e9] text-white hover:bg-[#0b5dd0] transition disabled:opacity-70">
-            <Send className="w-4 h-4" /> Publish
+          <LoadingButton onClick={handlePublish} loading={publishing}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition disabled:opacity-70">
+            <Send className="w-4 h-4" /> Publish Post
           </LoadingButton>
         </div>
       </div>
@@ -441,70 +361,54 @@ export default function ChangelogEditor() {
         <div className="flex gap-6 h-full">
           {/* Left: Editor Card */}
           <div className="flex-1 flex flex-col min-w-0 overflow-visible">
-            {/* Title Input */}
+            {/* Title & Description */}
             <div className={`px-5 py-4 rounded-t-xl border border-b-0 ${
               theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
             }`}>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                placeholder="Entry title"
+                placeholder="Post title"
                 className={`w-full text-xl font-bold outline-none bg-transparent ${
                   theme === 'dark' ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-300'
                 }`} />
+              {post?.description && (
+                <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
+              )}
             </div>
 
             {/* Toolbar */}
             <div className={`flex items-center gap-0.5 px-3 py-1.5 border-x border-b overflow-x-auto flex-wrap ${
               theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-[#f8f9fa] border-gray-200'
             }`}>
-              {/* Font Size */}
-              <select
-                value=""
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!val || !editor) return;
-                  // If no selection, select all text in current node
-                  const { from, to } = editor.state.selection;
-                  if (from === to) {
-                    // No selection - apply to current line/paragraph
-                    editor.chain().focus().selectParentNode().setMark('textStyle', { fontSize: val }).run();
-                  } else {
-                    editor.chain().focus().setMark('textStyle', { fontSize: val }).run();
-                  }
-                }}
-                className={`px-1.5 py-1 rounded text-xs border cursor-pointer ${
-                  theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'
-                }`}
-              >
+              <select value="" onChange={(e) => {
+                const val = e.target.value;
+                if (!val || !editor) return;
+                const { from, to } = editor.state.selection;
+                if (from === to) editor.chain().focus().selectParentNode().setMark('textStyle', { fontSize: val }).run();
+                else editor.chain().focus().setMark('textStyle', { fontSize: val }).run();
+              }} className={`px-1.5 py-1 rounded text-xs border cursor-pointer ${
+                theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'
+              }`}>
                 <option value="" disabled>Size</option>
                 {FONT_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
 
-              {/* Font Family */}
-              <select
-                value=""
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!val || !editor) return;
-                  const { from, to } = editor.state.selection;
-                  if (from === to) {
-                    editor.chain().focus().selectParentNode().setFontFamily(val).run();
-                  } else {
-                    editor.chain().focus().setFontFamily(val).run();
-                  }
-                }}
-                className={`px-1.5 py-1 rounded text-xs border cursor-pointer ${
-                  theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'
-                }`}
-              >
+              <select value="" onChange={(e) => {
+                const val = e.target.value;
+                if (!val || !editor) return;
+                const { from, to } = editor.state.selection;
+                if (from === to) editor.chain().focus().selectParentNode().setFontFamily(val).run();
+                else editor.chain().focus().setFontFamily(val).run();
+              }} className={`px-1.5 py-1 rounded text-xs border cursor-pointer ${
+                theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-700'
+              }`}>
                 <option value="" disabled>Font</option>
                 {FONT_FAMILIES.map(f => <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>)}
               </select>
 
               <Sep />
 
-              {/* Font Color */}
               <div>
-                <button id="fontColorBtn" onClick={() => { setShowColorPicker(!showColorPicker); setShowHighlightPicker(false); }}
+                <button id="postFontColorBtn" onClick={() => { setShowColorPicker(!showColorPicker); setShowHighlightPicker(false); }}
                   title="Font Color"
                   className={`p-1.5 rounded transition flex items-center gap-1 ${theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-200'}`}>
                   <Palette className="w-4 h-4" />
@@ -512,9 +416,8 @@ export default function ChangelogEditor() {
                 </button>
               </div>
 
-              {/* Highlight Color */}
               <div>
-                <button id="highlightColorBtn" onClick={() => { setShowHighlightPicker(!showHighlightPicker); setShowColorPicker(false); }}
+                <button id="postHighlightColorBtn" onClick={() => { setShowHighlightPicker(!showHighlightPicker); setShowColorPicker(false); }}
                   title="Highlight"
                   className={`p-1.5 rounded transition flex items-center gap-1 ${
                     editor?.isActive('highlight')
@@ -564,37 +467,24 @@ export default function ChangelogEditor() {
               <TB icon={Code2} title="Code Block" action={() => editor?.chain().focus().toggleCodeBlock().run()} active={editor?.isActive('codeBlock')} />
               <TB icon={TableIcon} title="Insert Table" action={insertTable} />
 
-              {/* Table Controls - show when cursor is in a table */}
               {editor?.isActive('table') && (
                 <>
                   <Sep />
                   <button onClick={() => editor?.chain().focus().addColumnAfter().run()} title="Add Column"
-                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
-                      theme === 'dark' ? 'text-green-400 hover:bg-gray-700' : 'text-green-700 bg-green-50 hover:bg-green-100'
-                    }`}>+ Col</button>
+                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${theme === 'dark' ? 'text-green-400 hover:bg-gray-700' : 'text-green-700 bg-green-50 hover:bg-green-100'}`}>+ Col</button>
                   <button onClick={() => editor?.chain().focus().deleteColumn().run()} title="Remove Column"
-                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
-                      theme === 'dark' ? 'text-red-400 hover:bg-gray-700' : 'text-red-700 bg-red-50 hover:bg-red-100'
-                    }`}>- Col</button>
+                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${theme === 'dark' ? 'text-red-400 hover:bg-gray-700' : 'text-red-700 bg-red-50 hover:bg-red-100'}`}>- Col</button>
                   <button onClick={() => editor?.chain().focus().addRowAfter().run()} title="Add Row"
-                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
-                      theme === 'dark' ? 'text-green-400 hover:bg-gray-700' : 'text-green-700 bg-green-50 hover:bg-green-100'
-                    }`}>+ Row</button>
+                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${theme === 'dark' ? 'text-green-400 hover:bg-gray-700' : 'text-green-700 bg-green-50 hover:bg-green-100'}`}>+ Row</button>
                   <button onClick={() => editor?.chain().focus().deleteRow().run()} title="Remove Row"
-                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
-                      theme === 'dark' ? 'text-red-400 hover:bg-gray-700' : 'text-red-700 bg-red-50 hover:bg-red-100'
-                    }`}>- Row</button>
+                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${theme === 'dark' ? 'text-red-400 hover:bg-gray-700' : 'text-red-700 bg-red-50 hover:bg-red-100'}`}>- Row</button>
                   <button onClick={() => editor?.chain().focus().deleteTable().run()} title="Delete Table"
-                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
-                      theme === 'dark' ? 'text-red-400 hover:bg-gray-700' : 'text-red-700 bg-red-50 hover:bg-red-100'
-                    }`}>Del Table</button>
+                    className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${theme === 'dark' ? 'text-red-400 hover:bg-gray-700' : 'text-red-700 bg-red-50 hover:bg-red-100'}`}>Del Table</button>
                 </>
               )}
 
               <TB icon={RemoveFormatting} title="Clear Formatting" action={() => editor?.chain().focus().clearNodes().unsetAllMarks().run()} />
-
               <Sep />
-
               <TB icon={Undo2} title="Undo" action={() => editor?.chain().focus().undo().run()} />
               <TB icon={Redo2} title="Redo" action={() => editor?.chain().focus().redo().run()} />
             </div>
@@ -618,6 +508,9 @@ export default function ChangelogEditor() {
               {title && (
                 <h1 className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{title}</h1>
               )}
+              {post?.description && (
+                <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
+              )}
               {previewHtml && previewHtml !== '<p></p>' ? (
                 <div className={`tiptap-preview ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
                   dangerouslySetInnerHTML={{ __html: previewHtml }} />
@@ -629,81 +522,49 @@ export default function ChangelogEditor() {
         </div>
       </div>
 
-      {/* Font Color Picker - Fixed overlay */}
+      {/* Font Color Picker */}
       {showColorPicker && (
         <>
           <div className="fixed inset-0 z-[998]" onClick={() => setShowColorPicker(false)} />
-          <div
-            className={`fixed z-[999] p-3 rounded-lg shadow-2xl border ${
-              theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
-            }`}
+          <div className={`fixed z-[999] p-3 rounded-lg shadow-2xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'}`}
             style={{
-              top: (document.getElementById('fontColorBtn')?.getBoundingClientRect().bottom ?? 200) + 8,
-              left: document.getElementById('fontColorBtn')?.getBoundingClientRect().left ?? 200,
-            }}
-          >
+              top: (document.getElementById('postFontColorBtn')?.getBoundingClientRect().bottom ?? 200) + 8,
+              left: document.getElementById('postFontColorBtn')?.getBoundingClientRect().left ?? 200,
+            }}>
             <HexColorPicker color={fontColor} onChange={(c) => { setFontColor(c); editor?.chain().focus().setColor(c).run(); }}
               style={{ width: '200px', height: '160px' }} />
             <div className="flex items-center gap-2 mt-2">
               <input type="text" value={fontColor}
                 onChange={(e) => { setFontColor(e.target.value); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) editor?.chain().focus().setColor(e.target.value).run(); }}
-                className={`flex-1 px-2 py-1 rounded text-xs border font-mono ${
-                  theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
-                }`} />
-              <button onClick={() => setShowColorPicker(false)}
-                className="px-2 py-1 text-xs bg-[#0c68e9] text-white rounded hover:bg-[#0b5dd0]">Done</button>
+                className={`flex-1 px-2 py-1 rounded text-xs border font-mono ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`} />
+              <button onClick={() => setShowColorPicker(false)} className="px-2 py-1 text-xs bg-[#0c68e9] text-white rounded hover:bg-[#0b5dd0]">Done</button>
             </div>
           </div>
         </>
       )}
 
-      {/* Highlight Color Picker - Fixed overlay */}
+      {/* Highlight Color Picker */}
       {showHighlightPicker && (
         <>
           <div className="fixed inset-0 z-[998]" onClick={() => setShowHighlightPicker(false)} />
-          <div
-            className={`fixed z-[999] p-3 rounded-lg shadow-2xl border ${
-              theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
-            }`}
+          <div className={`fixed z-[999] p-3 rounded-lg shadow-2xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'}`}
             style={{
-              top: (document.getElementById('highlightColorBtn')?.getBoundingClientRect().bottom ?? 200) + 8,
-              left: document.getElementById('highlightColorBtn')?.getBoundingClientRect().left ?? 200,
-            }}
-          >
+              top: (document.getElementById('postHighlightColorBtn')?.getBoundingClientRect().bottom ?? 200) + 8,
+              left: document.getElementById('postHighlightColorBtn')?.getBoundingClientRect().left ?? 200,
+            }}>
             <HexColorPicker color={highlightColor} onChange={(c) => { setHighlightColor(c); editor?.chain().focus().toggleHighlight({ color: c }).run(); }}
               style={{ width: '200px', height: '160px' }} />
             <div className="flex items-center gap-2 mt-2">
               <input type="text" value={highlightColor}
                 onChange={(e) => { setHighlightColor(e.target.value); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) editor?.chain().focus().toggleHighlight({ color: e.target.value }).run(); }}
-                className={`flex-1 px-2 py-1 rounded text-xs border font-mono ${
-                  theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
-                }`} />
-              <button onClick={() => setShowHighlightPicker(false)}
-                className="px-2 py-1 text-xs bg-[#0c68e9] text-white rounded hover:bg-[#0b5dd0]">Done</button>
+                className={`flex-1 px-2 py-1 rounded text-xs border font-mono ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`} />
+              <button onClick={() => setShowHighlightPicker(false)} className="px-2 py-1 text-xs bg-[#0c68e9] text-white rounded hover:bg-[#0b5dd0]">Done</button>
             </div>
           </div>
         </>
       )}
 
-      {/* Hidden file input */}
       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
-
-      {/* Schedule Modal */}
-      {showScheduleModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`max-w-sm w-full mx-4 p-6 rounded-xl ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
-            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Schedule Publish</h3>
-            <input type="datetime-local" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)}
-              className={`w-full px-4 py-2.5 rounded-lg border mb-4 ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`} />
-            <div className="flex gap-3">
-              <button onClick={() => setShowScheduleModal(false)}
-                className={`flex-1 px-4 py-2 rounded-lg border ${theme === 'dark' ? 'border-gray-700 text-gray-300' : 'border-gray-200'}`}>Cancel</button>
-              <LoadingButton loading={scheduling} onClick={handleSchedule}
-                className="flex-1 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] font-semibold disabled:opacity-70">Schedule</LoadingButton>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

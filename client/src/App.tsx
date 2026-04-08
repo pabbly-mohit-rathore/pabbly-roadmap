@@ -21,6 +21,7 @@ const AdminRoadmap = lazy(() => import('./pages/admin/Roadmap'));
 const AdminBoardDetail = lazy(() => import('./pages/admin/BoardDetail'));
 const AdminPostDetail = lazy(() => import('./pages/admin/PostDetail'));
 const ChangelogEditor = lazy(() => import('./pages/admin/ChangelogEditor'));
+const PostEditor = lazy(() => import('./pages/admin/PostEditor'));
 const ChangelogView = lazy(() => import('./pages/admin/ChangelogView'));
 const BoardManagement = lazy(() => import('./pages/admin/BoardManagement'));
 const AdminBoardMembers = lazy(() => import('./pages/admin/BoardMembers'));
@@ -125,6 +126,15 @@ function App() {
             ) : <Navigate to="/login" />
           } />
 
+          {/* Post Editor - Full width, no sidebar */}
+          <Route path="/admin/posts/:id/edit" element={
+            isAuthenticated && canAccessAdmin ? (
+              <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                <Navbar /><PostEditor /><Toaster position="top-right" />
+              </div>
+            ) : <Navigate to="/login" />
+          } />
+
           {/* Changelog View */}
           <Route path="/admin/changelog/:id/view" element={
             isAuthenticated && canAccessAdmin ? (
@@ -174,6 +184,14 @@ function App() {
           } />
           <Route path="/user/posts/:slug" element={
             isAuthenticated || hasInviteAccess() ? <><UserPostDetail /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          } />
+          {/* User Post Editor - Full width, no sidebar */}
+          <Route path="/user/posts/:id/edit" element={
+            isAuthenticated || hasInviteAccess() ? (
+              <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
+                <Navbar /><PostEditor /><Toaster position="top-right" />
+              </div>
+            ) : <Navigate to="/login" />
           } />
           <Route path="/user/changelog" element={
             isAuthenticated || hasInviteAccess() ? <><UserChangelog /><Toaster position="top-right" /></> : <Navigate to="/login" />

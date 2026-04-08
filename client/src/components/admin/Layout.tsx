@@ -1,5 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../layout/Navbar';
 import AdminSidebar from './Sidebar';
 import useThemeStore from '../../store/themeStore';
@@ -16,8 +17,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
+  const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
   const showAccessBar = isTeamAccess && user?.role !== 'admin';
   const accessBarHeight = showAccessBar ? 44 : 0;
+
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <div className={`h-screen flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
@@ -43,7 +50,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )}
       <Navbar />
       <AdminSidebar accessBarHeight={accessBarHeight} />
-      <main className="overflow-y-auto" style={{ marginLeft: '207px', height: `calc(100vh - 64px - ${accessBarHeight}px)` }}>
+      <main ref={mainRef} className="overflow-y-auto" style={{ marginLeft: '207px', height: `calc(100vh - 64px - ${accessBarHeight}px)` }}>
         <div className={`p-6 ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
           {children}
         </div>

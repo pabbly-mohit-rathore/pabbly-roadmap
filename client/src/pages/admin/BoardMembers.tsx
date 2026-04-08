@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 import LoadingBar from '../../components/ui/LoadingBar';
 
 interface User {
@@ -154,27 +155,13 @@ export default function AdminBoardMembers() {
 
         {/* Board Selector */}
         <div>
-          <label className={`block text-sm font-medium mb-2 ${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-          }`}>
-            Select Board
-          </label>
-          <select
+          <CustomDropdown
+            label="Board"
             value={selectedBoard}
-            onChange={(e) => setSelectedBoard(e.target.value)}
-            className={`px-4 py-2 rounded-lg border ${
-              theme === 'dark'
-                ? 'bg-gray-800 border-gray-700 text-white'
-                : 'bg-white border-gray-200'
-            }`}
-          >
-            <option value="">Select Board</option>
-            {boards.map((board) => (
-              <option key={board.id} value={board.id}>
-                {board.name}
-              </option>
-            ))}
-          </select>
+            options={[{ value: '', label: 'Select Board' }, ...boards.map((b) => ({ value: b.id, label: b.name }))]}
+            onChange={(v) => setSelectedBoard(v)}
+            minWidth="200px"
+          />
         </div>
       </div>
 
@@ -305,27 +292,14 @@ export default function AdminBoardMembers() {
 
             <div className="space-y-4">
               <div>
-                <label className={`block text-sm font-medium mb-2 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Select User
-                </label>
-                <select
+                <CustomDropdown
+                  label="User"
                   value={selectedUserId}
-                  onChange={(e) => setSelectedUserId(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-200'
-                  }`}
-                >
-                  <option value="">Select User</option>
-                  {availableUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({user.email})
-                    </option>
-                  ))}
-                </select>
+                  options={[{ value: '', label: 'Select User' }, ...availableUsers.map((u) => ({ value: u.id, label: `${u.name} (${u.email})` }))]}
+                  onChange={(v) => setSelectedUserId(v)}
+                  minWidth="100%"
+                  bgClass={theme === 'dark' ? 'bg-gray-800' : 'bg-white'}
+                />
               </div>
 
               <div className="flex gap-3 justify-end pt-4">

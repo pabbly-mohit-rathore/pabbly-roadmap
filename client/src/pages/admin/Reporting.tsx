@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 
 interface ActivityData {
   posts: { count: number; change: number };
@@ -208,20 +209,15 @@ export default function AdminReporting() {
       {/* Filter Bar */}
       <div className={`p-4 rounded-lg border mb-5 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="flex flex-wrap items-center gap-3">
-          <select value={boardFilter} onChange={(e) => setBoardFilter(e.target.value)}
-            className={`px-3 py-2 rounded-lg border text-sm ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`}>
-            <option value="all">All Boards</option>
-            {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+          <CustomDropdown label="Board" value={boardFilter}
+            options={[{value:'all',label:'All Boards'}, ...boards.map(b => ({value:b.id, label:b.name}))]}
+            onChange={(v) => setBoardFilter(v)} />
 
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-400" />
-            <select value={period} onChange={(e) => setPeriod(e.target.value)}
-              className={`px-3 py-2 rounded-lg border text-sm ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`}>
-              <option value="week">This week</option>
-              <option value="month">This month</option>
-              <option value="all">All time</option>
-            </select>
+            <CustomDropdown label="Period" value={period}
+              options={[{value:'week',label:'This week'},{value:'month',label:'This month'},{value:'all',label:'All time'}]}
+              onChange={(v) => setPeriod(v)} />
           </div>
         </div>
       </div>
@@ -445,18 +441,9 @@ export default function AdminReporting() {
         <div className={`flex items-center justify-between px-4 py-3 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center gap-2">
             <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Rows per page:</span>
-            <select
-              value={logRowsPerPage}
-              onChange={(e) => { setLogRowsPerPage(Number(e.target.value)); setLogPage(0); }}
-              className={`px-2 py-1 rounded border text-xs ${
-                theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'
-              }`}
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
+            <CustomDropdown label="Rows" value={String(logRowsPerPage)}
+              options={[{value:'10',label:'10'},{value:'25',label:'25'},{value:'50',label:'50'},{value:'100',label:'100'}]}
+              onChange={(v) => { setLogRowsPerPage(Number(v)); setLogPage(0); }} minWidth="80px" />
           </div>
 
           <div className="flex items-center gap-3">

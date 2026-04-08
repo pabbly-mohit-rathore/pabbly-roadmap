@@ -11,6 +11,7 @@ import {
   Image as ImageIcon, Video, Upload, MousePointerClick
 } from 'lucide-react';
 import useThemeStore from '../store/themeStore';
+import LoadingButton from './ui/LoadingButton';
 import { ButtonExtension, type ButtonAttributes } from './ButtonExtension';
 import ButtonConfigModal from './ButtonConfigModal';
 
@@ -159,10 +160,10 @@ export default function CommentEditor({
           <TB dark={d} icon={MousePointerClick} title="Button" action={() => { setEditingButtonAttrs(undefined); setShowButtonModal(true); }} />
         </div>
 
-        <button onClick={handleSubmit} disabled={submitting} type="button"
-          className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-full hover:bg-indigo-700 transition disabled:opacity-50">
-          {submitting ? 'Posting...' : buttonLabel}
-        </button>
+        <LoadingButton onClick={handleSubmit} loading={submitting} type="button"
+          className="px-5 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition disabled:opacity-70">
+          {buttonLabel}
+        </LoadingButton>
       </div>
 
       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,video/*" className="hidden" />

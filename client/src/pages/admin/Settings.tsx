@@ -36,13 +36,15 @@ export default function AdminSettings() {
 
   return (
     <div>
-      <h1 className={`text-2xl font-bold mb-3 ${d ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
-      <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-        Manage activity logs, tags{!isTeamMember ? ', team members, and application settings' : ' and more'}.
-      </p>
+      <div className="mb-6">
+        <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
+        <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+          Manage activity logs, tags{!isTeamMember ? ', team members, and application settings' : ' and more'}.
+        </p>
+      </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-6 mt-5 mb-5">
+      <div className="flex items-center gap-6 mb-5">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;

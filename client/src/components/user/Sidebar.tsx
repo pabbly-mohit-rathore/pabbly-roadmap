@@ -15,7 +15,12 @@ export default function UserSidebar() {
     { label: 'Settings', icon: Settings, path: '/user/settings' },
   ];
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const isActive = (path: string) => {
+    if (path === '/user/feature-requests') {
+      return location.pathname.startsWith('/user/feature-requests') || location.pathname.startsWith('/user/posts');
+    }
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
 
   return (
     <aside

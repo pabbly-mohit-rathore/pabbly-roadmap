@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 
 interface Tag {
   id: string;
@@ -141,21 +142,13 @@ export default function AdminTags() {
           </button>
         </div>
 
-        <select
+        <CustomDropdown
+          label="Board"
           value={selectedBoard}
-          onChange={(e) => setSelectedBoard(e.target.value)}
-          className={`px-4 py-2 rounded-lg border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-200'
-          }`}
-        >
-          {boards.map((board) => (
-            <option key={board.id} value={board.id}>
-              {board.name}
-            </option>
-          ))}
-        </select>
+          options={boards.map((b) => ({ value: b.id, label: b.name }))}
+          onChange={(v) => setSelectedBoard(v)}
+          minWidth="200px"
+        />
       </div>
 
       {loading ? (

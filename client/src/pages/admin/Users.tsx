@@ -4,6 +4,7 @@ import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 
 interface BoardInfo {
   board: {
@@ -101,7 +102,7 @@ export default function AdminUsers() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className={`text-2xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Users</h1>
+          <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>Users</h1>
           <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredUsers.length} users</p>
         </div>
       </div>
@@ -118,12 +119,9 @@ export default function AdminUsers() {
               className={`bg-transparent text-sm outline-none w-full ${d ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`} />
           </div>
 
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-            className={`px-3 py-2 rounded-lg border text-sm ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`}>
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="banned">Banned</option>
-          </select>
+          <CustomDropdown label="Status" value={statusFilter}
+            options={[{value:'all',label:'All Status'},{value:'active',label:'Active'},{value:'banned',label:'Banned'}]}
+            onChange={(v) => { setStatusFilter(v); setPage(0); }} />
 
           {hasFilters && (
             <button onClick={() => { setSearchQuery(''); setStatusFilter('all'); setPage(0); }}
@@ -243,13 +241,9 @@ export default function AdminUsers() {
             <div className={`flex items-center justify-between px-4 py-3 border-t ${d ? 'border-gray-700' : 'border-gray-200'}`}>
               <div className="flex items-center gap-2">
                 <span className={`text-xs ${d ? 'text-gray-400' : 'text-gray-500'}`}>Rows per page:</span>
-                <select value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
-                  className={`px-2 py-1 rounded border text-xs ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'}`}>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+                <CustomDropdown label="Rows" value={String(rowsPerPage)}
+                  options={[{value:'10',label:'10'},{value:'25',label:'25'},{value:'50',label:'50'},{value:'100',label:'100'}]}
+                  onChange={(v) => { setRowsPerPage(Number(v)); setPage(0); }} minWidth="80px" />
               </div>
               <div className="flex items-center gap-3">
                 <span className={`text-xs ${d ? 'text-gray-400' : 'text-gray-500'}`}>

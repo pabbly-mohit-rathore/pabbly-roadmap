@@ -12,10 +12,8 @@ const useVoteStore = create<VoteStore>((set, get) => ({
   votes: {},
 
   init: (postId, count, voted) => {
-    // Only init if not already tracked (don't overwrite live state)
-    if (get().votes[postId] === undefined) {
-      set(s => ({ votes: { ...s.votes, [postId]: { count, voted } } }));
-    }
+    // Always sync with server data — server is authoritative
+    set(s => ({ votes: { ...s.votes, [postId]: { count, voted } } }));
   },
 
   toggle: (postId) => {

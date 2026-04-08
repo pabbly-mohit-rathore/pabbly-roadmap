@@ -8,6 +8,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import CommentEditor from '../../components/CommentEditor';
 import LoadingBar from '../../components/ui/LoadingBar';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 import useSocket from '../../hooks/useSocket';
 
 interface Tag {
@@ -21,6 +22,7 @@ interface Post {
   title: string;
   slug: string;
   description: string;
+  content?: string;
   status: string;
   type: string;
   voteCount: number;
@@ -261,7 +263,13 @@ export default function AdminPostDetail() {
         setPost((prev) =>
           prev ? { ...prev, commentCount: prev.commentCount + 1 } : null
         );
-        fetchComments();
+        // Add comment to state immediately, then sync with server
+        const newComment = response.data.data?.comment;
+        if (newComment) {
+          setComments(prev => [...prev, { ...newComment, replies: [], likeCount: newComment.likeCount || 0 }]);
+        } else {
+          fetchComments();
+        }
         toast.success('Comment added');
       }
     } catch (error) {
@@ -301,9 +309,12 @@ export default function AdminPostDetail() {
     try {
       const response = await api.delete(`/comments/${commentId}`);
       if (response.data.success) {
-        setComments((prev) => prev.filter((c) => c.id !== commentId));
+        setComments((prev) => prev
+          .filter((c) => c.id !== commentId)
+          .map((c) => ({ ...c, replies: c.replies ? c.replies.filter((r: { id: string }) => r.id !== commentId) : c.replies }))
+        );
         setPost((prev) =>
-          prev ? { ...prev, commentCount: prev.commentCount - 1 } : null
+          prev ? { ...prev, commentCount: Math.max(0, prev.commentCount - 1) } : null
         );
         toast.success('Comment deleted');
       }
@@ -314,20 +325,29 @@ export default function AdminPostDetail() {
   };
 
   const handleLikeComment = async (commentId: string) => {
+    // Optimistic update
+    const wasLiked = likedCommentIds.has(commentId);
+    const newLiked = new Set(likedCommentIds);
+    if (wasLiked) newLiked.delete(commentId); else newLiked.add(commentId);
+    setLikedCommentIds(newLiked);
+
+    // Optimistic count update in comments
+    const updateLikeCount = (cmts: typeof comments): typeof comments =>
+      cmts.map(c => ({
+        ...c,
+        likeCount: c.id === commentId ? c.likeCount + (wasLiked ? -1 : 1) : c.likeCount,
+        replies: c.replies ? updateLikeCount(c.replies) : c.replies,
+      }));
+    setComments(prev => updateLikeCount(prev));
+
     try {
-      const response = await api.post(`/comments/${commentId}/like`);
-      if (response.data.success) {
-        const newLiked = new Set(likedCommentIds);
-        if (newLiked.has(commentId)) {
-          newLiked.delete(commentId);
-        } else {
-          newLiked.add(commentId);
-        }
-        setLikedCommentIds(newLiked);
-        fetchComments();
-      }
-    } catch (error) {
-      console.error('Error liking comment:', error);
+      await api.post(`/comments/${commentId}/like`);
+    } catch {
+      // Revert on error
+      const revertLiked = new Set(likedCommentIds);
+      if (wasLiked) revertLiked.add(commentId); else revertLiked.delete(commentId);
+      setLikedCommentIds(revertLiked);
+      fetchComments();
       toast.error('Failed to like comment');
     }
   };
@@ -346,34 +366,54 @@ export default function AdminPostDetail() {
   };
 
   const handlePinComment = async (commentId: string) => {
+    // Optimistic update
+    const updatePin = (cmts: typeof comments): typeof comments =>
+      cmts.map(c => ({
+        ...c,
+        isPinned: c.id === commentId ? !c.isPinned : c.isPinned,
+        replies: c.replies ? updatePin(c.replies) : c.replies,
+      }));
+    setComments(prev => updatePin(prev));
+
     try {
       const response = await api.put(`/comments/${commentId}/pin`);
       if (response.data.success) {
-        fetchComments();
-        toast.success('Comment pinned');
+        toast.success(response.data.message);
       }
-    } catch (error) {
-      console.error('Error pinning comment:', error);
+    } catch {
+      fetchComments(); // Revert by refetching
       toast.error('Failed to pin comment');
     }
   };
 
-  const handleReply = async (parentId: string) => {
-    if (!replyText.trim()) {
+  const handleReply = async (parentId: string, htmlContent?: string) => {
+    const content = htmlContent || replyText;
+    if (!content.trim() || content === '<p></p>') {
       toast.error('Reply cannot be empty');
       return;
     }
 
     try {
       const response = await api.post(`/comments/post/${post?.id}`, {
-        content: replyText,
+        content,
         parentId,
       });
 
       if (response.data.success) {
         setReplyText('');
         setReplyingToId(null);
-        fetchComments();
+        // Add reply to parent comment immediately
+        const newReply = response.data.data?.comment;
+        if (newReply) {
+          setComments(prev => prev.map(c =>
+            c.id === parentId
+              ? { ...c, replies: [...(c.replies || []), { ...newReply, replies: [], likeCount: newReply.likeCount || 0 }] }
+              : c
+          ));
+        } else {
+          fetchComments();
+        }
+        setPost(prev => prev ? { ...prev, commentCount: prev.commentCount + 1 } : null);
         toast.success('Reply added');
       }
     } catch (error) {
@@ -436,9 +476,11 @@ export default function AdminPostDetail() {
               <LoadingBar />
             ) : (
               <>
-                {/* Post Header */}
-                <div className="mb-8">
-                  <div className="flex items-start justify-between">
+                {/* Post Card */}
+                <div className={`rounded-xl border p-6 mb-8 ${
+                  theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                }`}>
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-4">
                       <div
                         onClick={handleVote}
@@ -485,10 +527,16 @@ export default function AdminPostDetail() {
                     </button>
                   </div>
 
-                </div>
+                  {/* Rich Content */}
+                  {post?.content && (
+                    <div className={`border-t pt-5 mt-2 overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <div className={`tiptap-preview max-w-none ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
+                        dangerouslySetInnerHTML={{ __html: post.content }} />
+                    </div>
+                  )}
 
-                {/* Comments Section */}
-                <div className="mb-8">
+                  {/* Comments Section */}
+                  <div className={`border-t pt-6 mt-6 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
                   <h2
                     className={`text-xl font-bold mb-4 ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -512,13 +560,9 @@ export default function AdminPostDetail() {
                         <div key={comment.id} className={`p-5 rounded-xl border ${comment.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border-red-800' : 'bg-red-50 border-red-200') : (theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200')}`}>
                           <div className="flex gap-3">
                             {/* Avatar */}
-                            {comment.author.avatar ? (
-                              <img src={comment.author.avatar} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
-                            ) : (
-                              <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-neutral-200'}`}>
-                                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-neutral-700'}`}>{comment.author.name.charAt(0).toUpperCase()}</span>
-                              </div>
-                            )}
+                            <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700 text-white text-sm font-bold">
+                              {comment.author.name.charAt(0).toUpperCase()}
+                            </div>
                             <div className="flex-1 min-w-0">
                               {/* Name · Time */}
                               <div className="flex items-center justify-between">
@@ -547,7 +591,7 @@ export default function AdminPostDetail() {
                                 </div>
                               ) : (
                                 <div className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                  <span dangerouslySetInnerHTML={{ __html: comment.content }} />
+                                  <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: comment.content }} />
                                 </div>
                               )}
 
@@ -572,12 +616,11 @@ export default function AdminPostDetail() {
                               {/* Reply Form */}
                               {replyingToId === comment.id && (
                                 <div className="mt-4 pt-4 border-t border-gray-200">
-                                  <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." rows={2}
-                                    className={`w-full px-3 py-2 rounded-lg border mb-2 text-sm ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'}`} />
-                                  <div className="flex gap-2">
-                                    <button onClick={() => handleReply(comment.id)} className="px-3 py-1 bg-[#0c68e9] text-white text-sm rounded hover:bg-[#0b5dd0]">Reply</button>
-                                    <button onClick={() => { setReplyingToId(null); setReplyText(''); }} className={`px-3 py-1 text-sm rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
-                                  </div>
+                                  <CommentEditor
+                                    onSubmit={(html) => handleReply(comment.id, html)}
+                                    placeholder="Write a reply..."
+                                    buttonLabel="Reply"
+                                  />
                                 </div>
                               )}
 
@@ -587,13 +630,9 @@ export default function AdminPostDetail() {
                                   {comment.replies.map((reply) => (
                                     <div key={reply.id} className={`pl-4 py-2 ${reply.isSpam ? (theme === 'dark' ? 'bg-red-900/10' : 'bg-red-50') : ''}`}>
                                       <div className="flex gap-3">
-                                        {reply.author.avatar ? (
-                                          <img src={reply.author.avatar} alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
-                                        ) : (
-                                          <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-neutral-200'}`}>
-                                            <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-neutral-700'}`}>{reply.author.name.charAt(0).toUpperCase()}</span>
-                                          </div>
-                                        )}
+                                        <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700 text-white text-xs font-bold">
+                                          {reply.author.name.charAt(0).toUpperCase()}
+                                        </div>
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
@@ -619,7 +658,7 @@ export default function AdminPostDetail() {
                                             </div>
                                           ) : (
                                             <div className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                              <span dangerouslySetInnerHTML={{ __html: reply.content }} />
+                                              <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: reply.content }} />
                                             </div>
                                           )}
                                           <div className="flex flex-wrap gap-2 text-xs mt-2">
@@ -638,12 +677,11 @@ export default function AdminPostDetail() {
                                           {reply.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">✓ Official Response</p>}
                                           {replyingToId === reply.id && (
                                             <div className="mt-3 pt-3 border-t border-gray-200">
-                                              <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." rows={2}
-                                                className={`w-full px-2 py-1 rounded text-sm border mb-2 ${theme === 'dark' ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-200'}`} />
-                                              <div className="flex gap-2">
-                                                <button onClick={() => handleReply(reply.id)} className="px-2 py-1 bg-[#0c68e9] text-white text-xs rounded hover:bg-[#0b5dd0]">Reply</button>
-                                                <button onClick={() => { setReplyingToId(null); setReplyText(''); }} className={`px-2 py-1 text-xs rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-600' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
-                                              </div>
+                                              <CommentEditor
+                                                onSubmit={(html) => handleReply(comment.id, html)}
+                                                placeholder="Write a reply..."
+                                                buttonLabel="Reply"
+                                              />
                                             </div>
                                           )}
                                         </div>
@@ -669,6 +707,7 @@ export default function AdminPostDetail() {
                     )}
                   </div>
                 </div>
+                </div>
               </>
             )}
           </div>
@@ -676,92 +715,66 @@ export default function AdminPostDetail() {
           {/* Sidebar - Right */}
           <div>
             <div
-              className={`p-6 rounded-lg border sticky top-24 ${
+              className={`rounded-xl border sticky top-24 overflow-hidden ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700'
-                  : 'bg-white border-gray-200'
+                  : 'bg-white border-gray-200 shadow-sm'
               }`}
             >
-              <h3
-                className={`text-sm font-semibold mb-4 ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                }`}
-              >
-                POST DETAILS
-              </h3>
-
-              {/* Type & Status */}
-              <div className="flex gap-2 mb-6">
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(post?.type || '')}`}>
-                  {post?.type?.toUpperCase()}
-                </span>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(post?.status || '')}`}>
-                  {post?.status?.replace(/_/g, ' ')}
-                </span>
+              {/* Header */}
+              <div className={`px-5 py-4 border-b ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-100 bg-gray-50/80'}`}>
+                <h3 className={`text-xs font-bold tracking-wider uppercase ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Post Details
+                </h3>
               </div>
 
-              {/* Board */}
-              <div className="mb-6">
-                <p
-                  className={`text-xs font-semibold mb-1 ${
-                    theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                  }`}
-                >
-                  BOARD
-                </p>
-                <p
-                  className={`font-medium ${
-                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                  }`}
-                >
-                  {post?.board.name}
-                </p>
-              </div>
+              <div className="p-5 space-y-5">
+                {/* Type & Status Chips */}
+                <div className="flex flex-wrap gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(post?.type || '')}`}>
+                    {post?.type?.toUpperCase()}
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(post?.status || '')}`}>
+                    {post?.status?.replace(/_/g, ' ')}
+                  </span>
+                </div>
 
-              {/* Author */}
-              <div className="mb-6">
-                <p
-                  className={`text-xs font-semibold mb-1 ${
-                    theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                  }`}
-                >
-                  AUTHOR
-                </p>
-                <p
-                  className={`font-medium ${
-                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                  }`}
-                >
-                  {post?.author.name}
-                </p>
-              </div>
+                {/* Board */}
+                <div className={`flex items-center gap-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                    {post?.board.name?.[0]?.toUpperCase()}
+                  </div>
+                  <div>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Board</p>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.board.name}</p>
+                  </div>
+                </div>
 
-              {/* Created */}
-              <div className="mb-6">
-                <p
-                  className={`text-xs font-semibold mb-1 ${
-                    theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                  }`}
-                >
-                  CREATED
-                </p>
-                <p
-                  className={`text-sm ${
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                  }`}
-                >
-                  {post?.createdAt
-                    ? new Date(post.createdAt).toLocaleDateString()
-                    : '-'}
-                </p>
-              </div>
+                {/* Author */}
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    {post?.author.name?.[0]?.toUpperCase()}
+                  </div>
+                  <div>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Author</p>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.author.name}</p>
+                  </div>
+                </div>
 
-              {/* Tags */}
-              <div className="mb-6">
-                <p
-                  className={`text-xs font-semibold mb-2 ${
-                    theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                  }`}
+                {/* Created */}
+                <div className={`flex items-center justify-between py-3 border-t border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Created</p>
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {post?.createdAt ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                  </p>
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <p
+                    className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${
+                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    }`}
                 >
                   TAGS
                 </p>
@@ -858,32 +871,24 @@ export default function AdminPostDetail() {
                 </div>
               </div>
 
-              {/* Status Selector */}
-              <div>
-                <p
-                  className={`text-xs font-semibold mb-2 ${
-                    theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                  }`}
-                >
-                  CHANGE STATUS
-                </p>
-                <select
-                  value={post?.status || 'open'}
-                  onChange={(e) => handleChangeStatus(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border text-sm ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-200'
-                  }`}
-                >
-                  <option value="open">Open</option>
-                  <option value="under_review">Under Review</option>
-                  <option value="planned">Planned</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="live">Live</option>
-                  <option value="closed">Closed</option>
-                  <option value="hold">Hold</option>
-                </select>
+                {/* Status Selector */}
+                <div>
+                  <CustomDropdown
+                    label="Status"
+                    value={post?.status || 'open'}
+                    options={[
+                      { value: 'open', label: 'Open' },
+                      { value: 'under_review', label: 'Under Review' },
+                      { value: 'planned', label: 'Planned' },
+                      { value: 'in_progress', label: 'In Progress' },
+                      { value: 'live', label: 'Live' },
+                      { value: 'closed', label: 'Closed' },
+                      { value: 'hold', label: 'Hold' },
+                    ]}
+                    onChange={(v) => handleChangeStatus(v)}
+                    minWidth="100%"
+                  />
+                </div>
               </div>
             </div>
           </div>

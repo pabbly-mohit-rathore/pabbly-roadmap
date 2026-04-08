@@ -41,7 +41,12 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
     }
   }
 
-  const isActive = (path: string) => location.pathname.startsWith(path);
+  const isActive = (path: string) => {
+    if (path === '/admin/feedback') {
+      return location.pathname.startsWith('/admin/feedback') || location.pathname.startsWith('/admin/posts');
+    }
+    return location.pathname.startsWith(path);
+  };
 
   return (
     <aside

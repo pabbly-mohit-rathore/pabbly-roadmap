@@ -4,6 +4,7 @@ import { Search, X } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 
 interface Post {
   id: string;
@@ -201,11 +202,11 @@ export default function AdminRoadmap() {
       }`}>
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border flex-1 min-w-[200px] max-w-[300px] ${
+          <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[200px] max-w-[380px] ${
             theme === 'dark'
               ? 'bg-gray-700 border-gray-600'
               : 'bg-gray-50 border-gray-200'
-          }`}>
+          }`} style={{ padding: '0 14px', height: '48px' }}>
             <Search className="w-4 h-4 text-gray-400" />
             <input
               type="text"
@@ -219,54 +220,37 @@ export default function AdminRoadmap() {
           </div>
 
           {/* Board Selector */}
-          <select
+          <CustomDropdown
+            label="Board"
             value={selectedBoard}
-            onChange={(e) => setSelectedBoard(e.target.value)}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              theme === 'dark'
-                ? 'bg-gray-700 border-gray-600 text-white'
-                : 'bg-gray-50 border-gray-200 text-gray-900'
-            }`}
-          >
-            {boards.map((board) => (
-              <option key={board.id} value={board.id}>
-                {board.name}
-              </option>
-            ))}
-          </select>
+            options={boards.map((b) => ({ value: b.id, label: b.name }))}
+            onChange={(v) => setSelectedBoard(v)}
+          />
 
           {/* Type Filter */}
-          <select
+          <CustomDropdown
+            label="Type"
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              theme === 'dark'
-                ? 'bg-gray-700 border-gray-600 text-white'
-                : 'bg-gray-50 border-gray-200 text-gray-900'
-            }`}
-          >
-            <option value="">All Types</option>
-            <option value="feature">Feature</option>
-            <option value="bug">Bug</option>
-            <option value="improvement">Improvement</option>
-            <option value="integration">Integration</option>
-          </select>
+            options={[
+              { value: '', label: 'All Types' },
+              { value: 'feature', label: 'Feature' },
+              { value: 'bug', label: 'Bug' },
+              { value: 'improvement', label: 'Improvement' },
+              { value: 'integration', label: 'Integration' },
+            ]}
+            onChange={(v) => setFilterType(v)}
+          />
 
           {/* Tag Filter */}
-          <select
+          <CustomDropdown
+            label="Tag"
             value={filterTag}
-            onChange={(e) => setFilterTag(e.target.value)}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              theme === 'dark'
-                ? 'bg-gray-700 border-gray-600 text-white'
-                : 'bg-gray-50 border-gray-200 text-gray-900'
-            }`}
-          >
-            <option value="">All Tags</option>
-            {tags.map((tag) => (
-              <option key={tag.id} value={tag.id}>{tag.name}</option>
-            ))}
-          </select>
+            options={[
+              { value: '', label: 'All Tags' },
+              ...tags.map((t) => ({ value: t.id, label: t.name })),
+            ]}
+            onChange={(v) => setFilterTag(v)}
+          />
 
           {/* Clear Filters */}
           {hasActiveFilters && (

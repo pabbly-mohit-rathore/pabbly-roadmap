@@ -6,6 +6,7 @@ import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 import toast from 'react-hot-toast';
 
 interface Tag {
@@ -569,31 +570,16 @@ export default function UserBoardDetail() {
 
                 {/* Type */}
                 <div>
-                  <label
-                    className={`block text-sm font-medium mb-1 ${
-                      theme === 'dark'
-                        ? 'text-gray-300'
-                        : 'text-gray-700'
-                    }`}
-                  >
-                    Type
-                  </label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) =>
-                      setFormData({ ...formData, type: e.target.value })
-                    }
-                    className={`w-full px-3 py-2 rounded-lg border ${
-                      theme === 'dark'
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-200'
-                    }`}
-                  >
-                    <option value="feature">Feature</option>
-                    <option value="bug">Bug</option>
-                    <option value="improvement">Improvement</option>
-                    <option value="integration">Integration</option>
-                  </select>
+                  <CustomDropdown label="Type" value={formData.type}
+                    options={[
+                      { value: 'feature', label: 'Feature' },
+                      { value: 'bug', label: 'Bug' },
+                      { value: 'improvement', label: 'Improvement' },
+                      { value: 'integration', label: 'Integration' },
+                    ]}
+                    onChange={(v) => setFormData({ ...formData, type: v })}
+                    minWidth="100%"
+                    bgClass={theme === 'dark' ? 'bg-gray-800' : 'bg-white'} />
                 </div>
 
                 {/* Tags */}

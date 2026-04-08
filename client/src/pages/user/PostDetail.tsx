@@ -22,6 +22,7 @@ interface Post {
   title: string;
   slug: string;
   description: string;
+  content?: string;
   status: string;
   type: string;
   voteCount: number;
@@ -355,7 +356,7 @@ export default function UserPostDetail() {
               {loading ? (
                 <LoadingBar />
               ) : (
-                <>
+                <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}>
                   {/* Post Header */}
                   <div className="mb-8">
                     <div className="flex items-start gap-4">
@@ -387,6 +388,12 @@ export default function UserPostDetail() {
                             {post.description}
                           </p>
                         )}
+                        {post?.content && (
+                          <div className={`border-t pt-5 mt-2 overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                            <div className={`tiptap-preview max-w-none ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
+                              dangerouslySetInnerHTML={{ __html: post.content }} />
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -417,13 +424,9 @@ export default function UserPostDetail() {
                           <div key={comment.id} className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
                             <div className="flex gap-3">
                               {/* Avatar */}
-                              {comment.author.avatar ? (
-                                <img src={comment.author.avatar} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
-                              ) : (
-                                <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-neutral-200'}`}>
-                                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-neutral-700'}`}>{comment.author.name.charAt(0).toUpperCase()}</span>
-                                </div>
-                              )}
+                              <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700 text-white text-sm font-bold">
+                                {comment.author.name.charAt(0).toUpperCase()}
+                              </div>
                               <div className="flex-1 min-w-0">
                                 {/* Name · Time */}
                                 <div className="flex items-center justify-between">
@@ -455,7 +458,7 @@ export default function UserPostDetail() {
                                   </div>
                                 ) : (
                                   <div className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                    <span dangerouslySetInnerHTML={{ __html: comment.content }} />
+                                    <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: comment.content }} />
                                   </div>
                                 )}
 
@@ -490,13 +493,9 @@ export default function UserPostDetail() {
                                     {comment.replies.map((reply) => (
                                       <div key={reply.id} className="pl-4 py-2">
                                         <div className="flex gap-3">
-                                          {reply.author.avatar ? (
-                                            <img src={reply.author.avatar} alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
-                                          ) : (
-                                            <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-neutral-200'}`}>
-                                              <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-neutral-700'}`}>{reply.author.name.charAt(0).toUpperCase()}</span>
-                                            </div>
-                                          )}
+                                          <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700 text-white text-xs font-bold">
+                                            {reply.author.name.charAt(0).toUpperCase()}
+                                          </div>
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between">
                                               <div className="flex items-center gap-2">
@@ -520,7 +519,7 @@ export default function UserPostDetail() {
                                               </div>
                                             ) : (
                                               <div className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                <span dangerouslySetInnerHTML={{ __html: reply.content }} />
+                                                <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: reply.content }} />
                                               </div>
                                             )}
                                             <div className="flex flex-wrap gap-2 text-xs mt-2">
@@ -567,7 +566,7 @@ export default function UserPostDetail() {
                       )}
                     </div>
                   </div>
-                </>
+                </div>
               )}
             </div>
 
