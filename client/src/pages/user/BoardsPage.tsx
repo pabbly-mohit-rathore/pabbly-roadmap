@@ -100,51 +100,37 @@ export default function UserBoardsPage() {
         ) : (
           <>
             {boards.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
                 {boards.map((board) => {
                   const boardColor = board.color || '#6366f1';
                   const initial = board.name?.charAt(0).toUpperCase();
                   return (
-                    <div
-                      key={board.id}
-                      className={`rounded-2xl border overflow-hidden flex flex-col ${
-                        d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                      } transition-all hover:shadow-lg`}
-                    >
-                      {/* Icon area */}
-                      <div
-                        className="w-full h-48 flex items-center justify-center overflow-hidden"
-                        style={{ backgroundColor: boardColor + '22' }}
-                      >
+                    <div key={board.id}
+                      className={`rounded-xl border overflow-hidden flex flex-col transition-all hover:shadow-md group cursor-pointer ${
+                        d ? 'bg-gray-800 border-gray-700 hover:border-gray-600' : 'bg-white border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => navigate(`/user/boards/${board.id}`, { state: { board } })}>
+                      <div className="w-full flex items-center justify-center overflow-hidden relative"
+                        style={{ backgroundColor: boardColor + '15', height: '180px' }}>
                         {board.icon ? (
                           <img src={board.icon} alt={board.name} className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-6xl font-bold" style={{ color: boardColor }}>
+                          <span className="text-4xl font-bold transition-transform group-hover:scale-110" style={{ color: boardColor }}>
                             {initial}
                           </span>
                         )}
                       </div>
-
-                      {/* Content */}
-                      <div className="p-8 flex flex-col flex-1 items-center text-center">
-                        <h3 className={`font-bold mb-4 ${d ? 'text-white' : 'text-gray-900'}`}
-                          style={{ fontSize: '20px' }}>
+                      <div className="p-5 flex flex-col flex-1">
+                        <h3 className={`font-semibold text-base mb-1.5 truncate ${d ? 'text-white' : 'text-gray-900'}`}>
                           {board.name}
                         </h3>
-                        <p className={`flex-1 line-clamp-2 mb-8 ${d ? 'text-gray-400' : 'text-gray-500'}`}
-                          style={{ fontSize: '16px' }}>
+                        <p className={`text-sm line-clamp-2 mb-5 flex-1 ${d ? 'text-gray-400' : 'text-gray-500'}`}>
                           {board.description || 'No description provided.'}
                         </p>
-                        <button
-                          onClick={() => navigate(`/user/boards/${board.id}`, { state: { board } })}
-                          className={`w-full py-2.5 rounded-xl border-2 font-semibold uppercase tracking-wide transition-colors ${
-                            d
-                              ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white'
-                              : 'border-gray-300 text-gray-700 hover:border-gray-500 hover:text-gray-900'
-                          }`}
-                          style={{ fontSize: '16px' }}
-                        >
-                          Access Now
+                        <button onClick={(e) => { e.stopPropagation(); navigate(`/user/boards/${board.id}`, { state: { board } }); }}
+                          className="w-full rounded-lg text-sm font-semibold bg-[#0C68E9] text-white hover:bg-[#0b5dd0] transition-colors"
+                          style={{ height: '40px' }}>
+                          Access
                         </button>
                       </div>
                     </div>

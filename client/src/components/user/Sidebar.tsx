@@ -16,8 +16,20 @@ export default function UserSidebar() {
   ];
 
   const isActive = (path: string) => {
+    const source = (location.state as any)?.source;
+    const onPostPage = location.pathname.startsWith('/user/posts');
+
     if (path === '/user/feature-requests') {
-      return location.pathname.startsWith('/user/feature-requests') || location.pathname.startsWith('/user/posts');
+      if (onPostPage) return !source || source === 'feedback';
+      return location.pathname.startsWith('/user/feature-requests');
+    }
+    if (path === '/user/boards') {
+      if (onPostPage) return source === 'board';
+      return location.pathname.startsWith('/user/boards');
+    }
+    if (path === '/user/roadmap') {
+      if (onPostPage) return source === 'roadmap';
+      return location.pathname.startsWith('/user/roadmap');
     }
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };

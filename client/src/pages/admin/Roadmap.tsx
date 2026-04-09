@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { Search, X, ArrowUpRight, MessageSquare } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
+import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
 import CustomDropdown from '../../components/ui/CustomDropdown';
+import toast from 'react-hot-toast';
 
 interface Post {
   id: string;
@@ -15,6 +17,7 @@ interface Post {
   createdAt: string;
   author: { name: string };
   board: { name: string };
+  description?: string;
   tags?: { tag: { id: string; name: string; color: string } }[];
   _count: {
     votes: number;
@@ -39,16 +42,17 @@ interface Tag {
 
 const STATUS_ORDER = ['under_review', 'planned', 'in_progress', 'live', 'hold'];
 
-const STATUS_CONFIG: Record<string, { label: string; dotColor: string; borderColor: string }> = {
-  under_review: { label: 'Under Review', dotColor: 'bg-yellow-500', borderColor: 'border-t-yellow-500' },
-  planned: { label: 'Planned', dotColor: 'bg-purple-500', borderColor: 'border-t-purple-500' },
-  in_progress: { label: 'In Progress', dotColor: 'bg-orange-500', borderColor: 'border-t-orange-500' },
-  live: { label: 'Live', dotColor: 'bg-green-500', borderColor: 'border-t-green-500' },
-  hold: { label: 'On Hold', dotColor: 'bg-red-500', borderColor: 'border-t-red-500' },
+const STATUS_CONFIG: Record<string, { label: string; dotColor: string; borderColor: string; textColor: string }> = {
+  under_review: { label: 'Under Review', dotColor: 'bg-yellow-500', borderColor: 'border-t-yellow-500', textColor: 'text-yellow-600' },
+  planned: { label: 'Planned', dotColor: 'bg-purple-500', borderColor: 'border-t-purple-500', textColor: 'text-purple-600' },
+  in_progress: { label: 'In Progress', dotColor: 'bg-orange-500', borderColor: 'border-t-orange-500', textColor: 'text-orange-500' },
+  live: { label: 'Live', dotColor: 'bg-green-500', borderColor: 'border-t-green-500', textColor: 'text-green-600' },
+  hold: { label: 'On Hold', dotColor: 'bg-red-500', borderColor: 'border-t-red-500', textColor: 'text-red-500' },
 };
 
 export default function AdminRoadmap() {
   const theme = useThemeStore((state) => state.theme);
+  const { init: initVote, toggle: toggleVote, votes } = useVoteStore();
   const navigate = useNavigate();
   const [roadmap, setRoadmap] = useState<RoadmapData>({});
   const [loading, setLoading] = useState(true);
@@ -63,25 +67,23 @@ export default function AdminRoadmap() {
   const [filterTag, setFilterTag] = useState('');
   const [columnSearches, setColumnSearches] = useState<Record<string, string>>({});
 
+  const initialized = useRef(false);
+
   useEffect(() => {
     const init = async () => {
       try {
         const response = await api.get('/boards');
         if (response.data.success) {
-          const boardList = response.data.data.boards;
-          setBoards(boardList);
-          if (boardList.length > 0) {
-            const firstBoardId = boardList[0].id;
-            setSelectedBoard(firstBoardId);
-            // Fetch roadmap + tags in parallel immediately
-            const [roadmapRes, tagsRes] = await Promise.all([
-              api.get(`/roadmap?boardId=${firstBoardId}`),
-              api.get('/tags', { params: { boardId: firstBoardId } }),
-            ]);
-            if (roadmapRes.data.success) setRoadmap(roadmapRes.data.data.roadmap);
-            if (tagsRes.data.success) setTags(tagsRes.data.data.tags || []);
-          }
+          setBoards(response.data.data.boards);
         }
+        // Fetch All Boards roadmap
+        const roadmapRes = await api.get('/roadmap');
+        if (roadmapRes.data.success) {
+          const rm = roadmapRes.data.data.roadmap;
+          setRoadmap(rm);
+          Object.values(rm).flat().forEach((p: any) => initVote(p.id, p.voteCount ?? p._count?.votes ?? 0, p.hasVoted ?? false));
+        }
+        initialized.current = true;
       } catch (error) {
         console.error('Error initializing roadmap:', error);
       } finally {
@@ -92,7 +94,7 @@ export default function AdminRoadmap() {
   }, []);
 
   useEffect(() => {
-    if (selectedBoard && boards.length > 0 && selectedBoard !== boards[0]?.id) {
+    if (initialized.current) {
       fetchBoardData(selectedBoard);
     }
   }, [selectedBoard]);
@@ -100,11 +102,17 @@ export default function AdminRoadmap() {
   const fetchBoardData = async (boardId: string) => {
     try {
       setLoading(true);
+      const params: any = {};
+      if (boardId) params.boardId = boardId;
       const [roadmapRes, tagsRes] = await Promise.all([
-        api.get(`/roadmap?boardId=${boardId}`),
-        api.get('/tags', { params: { boardId } }),
+        api.get('/roadmap', { params }),
+        boardId ? api.get('/tags', { params: { boardId } }) : Promise.resolve({ data: { success: true, data: { tags: [] } } }),
       ]);
-      if (roadmapRes.data.success) setRoadmap(roadmapRes.data.data.roadmap);
+      if (roadmapRes.data.success) {
+        const rm = roadmapRes.data.data.roadmap;
+        setRoadmap(rm);
+        Object.values(rm).flat().forEach((p: any) => initVote(p.id, p.voteCount ?? p._count?.votes ?? 0, p.hasVoted ?? false));
+      }
       if (tagsRes.data.success) setTags(tagsRes.data.data.tags || []);
     } catch (error) {
       console.error('Error fetching roadmap:', error);
@@ -127,15 +135,32 @@ export default function AdminRoadmap() {
       return;
     }
 
+    const postId = draggedPost.id;
+    const oldStatus = draggedPost.status;
+
+    // Optimistic update — move card instantly
+    setRoadmap(prev => {
+      const updated = { ...prev };
+      // Remove from old status
+      updated[oldStatus] = (updated[oldStatus] || []).filter((p: Post) => p.id !== postId);
+      // Add to new status
+      updated[newStatus] = [...(updated[newStatus] || []), { ...draggedPost, status: newStatus }];
+      return updated;
+    });
+    setDraggedPost(null);
+
+    // API call in background
     try {
-      const response = await api.put(`/posts/${draggedPost.id}/status`, { status: newStatus });
-      if (response.data.success) {
-        fetchBoardData(selectedBoard);
-      }
-    } catch (error) {
-      console.error('Error changing status:', error);
-    } finally {
-      setDraggedPost(null);
+      await api.put(`/posts/${postId}/status`, { status: newStatus });
+    } catch {
+      // Revert on error
+      setRoadmap(prev => {
+        const reverted = { ...prev };
+        reverted[newStatus] = (reverted[newStatus] || []).filter((p: Post) => p.id !== postId);
+        reverted[oldStatus] = [...(reverted[oldStatus] || []), { ...draggedPost, status: oldStatus }];
+        return reverted;
+      });
+      toast.error('Failed to change status');
     }
   };
 
@@ -223,7 +248,7 @@ export default function AdminRoadmap() {
           <CustomDropdown
             label="Board"
             value={selectedBoard}
-            options={boards.map((b) => ({ value: b.id, label: b.name }))}
+            options={[{ value: '', label: 'All Boards' }, ...boards.map((b) => ({ value: b.id, label: b.name }))]}
             onChange={(v) => setSelectedBoard(v)}
           />
 
@@ -254,12 +279,10 @@ export default function AdminRoadmap() {
 
           {/* Clear Filters */}
           {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:text-red-600 transition-colors"
-            >
-              <X className="w-4 h-4" />
-              Clear Filters
+            <button onClick={clearFilters}
+              className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors"
+              style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+              <X className="w-5 h-5" /> Clear Filters
             </button>
           )}
         </div>
@@ -348,56 +371,50 @@ export default function AdminRoadmap() {
                           key={post.id}
                           draggable
                           onDragStart={() => handleDragStart(post)}
-                          onClick={() => {
-                            if (!draggedPost) {
-                              navigate(`/admin/posts/${post.slug}`);
-                            }
-                          }}
-                          className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                            draggedPost?.id === post.id ? 'opacity-50 scale-95' : ''
+                          onClick={() => { if (!draggedPost) navigate(`/admin/posts/${post.slug}`, { state: { from: '/admin/roadmap', source: 'roadmap' } }); }}
+                          className={`p-3.5 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                            draggedPost?.id === post.id ? 'opacity-50 scale-95 !cursor-grabbing' : ''
                           } ${
                             theme === 'dark'
                               ? 'bg-gray-750 border-gray-600 hover:border-gray-500'
                               : 'bg-white border-gray-200 hover:border-gray-300'
                           }`}
                         >
-                          {/* ID Badge */}
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                              {post.slug?.substring(0, 12).toUpperCase() || post.id.substring(0, 8)}
-                            </span>
+                          {/* Top: Vote + Title/Description */}
+                          <div className="flex gap-3">
+                            <div onClick={(e) => { e.stopPropagation(); toggleVote(post.id); }}
+                              className={`inline-flex flex-col items-center justify-center h-10 rounded-lg border font-bold shrink-0 cursor-pointer transition-all ${
+                                votes[post.id]?.voted
+                                  ? 'bg-[#1c252e] border-[#1c252e] text-white'
+                                  : (theme === 'dark' ? 'border-gray-600 text-gray-300 hover:border-gray-400' : 'border-gray-200 text-gray-700 hover:border-gray-400')
+                              }`} style={{ width: '44px', fontSize: '12px', gap: '1px' }}>
+                              <ArrowUpRight className="w-3.5 h-3.5 rotate-[-45deg]" />
+                              <span>{votes[post.id]?.count ?? post._count?.votes ?? 0}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold line-clamp-2 leading-snug ${
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                              }`}>{post.title}</p>
+                              {post.description && (
+                                <p className={`text-xs line-clamp-1 mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
+                              )}
+                            </div>
                           </div>
 
-                          {/* Title */}
-                          <p className={`text-sm font-medium mb-4 line-clamp-2 leading-snug ${
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                          }`}>
-                            {post.title}
-                          </p>
+                          {/* Divider */}
+                          <div className={`border-t border-dashed my-3 ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`} />
 
-                          {/* Separator */}
-                          <div className={`border-t mb-3 ${
-                            theme === 'dark' ? 'border-gray-600' : 'border-gray-100'
-                          }`} />
-
-                          {/* Footer */}
+                          {/* Footer: Date left, Author + Comments right */}
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-orange-500">
+                            <span className={`text-xs font-semibold ${config.textColor}`}>
                               {new Date(post.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
                             </span>
-
-                            <div className="flex items-center gap-2">
-                              {/* Vote/Comment counts */}
-                              <div className={`flex gap-2 text-[10px] mr-1 ${
-                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                              }`}>
-                                <span>👍{post._count?.votes || 0}</span>
-                                <span>💬{post._count?.comments || 0}</span>
+                            <div className="flex items-center gap-2.5">
+                              <div className={`flex items-center gap-1 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>{post._count?.comments || 0}</span>
                               </div>
-
-                              {/* Author Avatar */}
-                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[10px] font-bold">
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[9px] font-bold">
                                 {post.author?.name?.charAt(0)?.toUpperCase() || '?'}
                               </div>
                             </div>

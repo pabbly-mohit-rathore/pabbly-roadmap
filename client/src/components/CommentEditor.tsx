@@ -41,12 +41,14 @@ export default function CommentEditor({
   placeholder = 'Write a comment...',
   buttonLabel = 'Public Comment',
   submitting = false,
+  compact = false,
 }: CommentEditorProps) {
   const theme = useThemeStore((state) => state.theme);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showButtonModal, setShowButtonModal] = useState(false);
   const [editingButtonAttrs, setEditingButtonAttrs] = useState<Partial<ButtonAttributes> | undefined>(undefined);
   const d = theme === 'dark';
+  const isReply = buttonLabel === 'Reply' || compact;
 
   const editor = useEditor({
     extensions: [
@@ -64,8 +66,7 @@ export default function CommentEditor({
     ],
     editorProps: {
       attributes: {
-        class: 'outline-none px-4 py-3 text-sm',
-        style: 'min-height: 200px; max-height: 600px; overflow-y: auto;',
+        class: `outline-none px-4 py-3 text-sm ${isReply ? 'comment-editor-compact' : 'comment-editor-full'}`,
       },
     },
   });

@@ -95,35 +95,16 @@ export default function AdminPostDetail() {
         init(data.postId, data.voteCount, votes[data.postId]?.voted ?? false);
       }
     },
-    onCommentAdded: (data) => {
-      if (post && data.postId === post.id) {
-        fetchComments();
-      }
-    },
-    onCommentUpdated: (data) => {
-      if (post && data.postId === post.id) {
-        fetchComments();
-      }
-    },
-    onCommentDeleted: (data) => {
-      if (post && data.postId === post.id) {
-        fetchComments();
-      }
-    },
+    onCommentAdded: () => {},
+    onCommentUpdated: () => {},
+    onCommentDeleted: () => {},
   });
 
-  // Fetch post if not passed via navigation state
+  // Fetch post (comments come with it)
   useEffect(() => {
-    if (!post && postId) {
-      fetchPost();
-    }
+    if (postId && !post) fetchPost();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
-
-  useEffect(() => {
-    if (post) {
-      fetchComments();
-    }
-  }, [post?.id]);
 
   const fetchPost = async () => {
     try {
@@ -133,34 +114,52 @@ export default function AdminPostDetail() {
         const postData = response.data.data.post;
         setPost(postData);
         init(postData.id, postData.voteCount ?? 0, postData.hasVoted ?? false);
+        // Comments come with the post response — no separate API call
+        if (postData.comments) {
+          setComments(postData.comments);
+          if (currentUser) {
+            const liked = new Set<string>();
+            postData.comments.forEach((c: any) => {
+              if (c.likes?.some((l: any) => l.userId === currentUser.id)) liked.add(c.id);
+              c.replies?.forEach((r: any) => {
+                if (r.likes?.some((l: any) => l.userId === currentUser.id)) liked.add(r.id);
+              });
+            });
+            setLikedCommentIds(liked);
+          }
+        }
       }
-    } catch (error) {
-      console.error('Error fetching post:', error);
+    } catch {
+      console.error('Error fetching post');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchComments = async () => {
+  const fetchComments = () => fetchCommentsById(post?.id || postId);
+
+  const fetchCommentsById = async (id?: string) => {
+    if (!id) return;
     try {
-      const response = await api.get(`/comments/post/${post?.id}`);
+      const response = await api.get(`/comments/post/${id}`);
       if (response.data.success) {
         const commentsList = response.data.data.comments || [];
         setComments(commentsList);
 
-        // Initialize liked comment IDs based on current user
-        const liked = new Set<string>();
+        // Initialize liked comment IDs for comments + replies
         if (currentUser) {
+          const liked = new Set<string>();
           commentsList.forEach((comment: Comment) => {
-            if (comment.likes.some((like: any) => like.userId === currentUser.id)) {
-              liked.add(comment.id);
-            }
+            if (comment.likes?.some((like: any) => like.userId === currentUser.id)) liked.add(comment.id);
+            comment.replies?.forEach((reply: any) => {
+              if (reply.likes?.some((like: any) => like.userId === currentUser.id)) liked.add(reply.id);
+            });
           });
+          setLikedCommentIds(liked);
         }
-        setLikedCommentIds(liked);
       }
-    } catch (error) {
-      console.error('Error fetching comments:', error);
+    } catch {
+      console.error('Error fetching comments');
     }
   };
 
@@ -715,7 +714,7 @@ export default function AdminPostDetail() {
           {/* Sidebar - Right */}
           <div>
             <div
-              className={`rounded-xl border sticky top-24 overflow-hidden ${
+              className={`rounded-xl border sticky top-24 ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700'
                   : 'bg-white border-gray-200 shadow-sm'

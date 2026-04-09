@@ -60,14 +60,6 @@ const EMPTY_TYPE_CONFIG: Record<string, { icon: React.ElementType; title: string
   integration: { icon: Puzzle, title: 'No Integration Requests', description: 'No integration requests found. Integration ideas will appear here.' },
 };
 
-const PRIORITY_CONFIG: Record<string, string> = {
-  none: 'bg-gray-400',
-  low: 'bg-green-500',
-  medium: 'bg-yellow-500',
-  high: 'bg-orange-500',
-  critical: 'bg-red-500',
-};
-
 export default function AdminFeedback() {
   const theme = useThemeStore((state) => state.theme);
   const { init, toggle, votes } = useVoteStore();
@@ -107,6 +99,7 @@ export default function AdminFeedback() {
   useEffect(() => {
     Promise.all([fetchBoards(), fetchPosts(isInitialLoad.current)]);
     isInitialLoad.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, boardFilter]);
 
   useEffect(() => {
@@ -131,8 +124,8 @@ export default function AdminFeedback() {
           setFormData((prev) => ({ ...prev, boardId: response.data.data.boards[0].id }));
         }
       }
-    } catch (error) {
-      console.error('Error fetching boards:', error);
+    } catch {
+      console.error('Error fetching boards');
     }
   };
 
@@ -150,8 +143,8 @@ export default function AdminFeedback() {
         setPosts(fetchedPosts);
         fetchedPosts.forEach((p: Post & { hasVoted?: boolean }) => init(p.id, p.voteCount ?? 0, p.hasVoted ?? false));
       }
-    } catch (error) {
-      console.error('Error fetching posts:', error);
+    } catch {
+      console.error('Error fetching posts');
     } finally {
       setLoading(false);
       setTableLoading(false);
@@ -183,7 +176,7 @@ export default function AdminFeedback() {
         setFormData({ title: '', description: '', type: 'feature', boardId: boards[0]?.id || '', priority: 'none' });
         navigate(`/admin/posts/${response.data.data.post.id}/edit`);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to create post');
     } finally {
       setCreating(false);
@@ -206,7 +199,7 @@ export default function AdminFeedback() {
         fetchPosts();
         toast.success('Post updated');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to update post');
     } finally {
       setUpdating(false);
@@ -219,7 +212,7 @@ export default function AdminFeedback() {
       await api.delete(`/posts/${postId}`);
       fetchPosts();
       toast.success('Post deleted');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete');
     }
   };
@@ -234,7 +227,7 @@ export default function AdminFeedback() {
     try {
       await api.put(`/posts/${postId}/pin`, { isPinned: !isPinned });
       fetchPosts();
-    } catch (error) {
+    } catch {
       toast.error('Failed to toggle pin');
     }
   };

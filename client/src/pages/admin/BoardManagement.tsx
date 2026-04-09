@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Grid3x3, History, Link2, Plus } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import AdminBoards from './Boards';
@@ -13,8 +14,19 @@ const TABS = [
 
 export default function BoardManagement() {
   const theme = useThemeStore((state) => state.theme);
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('boards');
   const [triggerAction, setTriggerAction] = useState(0);
+
+  useEffect(() => {
+    const tab = (location.state as any)?.tab;
+    if (tab) setActiveTab(tab);
+  }, [location.state]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setTriggerAction(0);
+  };
   const d = theme === 'dark';
   const currentTab = TABS.find(t => t.id === activeTab)!;
 
@@ -27,20 +39,21 @@ export default function BoardManagement() {
           <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{currentTab.description}</p>
         </div>
         <button onClick={() => setTriggerAction(prev => prev + 1)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition shrink-0">
-          <Plus className="w-4 h-4" /> {currentTab.btnLabel}
+          className="flex items-center gap-2 bg-[#0C68E9] text-white rounded-lg hover:bg-[#0b5dd0] transition shrink-0"
+          style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+          <Plus className="w-5 h-5" /> {currentTab.btnLabel}
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-6 mt-5 mb-5">
+      <div className="flex items-center gap-6" style={{ marginTop: '26px', marginBottom: '26px' }}>
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-2 pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
                 active
                   ? `border-black ${d ? 'text-white' : 'text-gray-900'}`

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Edit2, Send, X, Search, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, Edit2, Send, X, Search, MoreVertical, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
@@ -43,6 +43,11 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [typeTabFilter, setTypeTabFilter] = useState('all');
+  const [denseMode, setDenseMode] = useState(false);
+  const [rowsDropOpen, setRowsDropOpen] = useState(false);
+  const tabsRef = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
 
   const [form, setForm] = useState({
     title: '',
@@ -147,14 +152,30 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
     return config[type] || 'bg-gray-100 text-gray-700';
   };
 
-  const filteredEntries = entries.filter((e) =>
-    e.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredEntries = entries.filter((e) => {
+    if (searchQuery && !e.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (filterStatus && e.status !== filterStatus) return false;
+    if (filterType && e.type !== filterType) return false;
+    if (typeTabFilter !== 'all' && e.type !== typeTabFilter) return false;
+    return true;
+  });
 
   const paginatedEntries = filteredEntries.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
   const totalPages = Math.ceil(filteredEntries.length / rowsPerPage);
   const hasFilters = searchQuery || filterStatus || filterType;
   const d = theme === 'dark';
+
+  useEffect(() => {
+    const el = tabsRef.current[typeTabFilter];
+    if (el) {
+      const parent = el.parentElement;
+      if (parent) {
+        const parentRect = parent.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        setIndicatorStyle({ left: elRect.left - parentRect.left, width: elRect.width });
+      }
+    }
+  }, [typeTabFilter, loading]);
 
   const handlePublish = async (id: string) => {
     try {
@@ -171,10 +192,10 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
 
       {/* Filters */}
       <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border flex-1 min-w-[180px] max-w-[280px] ${
+        <div className="flex flex-wrap items-center gap-4">
+          <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[180px] max-w-[380px] ${
             d ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-          }`}>
+          }`} style={{ padding: '0 14px', height: '48px' }}>
             <Search className="w-4 h-4 text-gray-400" />
             <input type="text" placeholder="Search entries..." value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
@@ -188,8 +209,9 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
             onChange={(v) => { setFilterType(v); setPage(0); }} />
           {hasFilters && (
             <button onClick={() => { setSearchQuery(''); setFilterStatus(''); setFilterType(''); setPage(0); }}
-              className="flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:text-red-600">
-              <X className="w-4 h-4" /> Clear Filters
+              className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors"
+              style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+              <X className="w-5 h-5" /> Clear Filters
             </button>
           )}
         </div>
@@ -199,12 +221,52 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
       {loading ? (
         <LoadingBar />
       ) : (
-        <div className={`rounded-lg border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <table className="w-full">
-            <thead className={d ? 'bg-gray-700' : 'bg-gray-50'}>
-              <tr>
-                {['Title', 'Type', 'Status', 'Boards', 'Likes', 'Created', 'Actions'].map(h => (
-                  <th key={h} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
+        <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          {/* Title */}
+          <div style={{ padding: '24px 24px 16px 24px' }}>
+            <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>All Entries</h2>
+          </div>
+          <div className={`border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} />
+
+          {/* Type Tabs */}
+          <div className={`relative flex items-end border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ height: '48px', paddingLeft: '24px', gap: '40px' }}>
+            {[
+              { key: 'all', label: 'All', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
+              { key: 'new', label: 'New', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', darkBadgeBg: 'bg-emerald-900/40', darkBadgeText: 'text-emerald-300' },
+              { key: 'improved', label: 'Improved', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
+              { key: 'fixed', label: 'Fixed', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', darkBadgeBg: 'bg-orange-900/40', darkBadgeText: 'text-orange-300' },
+            ].map((tab) => {
+              const isActive = typeTabFilter === tab.key;
+              const count = tab.key === 'all' ? entries.length : entries.filter(e => e.type === tab.key).length;
+              return (
+                <button key={tab.key} ref={(el) => { tabsRef.current[tab.key] = el; }}
+                  onClick={() => { setTypeTabFilter(tab.key); setPage(0); }}
+                  className={`flex items-center gap-1.5 pb-3 text-sm font-semibold transition-colors ${
+                    isActive ? (d ? 'text-white' : 'text-gray-900') : (d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')
+                  }`}>
+                  {tab.label}
+                  <span className={`inline-flex items-center justify-center min-w-[24px] h-[24px] px-1 rounded-md text-[11px] font-bold ${
+                    d ? `${tab.darkBadgeBg} ${tab.darkBadgeText}` : `${tab.badgeBg} ${tab.badgeText}`
+                  }`}>{count}</span>
+                </button>
+              );
+            })}
+            <div className={`absolute bottom-0 h-0.5 ${d ? 'bg-white' : 'bg-gray-900'}`}
+              style={{ left: indicatorStyle.left, width: indicatorStyle.width, transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+          </div>
+
+          <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
+                {['Title', 'Type', 'Status', 'Boards', 'Likes', 'Author', 'Created', 'Actions'].map((h, i) => (
+                  <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                    style={{
+                      fontSize: '14px', color: d ? undefined : '#1C252E',
+                      textAlign: i === 4 ? 'center' as const : i === 7 ? 'right' as const : 'left' as const,
+                      width: i === 0 ? '280px' : i === 1 ? '180px' : i === 2 ? '180px' : i === 3 ? '150px' : i === 4 ? '120px' : i === 5 ? '200px' : i === 6 ? '180px' : i === 7 ? '70px' : undefined,
+                    }}>
+                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 7 ? '24px' : '16px' }}>{h}</div>
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -213,44 +275,58 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                 paginatedEntries.map((entry) => (
                   <tr key={entry.id}
                     onClick={() => navigate(entry.status === 'draft' ? `/admin/changelog/${entry.id}/edit` : `/admin/changelog/${entry.id}/view`)}
-                    className={`border-t cursor-pointer transition ${d ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
-                    <td className={`px-4 py-3.5 text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{entry.title}</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${getTypeBadge(entry.type)}`}>{entry.type}</span>
+                    className={`border-b border-dashed cursor-pointer transition-colors ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <td className={`${denseMode ? 'py-1.5' : 'py-4'} px-5 max-w-0 overflow-hidden`} style={{ paddingLeft: '24px' }}>
+                      <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{entry.title}</p>
                     </td>
-                    <td className="px-4 py-3.5">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(entry.status)}`}>{entry.status}</span>
+                    <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
+                      <span className={`px-2.5 py-1 rounded-full text-[13px] font-semibold capitalize ${getTypeBadge(entry.type)}`}>{entry.type}</span>
                     </td>
-                    <td className={`px-4 py-3.5 text-xs ${d ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {entry.allBoards ? 'All Boards' : entry.boards.map((b) => b.board.name).join(', ')}
+                    <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
+                      <span className={`px-2.5 py-1 rounded-full text-[13px] font-semibold capitalize ${getStatusBadge(entry.status)}`}>{entry.status}</span>
                     </td>
-                    <td className={`px-4 py-3.5 text-sm font-semibold ${d ? 'text-teal-400' : 'text-teal-600'}`}>{entry._count.likes}</td>
-                    <td className={`px-4 py-3.5 text-xs whitespace-nowrap ${d ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <span className="truncate block" style={{ maxWidth: '120px' }}>{entry.allBoards ? 'All Boards' : entry.boards.map((b) => b.board.name).join(', ')}</span>
+                    </td>
+                    <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm font-semibold text-center ${d ? 'text-teal-400' : 'text-teal-600'}`}>{entry._count.likes}</td>
+                    <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                          {entry.author?.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                        <span className={`text-sm truncate ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ maxWidth: '100px' }}>{entry.author?.name}</span>
+                      </div>
+                    </td>
+                    <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm whitespace-nowrap ${d ? 'text-gray-500' : 'text-gray-400'}`}>
                       {new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
-                    <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                    <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }} onClick={(e) => e.stopPropagation()}>
                       <div className="relative inline-block">
                         <button onClick={() => setOpenMenuId(openMenuId === entry.id ? null : entry.id)}
                           className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
                           <MoreVertical className="w-4 h-4 text-gray-400" />
                         </button>
                         {openMenuId === entry.id && (
-                          <div className={`absolute right-0 top-full mt-1 w-36 rounded-lg shadow-xl border z-50 py-1 ${
-                            d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
-                          }`}>
+                          <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${
+                            d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'
+                          }`} style={{ minWidth: '160px' }}>
+                            <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
                             <button onClick={() => { navigate(`/admin/changelog/${entry.id}/edit`); setOpenMenuId(null); }}
-                              className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${d ? 'hover:bg-gray-600 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
-                              <Edit2 className="w-3.5 h-3.5" /> Edit
+                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
+                              <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
                             </button>
                             {entry.status === 'draft' && (
-                              <button onClick={() => { handlePublish(entry.id); setOpenMenuId(null); }}
-                                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-green-600 ${d ? 'hover:bg-gray-600' : 'hover:bg-green-50'}`}>
-                                <Send className="w-3.5 h-3.5" /> Publish
-                              </button>
+                              <>
+                                <button onClick={() => { handlePublish(entry.id); setOpenMenuId(null); }}
+                                  className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-green-400 hover:bg-green-500/10' : 'text-green-600 hover:bg-green-50'}`}>
+                                  <Send className="w-[18px] h-[18px]" /> Publish
+                                </button>
+                              </>
                             )}
+                            <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
                             <button onClick={() => { handleDelete(entry.id); setOpenMenuId(null); }}
-                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-red-500 hover:bg-red-50">
-                              <Trash2 className="w-3.5 h-3.5" /> Delete
+                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
+                              <Trash2 className="w-[18px] h-[18px]" /> Delete
                             </button>
                           </div>
                         )}
@@ -260,8 +336,14 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className={`px-4 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                    No changelog entries yet. Create your first entry!
+                  <td colSpan={8}>
+                    <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
+                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                        <Edit2 className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
+                      </div>
+                      <p className={`text-base font-semibold mb-1 ${d ? 'text-gray-300' : 'text-gray-600'}`}>No Changelog Entries</p>
+                      <p className={`text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>Create your first changelog entry to get started.</p>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -269,104 +351,117 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
           </table>
 
           {/* Pagination */}
-          {filteredEntries.length > 0 && (
-            <div className={`flex items-center justify-between px-4 py-3 border-t ${d ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex items-center justify-between px-6 py-3">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setDenseMode(!denseMode)}
+                className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+              </button>
+              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+            </div>
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <CustomDropdown label="Rows" value={String(rowsPerPage)}
-                  options={[{value:'10',label:'10'},{value:'25',label:'25'},{value:'50',label:'50'},{value:'100',label:'100'}]}
-                  onChange={(v) => { setRowsPerPage(Number(v)); setPage(0); }} minWidth="80px" />
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-xs ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, filteredEntries.length)} of {filteredEntries.length}
-                </span>
-                <div className="flex gap-1">
-                  <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
-                    className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-                    <ChevronLeft className="w-4 h-4" />
+                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                <div className="relative">
+                  <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
+                    className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
+                    {rowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${rowsDropOpen ? 'rotate-180' : ''}`} />
                   </button>
-                  <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
-                    className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                  {rowsDropOpen && (
+                    <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${
+                      d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
+                    }`}>
+                      {[10, 25, 50, 100].map(n => (
+                        <button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
+                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
+                            rowsPerPage === n ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
+                            : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
+                          }`}>{n}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
+              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+                {filteredEntries.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, filteredEntries.length)}` : '0–0'} of {filteredEntries.length}
+              </span>
+              <div className="flex gap-1">
+                <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
+                  className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
+                  className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          )}
+          </div>
+          {rowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setRowsDropOpen(false)} />}
         </div>
       )}
 
       {/* Close menu on click outside */}
       {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
 
-      {/* Create Modal - Simple */}
+      {/* Create Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`max-w-lg w-full rounded-xl ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
-            <div className={`flex items-center justify-between p-6 border-b ${
-              theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-            }`}>
-              <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Create Changelog Entry
-              </h2>
-              <button onClick={() => setShowModal(false)} className={`p-2 rounded-lg ${
-                theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
-              }`}>
+          <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
+            <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
+              <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Create Changelog Entry</h2>
+              <button onClick={() => setShowModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            <div className="p-6 space-y-5">
+            <div className="space-y-5" style={{ padding: '24px' }}>
               {/* Title */}
               <div>
-                <label className={`block text-sm font-medium mb-1.5 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>Entry Title</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="What's new?"
-                  className={`w-full px-4 py-2.5 rounded-lg border ${
-                    theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'
-                  }`}
-                />
+                <div className="relative">
+                  <input type="text" value={form.title} placeholder=" "
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none top-1/2 -translate-y-1/2
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Entry Title *</span>
+                </div>
+                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Enter the title for your changelog entry.</p>
               </div>
 
               {/* Description */}
               <div>
-                <label className={`block text-sm font-medium mb-1.5 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Brief description of this changelog entry..."
-                  rows={3}
-                  className={`w-full px-4 py-2.5 rounded-lg border ${
-                    theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'
-                  }`}
-                />
+                <div className="relative">
+                  <input type="text" value={form.description} placeholder=" "
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none top-1/2 -translate-y-1/2
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Description</span>
+                </div>
+                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Brief description of this changelog entry.</p>
               </div>
 
               {/* Type */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>Type</label>
+                <p className={`text-xs font-medium mb-2 ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Type</p>
                 <div className="flex gap-3">
                   {['new', 'improved', 'fixed'].map((t) => (
-                    <button key={t}
-                      onClick={() => setForm({ ...form, type: t })}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                    <button key={t} onClick={() => setForm({ ...form, type: t })}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold border-0 transition ${
                         form.type === t
-                          ? t === 'new' ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
-                            : t === 'improved' ? 'bg-blue-100 text-blue-700 border-blue-300'
-                            : 'bg-orange-100 text-orange-700 border-orange-300'
-                          : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:bg-gray-800'
-                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
+                          ? t === 'new' ? 'bg-emerald-600 text-white'
+                            : t === 'improved' ? 'bg-blue-600 text-white'
+                            : 'bg-orange-500 text-white'
+                          : d ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}>
                       {t.charAt(0).toUpperCase() + t.slice(1)}
                     </button>
                   ))}
@@ -375,19 +470,17 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
 
               {/* Visibility */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>Visible to</label>
-                <div className="space-y-3">
+                <p className={`text-xs font-medium mb-2 ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Visible to</p>
+                <div className="space-y-3 ml-3.5">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="visibility" checked={form.allBoards}
                       onChange={() => setForm({ ...form, allBoards: true, boardIds: [] })} />
-                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>All Boards</span>
+                    <span className={`text-sm ${d ? 'text-gray-300' : 'text-gray-700'}`}>All Boards</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="visibility" checked={!form.allBoards}
                       onChange={() => setForm({ ...form, allBoards: false })} />
-                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Selected Boards</span>
+                    <span className={`text-sm ${d ? 'text-gray-300' : 'text-gray-700'}`}>Selected Boards</span>
                   </label>
                   {!form.allBoards && (
                     <div className="pl-6 space-y-2 max-h-40 overflow-y-auto">
@@ -399,7 +492,7 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                               else setForm({ ...form, boardIds: form.boardIds.filter((id) => id !== board.id) });
                             }} />
                           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: board.color }} />
-                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{board.name}</span>
+                          <span className={`text-sm ${d ? 'text-gray-300' : 'text-gray-700'}`}>{board.name}</span>
                         </label>
                       ))}
                     </div>
@@ -407,11 +500,12 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                 </div>
               </div>
 
-              {/* Create Button */}
-              <LoadingButton loading={creating} onClick={handleCreate}
-                className="w-full px-4 py-3 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] font-semibold transition disabled:opacity-70">
-                Create Changelog Post
-              </LoadingButton>
+              <div className="flex gap-3 justify-end pt-2">
+                <button onClick={() => setShowModal(false)}
+                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
+                <LoadingButton loading={creating} onClick={handleCreate}
+                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Next</LoadingButton>
+              </div>
             </div>
           </div>
         </div>

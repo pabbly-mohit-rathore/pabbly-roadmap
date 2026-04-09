@@ -298,7 +298,7 @@ export default function ChangelogEditor() {
       await api.put(`/changelog/${id}`, { title, content: getEditorContent() });
       await api.post(`/changelog/${id}/publish`);
       toast.success('Published!');
-      navigate('/admin/changelog');
+      navigate('/admin/board-management', { state: { tab: 'changelog' } });
     } catch { toast.error('Failed to publish'); }
     finally { setPublishing(false); }
   };
@@ -311,7 +311,7 @@ export default function ChangelogEditor() {
       await api.post(`/changelog/${id}/publish`, { scheduledAt: scheduleDate });
       toast.success('Scheduled!');
       setShowScheduleModal(false);
-      navigate('/admin/changelog');
+      navigate('/admin/board-management', { state: { tab: 'changelog' } });
     } catch { toast.error('Failed to schedule'); }
     finally { setScheduling(false); }
   };
@@ -402,7 +402,7 @@ export default function ChangelogEditor() {
         theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
       }`}>
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/admin/changelog')}
+          <button onClick={() => navigate('/admin/board-management', { state: { tab: 'changelog' } })}
             className={`flex items-center gap-1 text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             <ChevronLeft className="w-4 h-4" /> Back
           </button>

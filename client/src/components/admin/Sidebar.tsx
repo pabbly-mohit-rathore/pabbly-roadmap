@@ -42,8 +42,20 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
   }
 
   const isActive = (path: string) => {
+    const source = (location.state as any)?.source;
+    const onPostPage = location.pathname.startsWith('/admin/posts');
+
     if (path === '/admin/feedback') {
-      return location.pathname.startsWith('/admin/feedback') || location.pathname.startsWith('/admin/posts');
+      if (onPostPage) return !source || source === 'feedback';
+      return location.pathname.startsWith('/admin/feedback');
+    }
+    if (path === '/admin/board-management') {
+      if (onPostPage) return source === 'board';
+      return location.pathname.startsWith('/admin/board-management') || location.pathname.startsWith('/admin/boards') || location.pathname.startsWith('/admin/changelog');
+    }
+    if (path === '/admin/roadmap') {
+      if (onPostPage) return source === 'roadmap';
+      return location.pathname.startsWith('/admin/roadmap');
     }
     return location.pathname.startsWith(path);
   };

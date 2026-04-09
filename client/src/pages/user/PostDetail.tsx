@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Trash2, Heart, X } from 'lucide-react';
+import { ArrowUpRight, Trash2, Heart, X, Pin } from 'lucide-react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -31,6 +31,7 @@ interface Post {
   author: { name: string };
   board: { name: string; id: string };
   tags?: { tag: Tag }[];
+  isPinned: boolean;
 }
 
 interface Comment {
@@ -90,41 +91,17 @@ export default function UserPostDetail() {
         init(data.postId, data.voteCount, votes[data.postId]?.voted ?? false);
       }
     },
-    onCommentAdded: (data) => {
-      if (post && data.postId === post.id) {
-        fetchComments();
-      }
-    },
-    onCommentUpdated: (data) => {
-      if (post && data.postId === post.id) {
-        fetchComments();
-      }
-    },
-    onCommentDeleted: (data) => {
-      if (post && data.postId === post.id) {
-        fetchComments();
-      }
-    },
+    onCommentAdded: () => {},
+    onCommentUpdated: () => {},
+    onCommentDeleted: () => {},
   });
 
   useEffect(() => {
-    fetchPost();
-  }, [slug]);
+    fetchPostAndComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, isAuthenticated]);
 
-  useEffect(() => {
-    if (post) {
-      fetchComments();
-    }
-  }, [post?.id]);
-
-  // Re-fetch data when authentication status changes (e.g., after login)
-  useEffect(() => {
-    if (post) {
-      fetchComments();
-    }
-  }, [isAuthenticated]);
-
-  const fetchPost = async () => {
+  const fetchPostAndComments = async () => {
     try {
       setLoading(true);
       const response = await api.get(`/posts/${slug}`);
@@ -132,35 +109,52 @@ export default function UserPostDetail() {
         const postData = response.data.data.post;
         setPost(postData);
         init(postData.id, postData.voteCount ?? 0, postData.hasVoted ?? false);
+        // Comments come with the post response — no separate API call
+        if (postData.comments) {
+          setComments(postData.comments);
+          if (currentUser) {
+            const liked = new Set<string>();
+            postData.comments.forEach((c: any) => {
+              if (c.likes?.some((l: any) => l.userId === currentUser.id)) liked.add(c.id);
+              c.replies?.forEach((r: any) => {
+                if (r.likes?.some((l: any) => l.userId === currentUser.id)) liked.add(r.id);
+              });
+            });
+            setLikedCommentIds(liked);
+          }
+        }
       }
-    } catch (error) {
-      console.error('Error fetching post:', error);
+    } catch {
       toast.error('Failed to load post');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchComments = async () => {
+  const fetchComments = () => fetchCommentsById(post?.id);
+
+  const fetchCommentsById = async (id?: string) => {
+    if (!id) return;
     try {
-      const response = await api.get(`/comments/post/${post?.id}`);
+      const response = await api.get(`/comments/post/${id}`);
       if (response.data.success) {
         const commentsList = response.data.data.comments || [];
         setComments(commentsList);
 
-        // Initialize liked comment IDs based on current user
-        const liked = new Set<string>();
+        // Initialize liked comment IDs for comments + replies
         if (currentUser) {
+          const liked = new Set<string>();
           commentsList.forEach((comment: Comment) => {
-            if (comment.likes.some((like: any) => like.userId === currentUser.id)) {
-              liked.add(comment.id);
-            }
+            if (comment.likes?.some((like: any) => like.userId === currentUser.id)) liked.add(comment.id);
+            comment.replies?.forEach((reply: any) => {
+              if (reply.likes?.some((like: any) => like.userId === currentUser.id)) liked.add(reply.id);
+            });
           });
+          setLikedCommentIds(liked);
         }
-        setLikedCommentIds(liked);
       }
-    } catch (error) {
-      console.error('Error fetching comments:', error);
+    } catch {
+      console.error('Error fetching comments');
     }
   };
 
@@ -170,6 +164,19 @@ export default function UserPostDetail() {
     toggle(post.id);
     setAnimating(true);
     setTimeout(() => setAnimating(false), 400);
+  };
+
+  const handlePin = async () => {
+    if (!isAuthenticated) { setShowLoginModal(true); return; }
+    try {
+      const response = await api.put(`/posts/${post?.id}/pin`);
+      if (response.data.success) {
+        setPost(prev => prev ? { ...prev, isPinned: !prev.isPinned } : null);
+        toast.success(post?.isPinned ? 'Post unpinned' : 'Post pinned');
+      }
+    } catch {
+      toast.error('Failed to pin post');
+    }
   };
 
   const handleAddComment = async (htmlContent?: string) => {
@@ -271,32 +278,44 @@ export default function UserPostDetail() {
     }
   };
 
-  const handleReply = async (parentId: string) => {
+  const handleReply = async (parentId: string, htmlContent?: string) => {
     if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
     }
 
-    if (!replyText.trim()) {
+    const content = htmlContent || replyText;
+    if (!content.trim() || content === '<p></p>') {
       toast.error('Reply cannot be empty');
       return;
     }
 
     try {
       const response = await api.post(`/comments/post/${post?.id}`, {
-        content: replyText,
+        content,
         parentId,
       });
 
       if (response.data.success) {
         setReplyText('');
         setReplyingToId(null);
-        fetchComments();
+        const newReply = response.data.data?.comment;
+        if (newReply) {
+          setComments(prev => prev.map(c =>
+            c.id === parentId
+              ? { ...c, replies: [...(c.replies || []), { ...newReply, replies: [], likeCount: newReply.likeCount || 0 }] }
+              : c
+          ));
+        } else {
+          fetchComments();
+        }
+        setPost(prev => prev ? { ...prev, commentCount: prev.commentCount + 1 } : null);
         toast.success('Reply added');
       }
-    } catch (error) {
-      console.error('Error adding reply:', error);
-      toast.error('Failed to add reply');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to add reply';
+      console.error('Error adding reply:', msg);
+      toast.error(msg);
     }
   };
 
@@ -356,51 +375,66 @@ export default function UserPostDetail() {
               {loading ? (
                 <LoadingBar />
               ) : (
-                <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}>
-                  {/* Post Header */}
-                  <div className="mb-8">
-                    <div className="flex items-start gap-4">
-                      <div
-                        onClick={handleVote}
-                        className="inline-flex flex-col items-center justify-center h-11 rounded-lg border font-bold transition-all cursor-pointer overflow-hidden flex-shrink-0"
-                        style={{
-                          width: '56px',
-                          fontSize: '13px',
-                          gap: '1px',
-                          backgroundColor: votes[post!.id]?.voted ? '#1c252e' : 'transparent',
-                          borderColor: votes[post!.id]?.voted ? '#1c252e' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
-                          color: votes[post!.id]?.voted ? '#ffffff' : (theme === 'dark' ? '#d1d5db' : '#374151'),
-                        }}
-                        onMouseEnter={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = '#1c252e'; }}
-                        onMouseLeave={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = theme === 'dark' ? '#4b5563' : '#e5e7eb'; }}
+                <>
+                  {/* Post Card */}
+                  <div className={`rounded-xl border p-6 mb-8 ${
+                    theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  }`}>
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-start gap-4">
+                        <div
+                          onClick={handleVote}
+                          className="inline-flex flex-col items-center justify-center h-11 rounded-lg border font-bold transition-all cursor-pointer overflow-hidden flex-shrink-0"
+                          style={{
+                            width: '56px',
+                            fontSize: '13px',
+                            gap: '1px',
+                            backgroundColor: votes[post!.id]?.voted ? '#1c252e' : 'transparent',
+                            borderColor: votes[post!.id]?.voted ? '#1c252e' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
+                            color: votes[post!.id]?.voted ? '#ffffff' : (theme === 'dark' ? '#d1d5db' : '#374151'),
+                          }}
+                          onMouseEnter={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = '#1c252e'; }}
+                          onMouseLeave={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = theme === 'dark' ? '#4b5563' : '#e5e7eb'; }}
+                        >
+                          <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
+                          <span style={{ animation: animating ? 'slideUpCount 0.35s cubic-bezier(0.34,1.56,0.64,1)' : 'none', display: 'block' }}>
+                            {votes[post!.id]?.count ?? 0}
+                          </span>
+                        </div>
+                        <div>
+                          <h1 className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {post?.title}
+                          </h1>
+                          {post?.description && (
+                            <p className={`text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                              {post.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={handlePin}
+                        className={`p-2 rounded-lg transition-colors flex-shrink-0 ${
+                          post?.isPinned
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
+                        }`}
+                        title={post?.isPinned ? 'Unpin post' : 'Pin post'}
                       >
-                        <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
-                        <span style={{ animation: animating ? 'slideUpCount 0.35s cubic-bezier(0.34,1.56,0.64,1)' : 'none', display: 'block' }}>
-                          {votes[post!.id]?.count ?? 0}
-                        </span>
-                      </div>
-                      <div>
-                        <h1 className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {post?.title}
-                        </h1>
-                        {post?.description && (
-                          <p className={`text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {post.description}
-                          </p>
-                        )}
-                        {post?.content && (
-                          <div className={`border-t pt-5 mt-2 overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                            <div className={`tiptap-preview max-w-none ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
-                              dangerouslySetInnerHTML={{ __html: post.content }} />
-                          </div>
-                        )}
-                      </div>
+                        <Pin className="w-5 h-5" />
+                      </button>
                     </div>
 
-                  </div>
+                    {/* Rich Content */}
+                    {post?.content && (
+                      <div className={`border-t pt-5 mt-2 overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                        <div className={`tiptap-preview max-w-none ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
+                          dangerouslySetInnerHTML={{ __html: post.content }} />
+                      </div>
+                    )}
 
-                  {/* Comments Section */}
-                  <div className="mb-8">
+                    {/* Comments Section */}
+                    <div className={`border-t pt-6 mt-6 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
                     <h2
                       className={`text-xl font-bold mb-4 ${
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -478,12 +512,11 @@ export default function UserPostDetail() {
                                 {/* Reply Form */}
                                 {replyingToId === comment.id && (
                                   <div className="mt-4 pt-4 border-t border-gray-200">
-                                    <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." rows={2}
-                                      className={`w-full px-3 py-2 rounded-lg border mb-2 text-sm ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'}`} />
-                                    <div className="flex gap-2">
-                                      <button onClick={() => handleReply(comment.id)} className="px-3 py-1 bg-black text-white text-sm rounded hover:bg-gray-800">Reply</button>
-                                      <button onClick={() => { setReplyingToId(null); setReplyText(''); }} className={`px-3 py-1 text-sm rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
-                                    </div>
+                                    <CommentEditor
+                                      onSubmit={(html) => handleReply(comment.id, html)}
+                                      placeholder="Write a reply..."
+                                      buttonLabel="Reply"
+                                    />
                                   </div>
                                 )}
 
@@ -535,12 +568,11 @@ export default function UserPostDetail() {
                                             </div>
                                             {replyingToId === reply.id && (
                                               <div className="mt-3 pt-3 border-t border-gray-200">
-                                                <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." rows={2}
-                                                  className={`w-full px-2 py-1 rounded text-sm border mb-2 ${theme === 'dark' ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-200'}`} />
-                                                <div className="flex gap-2">
-                                                  <button onClick={() => handleReply(reply.id)} className="px-2 py-1 bg-black text-white text-xs rounded hover:bg-gray-800">Reply</button>
-                                                  <button onClick={() => { setReplyingToId(null); setReplyText(''); }} className={`px-2 py-1 text-xs rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-600' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
-                                                </div>
+                                                <CommentEditor
+                                                  onSubmit={(html) => handleReply(comment.id, html)}
+                                                  placeholder="Write a reply..."
+                                                  buttonLabel="Reply"
+                                                />
                                               </div>
                                             )}
                                           </div>
@@ -566,145 +598,89 @@ export default function UserPostDetail() {
                       )}
                     </div>
                   </div>
-                </div>
+                  </div>
+                </>
               )}
             </div>
 
             {/* Sidebar - Right */}
             <div>
-              <div
-                className={`p-6 rounded-lg border sticky top-24 ${
-                  theme === 'dark'
-                    ? 'bg-gray-800 border-gray-700'
-                    : 'bg-white border-gray-200'
-                }`}
-              >
-                <h3
-                  className={`text-sm font-semibold mb-4 ${
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                  }`}
-                >
-                  POST DETAILS
-                </h3>
-
-                {/* Type & Status */}
-                <div className="flex gap-2 mb-6">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(post?.type || '')}`}>
-                    {post?.type?.toUpperCase()}
-                  </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(post?.status || '')}`}>
-                    {post?.status?.replace(/_/g, ' ')}
-                  </span>
+              <div className={`rounded-xl border sticky top-24 overflow-hidden ${
+                theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'
+              }`}>
+                {/* Header */}
+                <div className={`px-5 py-4 border-b ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-100 bg-gray-50/80'}`}>
+                  <h3 className={`text-xs font-bold tracking-wider uppercase ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Post Details
+                  </h3>
                 </div>
 
-                {/* Board */}
-                <div className="mb-6">
-                  <p
-                    className={`text-xs font-semibold mb-1 ${
-                      theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                    }`}
-                  >
-                    BOARD
-                  </p>
-                  <p
-                    className={`font-medium ${
-                      theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    }`}
-                  >
-                    {post?.board.name}
-                  </p>
-                </div>
-
-                {/* Author */}
-                <div className="mb-6">
-                  <p
-                    className={`text-xs font-semibold mb-1 ${
-                      theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                    }`}
-                  >
-                    AUTHOR
-                  </p>
-                  <p
-                    className={`font-medium ${
-                      theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    }`}
-                  >
-                    {post?.author.name}
-                  </p>
-                </div>
-
-                {/* Created */}
-                <div className="mb-6">
-                  <p
-                    className={`text-xs font-semibold mb-1 ${
-                      theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                    }`}
-                  >
-                    CREATED
-                  </p>
-                  <p
-                    className={`text-sm ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                    }`}
-                  >
-                    {post?.createdAt
-                      ? new Date(post.createdAt).toLocaleDateString()
-                      : '-'}
-                  </p>
-                </div>
-
-                {/* Tags */}
-                <div className="mb-6">
-                  <p
-                    className={`text-xs font-semibold mb-2 ${
-                      theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                    }`}
-                  >
-                    TAGS
-                  </p>
+                <div className="p-5 space-y-5">
+                  {/* Type & Status Chips */}
                   <div className="flex flex-wrap gap-2">
-                    {post?.tags && post.tags.length > 0 ? (
-                      post.tags.map((postTag) => (
-                        <span
-                          key={postTag.tag.id}
-                          className="px-2 py-1 rounded-full text-xs font-semibold"
-                          style={{
-                            backgroundColor: postTag.tag.color + '20',
-                            color: postTag.tag.color,
-                            border: `1px solid ${postTag.tag.color}`,
-                          }}
-                        >
-                          {postTag.tag.name}
-                        </span>
-                      ))
-                    ) : (
-                      <p
-                        className={`text-sm ${
-                          theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                        }`}
-                      >
-                        No tags
-                      </p>
-                    )}
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(post?.type || '')}`}>
+                      {post?.type?.toUpperCase()}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(post?.status || '')}`}>
+                      {post?.status?.replace(/_/g, ' ')}
+                    </span>
                   </div>
-                </div>
 
-                {/* Status */}
-                <div>
-                  <p
-                    className={`text-xs font-semibold mb-2 ${
-                      theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                    }`}
-                  >
-                    STATUS
-                  </p>
-                  <span
-                    className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                      post?.status || ''
-                    )}`}
-                  >
-                    {post?.status?.replace(/_/g, ' ')}
-                  </span>
+                  {/* Board */}
+                  <div className={`flex items-center gap-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                      {post?.board.name?.[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                      <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Board</p>
+                      <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.board.name}</p>
+                    </div>
+                  </div>
+
+                  {/* Author */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                      {post?.author.name?.[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                      <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Author</p>
+                      <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.author.name}</p>
+                    </div>
+                  </div>
+
+                  {/* Created */}
+                  <div className={`flex items-center justify-between py-3 border-t border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Created</p>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {post?.createdAt ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                    </p>
+                  </div>
+
+                  {/* Tags */}
+                  <div>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Tags</p>
+                    <div className="flex flex-wrap gap-2">
+                      {post?.tags && post.tags.length > 0 ? (
+                        post.tags.map((postTag) => (
+                          <span key={postTag.tag.id}
+                            className="px-2 py-1 rounded-full text-xs font-semibold"
+                            style={{ backgroundColor: postTag.tag.color + '20', color: postTag.tag.color, border: `1px solid ${postTag.tag.color}` }}>
+                            {postTag.tag.name}
+                          </span>
+                        ))
+                      ) : (
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No tags</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Status</p>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(post?.status || '')}`}>
+                      {post?.status?.replace(/_/g, ' ')}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

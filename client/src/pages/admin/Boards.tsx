@@ -4,6 +4,7 @@ import { Plus, Trash2, X, Upload } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
+import LoadingButton from '../../components/ui/LoadingButton';
 import toast from 'react-hot-toast';
 
 interface Board {
@@ -81,12 +82,15 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
     }
   };
 
+  const [creatingBoard, setCreatingBoard] = useState(false);
+
   const handleCreateBoard = async () => {
     if (!formData.name.trim()) {
       toast.error('Please enter board name');
       return;
     }
 
+    setCreatingBoard(true);
     try {
       const response = await api.post('/boards', {
         name: formData.name,
@@ -101,9 +105,10 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
         setFormData({ name: '', description: '', color: '#6366f1', icon: '' });
         fetchBoards();
       }
-    } catch (error) {
-      console.error('Error creating board:', error);
+    } catch {
       toast.error('Failed to create board');
+    } finally {
+      setCreatingBoard(false);
     }
   };
 
@@ -175,7 +180,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
       ) : (
         <>
           {boards.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
               {boards.map((board) => {
                 const boardColor = board.color || '#6366f1';
                 const initial = board.name?.charAt(0).toUpperCase();
@@ -183,62 +188,51 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                 return (
                   <div
                     key={board.id}
-                    className={`rounded-2xl border overflow-hidden flex flex-col transition-all hover:shadow-lg ${
-                      d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                    className={`rounded-xl border overflow-hidden flex flex-col transition-all hover:shadow-md group cursor-pointer ${
+                      d ? 'bg-gray-800 border-gray-700 hover:border-gray-600' : 'bg-white border-gray-200 hover:border-gray-300'
                     }`}
+                    onClick={() => navigate(`/admin/boards/${board.id}`)}
                   >
                     {/* Icon area */}
                     <div
-                      className="w-full h-48 flex items-center justify-center cursor-pointer overflow-hidden"
-                      style={{ backgroundColor: boardColor + '22' }}
-                      onClick={() => navigate(`/admin/boards/${board.id}`)}
+                      className="w-full flex items-center justify-center overflow-hidden relative"
+                      style={{ backgroundColor: boardColor + '15', height: '180px' }}
                     >
                       {board.icon ? (
                         <img src={board.icon} alt={board.name} className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-6xl font-bold" style={{ color: boardColor }}>
+                        <span className="text-4xl font-bold transition-transform group-hover:scale-110" style={{ color: boardColor }}>
                           {initial}
                         </span>
                       )}
                     </div>
 
                     {/* Content */}
-                    <div className="p-8 flex flex-col flex-1 items-center text-center">
-                      <h3
-                        className={`font-bold cursor-pointer mb-4 ${d ? 'text-white' : 'text-gray-900'}`}
-                        style={{ fontSize: '20px' }}
-                        onClick={() => navigate(`/admin/boards/${board.id}`)}
-                      >
+                    <div className="p-5 flex flex-col flex-1">
+                      <h3 className={`font-semibold text-base mb-1.5 truncate ${d ? 'text-white' : 'text-gray-900'}`}>
                         {board.name}
                       </h3>
-                      <p className={`flex-1 line-clamp-2 mb-8 ${d ? 'text-gray-400' : 'text-gray-500'}`}
-                        style={{ fontSize: '16px' }}>
+                      <p className={`text-sm line-clamp-2 mb-5 flex-1 ${d ? 'text-gray-400' : 'text-gray-500'}`}>
                         {board.description || 'No description provided.'}
                       </p>
 
                       {/* Buttons */}
-                      <div className="flex gap-2 w-full">
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => navigate(`/admin/boards/${board.id}`)}
-                          className={`flex-1 py-2.5 rounded-xl border-2 font-semibold uppercase tracking-wide transition-colors ${
-                            d
-                              ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white'
-                              : 'border-gray-300 text-gray-700 hover:border-gray-500 hover:text-gray-900'
-                          }`}
-                          style={{ fontSize: '16px' }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/boards/${board.id}`); }}
+                          className="flex-1 rounded-lg text-sm font-semibold bg-[#0C68E9] text-white hover:bg-[#0b5dd0] transition-colors"
+                          style={{ height: '40px' }}
                         >
-                          Access Now
+                          Access
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); openEditModal(board); }}
-                          className={`flex-1 py-2.5 rounded-xl border-2 font-semibold uppercase tracking-wide transition-colors ${
-                            d
-                              ? 'border-gray-500 text-gray-300 hover:border-white hover:text-white'
-                              : 'border-gray-300 text-gray-700 hover:border-gray-500 hover:text-gray-900'
+                          className={`flex-1 rounded-lg text-sm font-semibold border transition-colors ${
+                            d ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                           }`}
-                          style={{ fontSize: '16px' }}
+                          style={{ height: '40px' }}
                         >
-                          Edit Board
+                          Edit
                         </button>
                       </div>
                     </div>
@@ -267,130 +261,102 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
 
       {/* Create Board Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className={`rounded-lg p-6 w-full max-w-md ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-          }`}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className={`text-xl font-bold ${
-                theme === 'dark' ? 'text-white' : 'text-gray-900'
-              }`}>
-                Create New Board
-              </h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className={`p-1 rounded-lg ${
-                  theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                }`}
-              >
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl w-full ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
+            <div className={`flex items-center justify-between border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
+              <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Create New Board</h2>
+              <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-lg ${theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            <div className="space-y-4">
+            <div className="space-y-5" style={{ padding: '24px' }}>
+              {/* Board Name */}
               <div>
-                <label className={`block text-sm font-medium mb-1 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Board Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-200'
-                  }`}
-                  placeholder="e.g., Pabbly Connect"
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-200'
-                  }`}
-                  placeholder="Board description"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Board Color
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {colors.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setFormData({ ...formData, color })}
-                      className={`w-full h-10 rounded-lg border-2 transition-all ${
-                        formData.color === color ? 'border-white shadow-lg' : 'border-transparent'
-                      }`}
-                      style={{ backgroundColor: color }}
-                      title={color}
-                    />
-                  ))}
+                <div className="relative">
+                  <input type="text" value={formData.name} placeholder=" "
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                      theme === 'dark' ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                    top-1/2 -translate-y-1/2
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${theme === 'dark' ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Board Name *</span>
                 </div>
+                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Enter the name for your board.</p>
+              </div>
+
+              {/* Description */}
+              <div>
+                <div className="relative">
+                  <input type="text" value={formData.description} placeholder=" "
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                      theme === 'dark' ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                    top-1/2 -translate-y-1/2
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${theme === 'dark' ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Description</span>
+                </div>
+                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Short description for your board.</p>
               </div>
 
               {/* Logo Upload */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Board Logo <span className={`text-xs font-normal ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>(optional — recommended: 200×200px, max 500KB, PNG/JPG)</span>
-                </label>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <input ref={fileInputRef} type="file" accept=".webp,.svg,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.gif,.avif,.apng,.png" className="hidden" onChange={handleImageUpload} />
                 {formData.icon ? (
-                  <div className="flex items-center gap-3">
-                    <img src={formData.icon} alt="logo" className="w-14 h-14 rounded-xl object-contain border" />
-                    <button onClick={() => setFormData({ ...formData, icon: '' })} className="text-xs text-red-500 hover:underline">Remove</button>
+                  <div className={`flex items-center justify-between px-4 py-3 rounded-lg border ${
+                    theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img src={formData.icon} alt="logo" className="w-8 h-8 rounded object-contain" />
+                      <span className={`text-sm truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Board Logo</span>
+                    </div>
+                    <button onClick={() => setFormData({ ...formData, icon: '' })} className={`p-1 rounded-lg shrink-0 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
+                      <X className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                    </button>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed text-sm transition-colors ${
-                      theme === 'dark' ? 'border-gray-600 text-gray-400 hover:border-gray-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'
-                    }`}
-                  >
-                    <Upload className="w-4 h-4" /> Upload Logo
-                  </button>
+                  <div onClick={() => fileInputRef.current?.click()}
+                    className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
+                      theme === 'dark' ? 'border-gray-600 bg-gray-800 hover:border-gray-400' : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+                    }`} style={{ padding: '28px 24px' }}>
+                    <Upload className={`w-8 h-8 mb-3 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Choose image files (PNG, JPG, etc.) or drag them here
+                    </p>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Allowed: .webp, .svg, .jpg, .jpeg, .jfif, .pjpeg, .pjp, .gif, .avif, .apng, .png
+                    </p>
+                    <p className={`text-xs font-medium mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Max file size: 500 KB
+                    </p>
+                  </div>
                 )}
               </div>
 
-              <div className="flex gap-3 justify-end pt-4">
-                <button
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setFormData({ name: '', description: '', color: '#6366f1', icon: '' });
-                  }}
-                  className={`px-4 py-2 rounded-lg border ${
-                    theme === 'dark'
-                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
-                      : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateBoard}
-                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
-                >
-                  Create Board
-                </button>
+              {/* Board Color */}
+              <div>
+                <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Board Color</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {colors.map((color) => (
+                    <button key={color} onClick={() => setFormData({ ...formData, color })}
+                      className={`w-full h-10 rounded-lg border-2 transition-all ${formData.color === color ? 'border-white shadow-lg scale-105' : 'border-transparent'}`}
+                      style={{ backgroundColor: color }} title={color} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button onClick={() => { setShowCreateModal(false); setFormData({ name: '', description: '', color: '#6366f1', icon: '' }); }}
+                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
+                <LoadingButton onClick={handleCreateBoard} loading={creatingBoard}
+                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Create Board</LoadingButton>
               </div>
             </div>
           </div>
@@ -399,99 +365,107 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
 
       {/* Edit Board Modal */}
       {showEditModal && selectedBoard && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-          }`}>
-            <div className={`flex items-center justify-between p-6 border-b sticky top-0 z-10 ${
-              theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-            }`}>
-              <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Edit Board
-              </h2>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl w-full max-h-[90vh] overflow-y-auto ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
+            <div className={`flex items-center justify-between border-b sticky top-0 z-10 ${theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`} style={{ padding: '24px' }}>
+              <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Edit Board</h2>
               <button onClick={() => { setShowEditModal(false); setSelectedBoard(null); }}
-                className={`p-1 rounded-lg ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                className={`p-2 rounded-lg ${theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            <div className="p-6 space-y-5">
+            <div className="space-y-5" style={{ padding: '24px' }}>
               {/* Board Name */}
               <div>
-                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Board Name</label>
-                <input type="text" value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'
-                  }`} />
+                <div className="relative">
+                  <input type="text" value={formData.name} placeholder=" "
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                      theme === 'dark' ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none top-1/2 -translate-y-1/2
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${theme === 'dark' ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Board Name *</span>
+                </div>
+                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Enter the name for your board.</p>
               </div>
 
               {/* Description */}
               <div>
-                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Description</label>
-                <textarea value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'
-                  }`} rows={3} />
-              </div>
-
-              {/* Board Color */}
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Board Color</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {colors.map((color) => (
-                    <button key={color} onClick={() => setFormData({ ...formData, color })}
-                      className={`w-full h-10 rounded-lg border-2 transition-all ${
-                        formData.color === color ? 'border-white shadow-lg' : 'border-transparent'
-                      }`} style={{ backgroundColor: color }} />
-                  ))}
+                <div className="relative">
+                  <input type="text" value={formData.description} placeholder=" "
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                      theme === 'dark' ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none top-1/2 -translate-y-1/2
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${theme === 'dark' ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Description</span>
                 </div>
+                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Short description for your board.</p>
               </div>
 
               {/* Logo Upload */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Board Logo <span className={`text-xs font-normal ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>(recommended: 200×200px, max 500KB)</span>
-                </label>
-                <input ref={editFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <input ref={editFileInputRef} type="file" accept=".webp,.svg,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.gif,.avif,.apng,.png" className="hidden" onChange={handleImageUpload} />
                 {formData.icon ? (
-                  <div className="flex items-center gap-3">
-                    <img src={formData.icon} alt="logo" className="w-14 h-14 rounded-xl object-contain border" />
-                    <button onClick={() => setFormData({ ...formData, icon: '' })} className="text-xs text-red-500 hover:underline">Remove</button>
+                  <div className={`flex items-center justify-between px-4 py-3 rounded-lg border ${
+                    theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img src={formData.icon} alt="logo" className="w-8 h-8 rounded object-contain" />
+                      <span className={`text-sm truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Board Logo</span>
+                    </div>
+                    <button onClick={() => setFormData({ ...formData, icon: '' })} className={`p-1 rounded-lg shrink-0 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
+                      <X className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                    </button>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => editFileInputRef.current?.click()}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed text-sm transition-colors ${
-                      theme === 'dark' ? 'border-gray-600 text-gray-400 hover:border-gray-400' : 'border-gray-300 text-gray-500 hover:border-gray-400'
-                    }`}
-                  >
-                    <Upload className="w-4 h-4" /> Upload Logo
-                  </button>
+                  <div onClick={() => editFileInputRef.current?.click()}
+                    className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
+                      theme === 'dark' ? 'border-gray-600 bg-gray-800 hover:border-gray-400' : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+                    }`} style={{ padding: '28px 24px' }}>
+                    <Upload className={`w-8 h-8 mb-3 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Choose image files (PNG, JPG, etc.) or drag them here
+                    </p>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Allowed: .webp, .svg, .jpg, .jpeg, .jfif, .pjpeg, .pjp, .gif, .avif, .apng, .png
+                    </p>
+                    <p className={`text-xs font-medium mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Max file size: 500 KB</p>
+                  </div>
                 )}
               </div>
 
+              {/* Board Color */}
+              <div>
+                <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Board Color</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {colors.map((color) => (
+                    <button key={color} onClick={() => setFormData({ ...formData, color })}
+                      className={`w-full h-10 rounded-lg border-2 transition-all ${formData.color === color ? 'border-white shadow-lg scale-105' : 'border-transparent'}`}
+                      style={{ backgroundColor: color }} />
+                  ))}
+                </div>
+              </div>
+
               {/* Buttons */}
-              <div className="flex gap-3 justify-between pt-4">
-                <button
-                  onClick={() => { setShowEditModal(false); setSelectedBoard(null); selectedBoard && handleDeleteBoard(selectedBoard.id); }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-colors ${
+              <div className="flex gap-3 justify-between pt-2">
+                <button onClick={() => { const id = selectedBoard.id; setShowEditModal(false); setSelectedBoard(null); handleDeleteBoard(id); }}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium border transition-colors ${
                     theme === 'dark' ? 'border-red-800 text-red-400 hover:bg-red-900/20' : 'border-red-200 text-red-600 hover:bg-red-50'
-                  }`}
-                >
+                  }`} style={{ borderRadius: '8px' }}>
                   <Trash2 className="w-4 h-4" /> Delete Board
                 </button>
                 <div className="flex gap-3">
                   <button onClick={() => { setShowEditModal(false); setSelectedBoard(null); }}
-                    className={`px-4 py-2 rounded-lg border text-sm ${
-                      theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}>Cancel</button>
+                    className={`px-3 py-1.5 text-sm font-medium border transition-colors ${theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                   <button onClick={handleUpdateBoard}
-                    className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors text-sm">
-                    Update Board
-                  </button>
+                    className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors" style={{ borderRadius: '8px' }}>Update Board</button>
                 </div>
               </div>
             </div>

@@ -1,9 +1,14 @@
 import { create } from 'zustand';
 import api from '../services/api';
 
+interface VoteState {
+  count: number;
+  voted: boolean;
+  lockedUntil?: number; // timestamp — don't overwrite until this time
+}
+
 interface VoteStore {
-  // postId -> { count, voted }
-  votes: Record<string, { count: number; voted: boolean }>;
+  votes: Record<string, VoteState>;
   init: (postId: string, count: number, voted: boolean) => void;
   toggle: (postId: string) => void;
 }
@@ -12,7 +17,11 @@ const useVoteStore = create<VoteStore>((set, get) => ({
   votes: {},
 
   init: (postId, count, voted) => {
-    // Always sync with server data — server is authoritative
+    const existing = get().votes[postId];
+    // Don't overwrite if there was a recent toggle (within 5 seconds)
+    if (existing?.lockedUntil && Date.now() < existing.lockedUntil) {
+      return;
+    }
     set(s => ({ votes: { ...s.votes, [postId]: { count, voted } } }));
   },
 
@@ -23,11 +32,15 @@ const useVoteStore = create<VoteStore>((set, get) => ({
     const prevVoted = current.voted;
     const prevCount = current.count;
 
-    // Optimistic update — instant everywhere
+    // Optimistic update — instant everywhere + lock for 5 seconds
     set(s => ({
       votes: {
         ...s.votes,
-        [postId]: { count: prevCount + (prevVoted ? -1 : 1), voted: !prevVoted },
+        [postId]: {
+          count: prevCount + (prevVoted ? -1 : 1),
+          voted: !prevVoted,
+          lockedUntil: Date.now() + 5000,
+        },
       },
     }));
 
@@ -38,7 +51,10 @@ const useVoteStore = create<VoteStore>((set, get) => ({
         set(s => ({
           votes: {
             ...s.votes,
-            [postId]: { count: res.data.data.post.voteCount, voted: !prevVoted },
+            [postId]: {
+              count: res.data.data.post.voteCount,
+              voted: !prevVoted,
+            },
           },
         }));
       }

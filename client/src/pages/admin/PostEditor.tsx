@@ -271,15 +271,32 @@ export default function PostEditor() {
     e.target.value = '';
   };
 
-  const setAlign = (alignment: string) => {
-    if (!editor) return;
+  const getSelectedImage = () => {
+    if (!editor) return null;
     const { state } = editor;
     const { from } = state.selection;
     const node = state.doc.nodeAt(from);
-    if (node?.type.name === 'resizableImage') {
-      const pos = state.doc.resolve(from).before();
+    if (node?.type.name === 'resizableImage') return { node, pos: from };
+    // Check if selection is inside/around an image (NodeSelection)
+    const $from = state.doc.resolve(from);
+    for (let d = $from.depth; d >= 0; d--) {
+      const ancestor = $from.node(d);
+      if (ancestor.type.name === 'resizableImage') return { node: ancestor, pos: $from.before(d) };
+    }
+    // Check node before
+    if (from > 0) {
+      const nodeBefore = state.doc.nodeAt(from - 1);
+      if (nodeBefore?.type.name === 'resizableImage') return { node: nodeBefore, pos: from - 1 };
+    }
+    return null;
+  };
+
+  const setAlign = (alignment: string) => {
+    if (!editor) return;
+    const img = getSelectedImage();
+    if (img) {
       editor.chain().focus().command(({ tr }) => {
-        tr.setNodeMarkup(pos, undefined, { ...node.attrs, align: alignment });
+        tr.setNodeMarkup(img.pos, undefined, { ...img.node.attrs, align: alignment });
         return true;
       }).run();
     } else {
@@ -289,10 +306,8 @@ export default function PostEditor() {
 
   const getAlignActive = (alignment: string) => {
     if (!editor) return false;
-    const { state } = editor;
-    const { from } = state.selection;
-    const node = state.doc.nodeAt(from);
-    if (node?.type.name === 'resizableImage') return (node.attrs.align || 'left') === alignment;
+    const img = getSelectedImage();
+    if (img) return (img.node.attrs.align || 'left') === alignment;
     return editor.isActive({ textAlign: alignment });
   };
 
