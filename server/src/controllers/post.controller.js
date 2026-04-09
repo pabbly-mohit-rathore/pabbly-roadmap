@@ -35,7 +35,12 @@ const getPosts = async (req, res, next) => {
     const skip = (page - 1) * limit;
     const take = Math.min(parseInt(limit), 50);
 
-    const where = {};
+    const where = { isDraft: false };
+
+    // Allow admin to see their drafts
+    if (req.query.includeDrafts === 'true' && req.user) {
+      delete where.isDraft;
+    }
 
     // Admin ko sirf apne boards ke posts dikhe
     if (req.user && req.user.role === 'admin') {
@@ -127,6 +132,9 @@ const getPostBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
 
+    const { userId, role } = req.user || {};
+    const isAdmin = role === 'admin';
+
     const post = await prisma.post.findUnique({
       where: { slug },
       include: {
@@ -135,6 +143,31 @@ const getPostBySlug = async (req, res, next) => {
         tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
         votes: { select: { userId: true, user: { select: { id: true, name: true, avatar: true } } } },
         _count: { select: { comments: true, votes: true } },
+        comments: {
+          where: {
+            parentId: null,
+            ...(isAdmin ? {} : { isInternal: false }),
+            ...(!isAdmin ? (userId ? { OR: [{ isSpam: false }, { authorId: userId }] } : { isSpam: false }) : {}),
+          },
+          orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+          select: {
+            id: true, content: true, isSpam: true, isInternal: true, isOfficial: true,
+            isPinned: true, likeCount: true, createdAt: true, authorId: true, parentId: true,
+            author: { select: { id: true, name: true, avatar: true } },
+            likes: { select: { userId: true } },
+            replies: {
+              ...(!isAdmin && userId ? { where: { OR: [{ isSpam: false }, { authorId: userId }] } } : {}),
+              ...(!isAdmin && !userId ? { where: { isSpam: false } } : {}),
+              orderBy: { createdAt: 'asc' },
+              select: {
+                id: true, content: true, isSpam: true, isOfficial: true, isPinned: true,
+                likeCount: true, createdAt: true, authorId: true, parentId: true,
+                author: { select: { id: true, name: true, avatar: true } },
+                likes: { select: { userId: true } },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -146,7 +179,6 @@ const getPostBySlug = async (req, res, next) => {
       ? post.votes.some(v => v.userId === req.user.userId)
       : false;
 
-    // Use actual vote count from DB (_count.votes) to override any corrupted voteCount field
     const actualVoteCount = post._count.votes;
 
     res.json({ success: true, data: { post: { ...post, voteCount: actualVoteCount, hasVoted } } });
@@ -160,7 +192,7 @@ const getPostBySlug = async (req, res, next) => {
 // ============================================================
 const createPost = async (req, res, next) => {
   try {
-    const { title, description, type = 'feature', boardId, tagIds = [] } = req.body;
+    const { title, description, type = 'feature', boardId, tagIds = [], isDraft = false, priority = 'none' } = req.body;
     const { userId } = req.user;
 
     const hasAccess = await prisma.userBoardAccess.findUnique({
@@ -180,10 +212,12 @@ const createPost = async (req, res, next) => {
       data: {
         title,
         slug,
-        description,
+        description: description || '',
         type,
+        priority,
         boardId,
         authorId: userId,
+        isDraft,
         tags: {
           create: tagIds.map(tagId => ({ tagId }))
         }
@@ -221,7 +255,7 @@ const createPost = async (req, res, next) => {
 const updatePost = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, type, tagIds = [] } = req.body;
+    const { title, description, type, content, tagIds } = req.body;
     const { userId } = req.user;
 
     const post = await prisma.post.findUnique({ where: { id } });
@@ -234,19 +268,21 @@ const updatePost = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'You do not have permission to edit this post.' });
     }
 
-    // Delete existing tags
-    await prisma.postTag.deleteMany({ where: { postId: id } });
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (type !== undefined) updateData.type = type;
+    if (content !== undefined) updateData.content = content;
+
+    // Only update tags if tagIds is provided
+    if (tagIds) {
+      await prisma.postTag.deleteMany({ where: { postId: id } });
+      updateData.tags = { create: tagIds.map(tagId => ({ tagId })) };
+    }
 
     const updatedPost = await prisma.post.update({
       where: { id },
-      data: {
-        ...(title && { title }),
-        ...(description && { description }),
-        ...(type && { type }),
-        tags: {
-          create: tagIds.map(tagId => ({ tagId }))
-        }
-      },
+      data: updateData,
       include: {
         author: { select: { id: true, name: true, avatar: true } },
         tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
@@ -486,13 +522,83 @@ const mergePosts = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// GET POST BY ID (for editor)
+// ============================================================
+const getPostById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const post = await prisma.post.findUnique({
+      where: { id },
+      include: {
+        author: { select: { id: true, name: true, email: true, avatar: true } },
+        board: { select: { id: true, name: true, slug: true, color: true } },
+        tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
+      },
+    });
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found.' });
+    }
+
+    res.json({ success: true, data: { post } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// PUBLISH POST (draft → live)
+// ============================================================
+const publishPost = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.user;
+
+    const post = await prisma.post.findUnique({ where: { id } });
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found.' });
+    }
+
+    if (post.authorId !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Permission denied.' });
+    }
+
+    const updatedPost = await prisma.post.update({
+      where: { id },
+      data: { isDraft: false },
+      include: {
+        author: { select: { id: true, name: true, avatar: true } },
+        board: { select: { id: true, name: true, slug: true } },
+      },
+    });
+
+    await prisma.activity.create({
+      data: {
+        action: 'status_changed',
+        description: `Post "${post.title}" published`,
+        userId,
+        postId: id,
+        boardId: post.boardId,
+      },
+    });
+
+    res.json({ success: true, message: 'Post published.', data: { post: updatedPost } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getPosts,
   getPostBySlug,
+  getPostById,
   createPost,
   updatePost,
   deletePost,
   changePostStatus,
   togglePinPost,
   mergePosts,
+  publishPost,
 };

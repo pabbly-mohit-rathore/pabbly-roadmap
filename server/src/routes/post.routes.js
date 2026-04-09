@@ -21,12 +21,14 @@ const { authenticate, optionalAuth } = require('../middleware/auth');
 const {
   getPosts,
   getPostBySlug,
+  getPostById,
   createPost,
   updatePost,
   deletePost,
   changePostStatus,
   togglePinPost,
   mergePosts,
+  publishPost,
 } = require('../controllers/post.controller');
 
 // ──────────────────────────────────────
@@ -39,14 +41,19 @@ const createPostRules = [
     .notEmpty().withMessage('Title is required.')
     .isLength({ min: 3, max: 200 }).withMessage('Title must be between 3 and 200 characters.'),
   body('description')
-    .trim()
-    .notEmpty().withMessage('Description is required.')
-    .isLength({ min: 10 }).withMessage('Description must be at least 10 characters.'),
+    .optional()
+    .trim(),
   body('type')
     .optional()
     .isIn(['feature', 'bug', 'improvement', 'integration']).withMessage('Invalid post type.'),
   body('boardId')
     .isUUID().withMessage('Board ID must be a valid UUID.'),
+  body('isDraft')
+    .optional()
+    .isBoolean().withMessage('isDraft must be a boolean.'),
+  body('priority')
+    .optional()
+    .isIn(['none', 'low', 'medium', 'high', 'critical']).withMessage('Invalid priority.'),
 ];
 
 const updatePostRules = [
@@ -111,6 +118,12 @@ router.put('/:id/status', authenticate, idParamRules, changeStatusRules, validat
 
 // PUT /posts/:id/pin — Pin/unpin post (admin/manager)
 router.put('/:id/pin', authenticate, idParamRules, validate, togglePinPost);
+
+// GET /posts/by-id/:id — Get post by ID for editor (authenticated)
+router.get('/by-id/:id', authenticate, idParamRules, validate, getPostById);
+
+// POST /posts/:id/publish — Publish a draft post (authenticated)
+router.post('/:id/publish', authenticate, idParamRules, validate, publishPost);
 
 // POST /posts/merge — Merge posts (admin/manager)
 router.post('/merge', authenticate, mergePostsRules, validate, mergePosts);

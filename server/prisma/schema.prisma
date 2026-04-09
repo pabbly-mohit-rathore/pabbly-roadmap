@@ -183,6 +183,8 @@ model Post {
   voteCount     Int        @default(0)   // Cache — har baar COUNT nahi karenge
   commentCount  Int        @default(0)   // Cache — performance ke liye
   eta           DateTime?               // Expected delivery date
+  content       String?    @db.Text   // Rich HTML content from editor
+  isDraft       Boolean    @default(false)
   isPublic      Boolean    @default(true)
   isPinned      Boolean    @default(false)
   authorId      String

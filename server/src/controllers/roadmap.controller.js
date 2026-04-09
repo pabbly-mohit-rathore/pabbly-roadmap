@@ -20,37 +20,38 @@ const getRoadmap = async (req, res, next) => {
     const { boardId, sort = 'votes' } = req.query;
     const { userId, role } = req.user;
 
-    if (!boardId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Board ID is required.',
+    // If boardId provided, verify access
+    let boardFilter = {};
+    let board = null;
+    if (boardId) {
+      board = await prisma.board.findUnique({
+        where: { id: boardId },
+        select: { id: true, name: true, createdById: true },
       });
-    }
-
-    // Board dhundho
-    const board = await prisma.board.findUnique({
-      where: { id: boardId },
-      select: { id: true, name: true, createdById: true },
-    });
-
-    if (!board) {
-      return res.status(404).json({
-        success: false,
-        message: 'Board not found.',
-      });
-    }
-
-    // Check access: Admin owns board, User has board access
-    if (role === 'admin') {
-      if (board.createdById !== undefined && board.createdById !== null && board.createdById !== userId) {
-        return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
+      if (!board) {
+        return res.status(404).json({ success: false, message: 'Board not found.' });
       }
+      if (role === 'admin') {
+        if (board.createdById && board.createdById !== userId) {
+          return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
+        }
+      } else {
+        const hasAccess = await prisma.userBoardAccess.findUnique({
+          where: { userId_boardId: { userId, boardId } },
+        });
+        if (!hasAccess) {
+          return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
+        }
+      }
+      boardFilter = { boardId };
     } else {
-      const hasAccess = await prisma.userBoardAccess.findUnique({
-        where: { userId_boardId: { userId, boardId } },
-      });
-      if (!hasAccess) {
-        return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
+      // All boards: admin sees own boards, user sees accessible boards
+      if (role === 'admin') {
+        const adminBoards = await prisma.board.findMany({ where: { createdById: userId }, select: { id: true } });
+        boardFilter = { boardId: { in: adminBoards.map(b => b.id) } };
+      } else {
+        const userAccess = await prisma.userBoardAccess.findMany({ where: { userId }, select: { boardId: true } });
+        boardFilter = { boardId: { in: userAccess.map(a => a.boardId) } };
       }
     }
 
@@ -62,12 +63,14 @@ const getRoadmap = async (req, res, next) => {
 
     // Get all posts for this board — use cached counts, skip _count
     const posts = await prisma.post.findMany({
-      where: { boardId, isPublic: true },
+      where: { ...boardFilter, isPublic: true, isDraft: false },
       select: {
         id: true,
         title: true,
         slug: true,
+        description: true,
         status: true,
+        boardId: true,
         type: true,
         voteCount: true,
         commentCount: true,
@@ -75,9 +78,20 @@ const getRoadmap = async (req, res, next) => {
         author: {
           select: { name: true },
         },
+        _count: {
+          select: { votes: true, comments: true },
+        },
+        ...(userId ? { votes: { where: { userId }, select: { userId: true }, take: 1 } } : {}),
       },
       orderBy,
     });
+
+    // Add hasVoted and remove votes array
+    const postsWithVoteStatus = posts.map(post => ({
+      ...post,
+      hasVoted: userId ? (post.votes?.length > 0) : false,
+      votes: undefined,
+    }));
 
     // Group posts by status
     const roadmapData = {
@@ -90,7 +104,7 @@ const getRoadmap = async (req, res, next) => {
       hold: [],
     };
 
-    posts.forEach((post) => {
+    postsWithVoteStatus.forEach((post) => {
       if (roadmapData[post.status]) {
         roadmapData[post.status].push(post);
       }
@@ -105,7 +119,7 @@ const getRoadmap = async (req, res, next) => {
       live: roadmapData.live.length,
       closed: roadmapData.closed.length,
       hold: roadmapData.hold.length,
-      total: posts.length,
+      total: postsWithVoteStatus.length,
     };
 
     res.json({

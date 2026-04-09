@@ -19,6 +19,7 @@ const { getRoadmap } = require('../controllers/roadmap.controller');
 
 const getRoadmapRules = [
   query('boardId')
+    .optional()
     .isUUID().withMessage('Board ID must be a valid UUID.'),
   query('sort')
     .optional()

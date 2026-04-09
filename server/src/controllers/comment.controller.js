@@ -24,101 +24,84 @@ const prisma = require('../config/database');
 const getComments = async (req, res, next) => {
   try {
     const { postId } = req.params;
-    const { page = 1, limit = 20 } = req.query;
     const { userId, role } = req.user || {};
 
-    const skip = (page - 1) * limit;
-    const take = Math.min(parseInt(limit), 50);
+    // Single query: check post exists + board membership in parallel
+    const isAdmin = role === 'admin';
+    let isAdminOrManager = isAdmin;
 
-    // Post dhundho
-    const post = await prisma.post.findUnique({
-      where: { id: postId },
-      select: { id: true, boardId: true },
-    });
-
-    if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: 'Post not found.',
-      });
-    }
-
-    // Get parent comments only (no replies)
-    const where = {
-      postId,
-      parentId: null, // Only top-level comments
-    };
-
-    // Determine if user is admin or board manager
-    let isAdminOrManager = role === 'admin';
-    if (!isAdminOrManager && userId) {
-      const isBoardManager = await prisma.boardMember.findUnique({
-        where: {
-          userId_boardId: {
-            userId,
-            boardId: post.boardId,
+    if (!isAdmin && userId) {
+      // Check post + board membership in one go
+      const post = await prisma.post.findUnique({
+        where: { id: postId },
+        select: {
+          id: true,
+          boardId: true,
+          board: {
+            select: {
+              members: {
+                where: { userId },
+                select: { id: true },
+                take: 1,
+              },
+            },
           },
         },
       });
-      isAdminOrManager = !!isBoardManager;
+      if (!post) {
+        return res.status(404).json({ success: false, message: 'Post not found.' });
+      }
+      isAdminOrManager = (post.board?.members?.length || 0) > 0;
     }
 
-    // Internal comments - only admin/manager can see
+    // Build where clause
+    const where = { postId, parentId: null };
+
     if (!isAdminOrManager) {
       where.isInternal = false;
-    }
-
-    // Spam comments - only admin/manager can see, BUT users can see their own spam comments
-    if (!isAdminOrManager) {
       if (userId) {
-        where.OR = [
-          { isSpam: false },
-          { authorId: userId } // Allow users to see their own comments even if spam
-        ];
+        where.OR = [{ isSpam: false }, { authorId: userId }];
       } else {
-        where.isSpam = false; // For unauthenticated users, only show non-spam
+        where.isSpam = false;
       }
     }
 
-    const total = await prisma.comment.count({ where });
+    // Single query for comments + replies (no separate count query)
+    const replyWhere = !isAdminOrManager ? (
+      userId ? { OR: [{ isSpam: false }, { authorId: userId }] } : { isSpam: false }
+    ) : undefined;
 
     const comments = await prisma.comment.findMany({
       where,
-      orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }], // Pinned first, then newest
-      skip,
-      take,
-      include: {
-        author: {
+      orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+      select: {
+        id: true,
+        content: true,
+        isSpam: true,
+        isInternal: true,
+        isOfficial: true,
+        isPinned: true,
+        likeCount: true,
+        createdAt: true,
+        authorId: true,
+        parentId: true,
+        author: { select: { id: true, name: true, avatar: true } },
+        likes: { select: { userId: true } },
+        replies: {
+          where: replyWhere,
+          orderBy: { createdAt: 'asc' },
           select: {
             id: true,
-            name: true,
-            avatar: true,
-          },
-        },
-        likes: {
-          select: { userId: true },
-        },
-        replies: {
-          where: !isAdminOrManager ? (
-            userId ? {
-              OR: [
-                { isSpam: false },
-                { authorId: userId } // Allow users to see their own replies even if spam
-              ]
-            } : { isSpam: false } // For unauthenticated users, only show non-spam
-          ) : undefined,
-          orderBy: { createdAt: 'asc' },
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                avatar: true,
-              },
-            },
-            likes: {
-              select: { userId: true },
-            },
+            content: true,
+            isSpam: true,
+            isOfficial: true,
+            isPinned: true,
+            likeCount: true,
+            createdAt: true,
+            authorId: true,
+            parentId: true,
+            author: { select: { id: true, name: true, avatar: true } },
+            likes: { select: { userId: true } },
           },
         },
       },
@@ -126,15 +109,7 @@ const getComments = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: {
-        comments,
-        pagination: {
-          page: parseInt(page),
-          limit: take,
-          total,
-          pages: Math.ceil(total / take),
-        },
-      },
+      data: { comments },
     });
   } catch (error) {
     next(error);
@@ -690,6 +665,9 @@ const toggleCommentPin = async (req, res, next) => {
       },
     });
 
+    const io = req.app.get('io');
+    io.to(`post:${comment.postId}`).emit('comment-updated', { postId: comment.postId });
+
     res.json({
       success: true,
       message: `Comment ${updatedComment.isPinned ? 'pinned' : 'unpinned'} successfully.`,
@@ -768,11 +746,14 @@ const toggleCommentLike = async (req, res, next) => {
       },
     });
 
+    const io = req.app.get('io');
+    io.to(`post:${comment.postId}`).emit('comment-updated', { postId: comment.postId });
+
     res.json({
       success: true,
       data: {
         comment: updatedComment,
-        hasLiked: !existingLike, // If we're returning, hasLiked is the opposite of existingLike
+        hasLiked: !existingLike,
       },
     });
   } catch (error) {
