@@ -39,7 +39,7 @@ interface Stats {
   boardsSharedWithYou: number;
 }
 
-export default function AdminTeamMembers() {
+export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: number }) {
   const theme = useThemeStore((state) => state.theme);
   const { user } = useAuthStore();
   const { enterTeamAccess } = useTeamAccessStore();
@@ -63,9 +63,8 @@ export default function AdminTeamMembers() {
     accessLevel: 'manager' as 'admin' | 'manager',
   });
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { if (triggerCreate && triggerCreate > 0) setShowAddModal(true); }, [triggerCreate]);
 
   const fetchAll = async () => {
     setLoading(true);

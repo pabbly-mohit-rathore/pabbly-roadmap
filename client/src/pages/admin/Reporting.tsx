@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ThumbsUp, Calendar, ChevronLeft, ChevronRight, MessageSquare, MessageCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ThumbsUp, Calendar, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageCircle, ArrowUpRight } from 'lucide-react';
+import useVoteStore from '../../store/voteStore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
@@ -16,7 +18,10 @@ interface NewPost {
   id: string;
   title: string;
   slug: string;
+  description?: string;
+  status: string;
   voteCount: number;
+  commentCount: number;
   createdAt: string;
   board: { name: string };
 }
@@ -56,6 +61,8 @@ interface ActivityLog {
 
 export default function AdminReporting() {
   const theme = useThemeStore((state) => state.theme);
+  const navigate = useNavigate();
+  const { init: initVote, toggle: toggleVote, votes } = useVoteStore();
   const [period, setPeriod] = useState('week');
   const [boardFilter, setBoardFilter] = useState('all');
   const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
@@ -68,6 +75,12 @@ export default function AdminReporting() {
   const [logTotal, setLogTotal] = useState(0);
   const [logPage, setLogPage] = useState(0);
   const [logRowsPerPage, setLogRowsPerPage] = useState(10);
+  const [logDenseMode, setLogDenseMode] = useState(false);
+  const [logRowsDropOpen, setLogRowsDropOpen] = useState(false);
+  const [adminPage, setAdminPage] = useState(0);
+  const [adminRowsPerPage, setAdminRowsPerPage] = useState(10);
+  const [adminDenseMode, setAdminDenseMode] = useState(false);
+  const [adminRowsDropOpen, setAdminRowsDropOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -101,7 +114,11 @@ export default function AdminReporting() {
         api.get('/reporting/admin-activity', { params: { period } }),
       ]);
       if (actRes.data.success) setActivity(actRes.data.data);
-      if (newRes.data.success) setNewPosts(newRes.data.data.posts);
+      if (newRes.data.success) {
+        const posts = newRes.data.data.posts;
+        setNewPosts(posts);
+        posts.forEach((p: any) => initVote(p.id, p.voteCount ?? 0, p.hasVoted ?? false));
+      }
       if (staleRes.data.success) setStalePosts(staleRes.data.data.posts);
       if (boardRes.data.success) setBoardData(boardRes.data.data);
       if (adminRes.data.success) setAdmins(adminRes.data.data.admins);
@@ -236,27 +253,29 @@ export default function AdminReporting() {
       {/* 3 Cards: Posts Overview (donut) + New Posts + Stale Posts */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {/* Posts Overview - Donut Chart */}
-        <div className={`p-5 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h2 className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Posts Overview</h2>
-          <p className={`text-xs mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Board distribution</p>
+        <div className={`p-5 rounded-lg border flex flex-col ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Posts Overview</h2>
+          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Board distribution</p>
 
           {boardData.boards.length > 0 ? (
-            <div style={{ width: '100%', height: 220 }}>
-              <ResponsiveContainer>
-                <PieChart>
+            <>
+            <div className="flex items-center justify-center flex-1" style={{ width: '100%', minHeight: 260 }}>
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                   <Pie
                     data={boardData.boards}
                     dataKey="count"
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={65}
-                    outerRadius={95}
+                    innerRadius={80}
+                    outerRadius={115}
                     strokeWidth={3}
                     stroke={theme === 'dark' ? '#1f2937' : '#fff'}
+                    isAnimationActive={false}
                   >
-                    {boardData.boards.map((entry, index) => (
-                      <Cell key={index} fill={entry.color || '#3b82f6'} />
+                    {boardData.boards.map((_, index) => (
+                      <Cell key={index} fill={['#004B50', '#007867', '#5BE49B', '#C8FAD6', '#22c55e', '#16a34a', '#059669', '#10b981'][index % 8]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -276,33 +295,74 @@ export default function AdminReporting() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+
+            {/* Dashed Divider */}
+            <div className={`border-t border-dashed mt-4 mb-5 -mx-5 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`} />
+
+            {/* Board Legend */}
+            <div className="space-y-4">
+              {boardData.boards.slice(0, 5).map((board, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: ['#004B50', '#007867', '#5BE49B', '#C8FAD6', '#22c55e', '#16a34a', '#059669', '#10b981'][index % 8] }} />
+                    <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{board.name}</span>
+                  </div>
+                  <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{board.count}</span>
+                </div>
+              ))}
+            </div>
+            </>
           ) : (
             <p className={`text-sm text-center py-12 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No data</p>
           )}
         </div>
 
         {/* New Posts */}
-        <div className={`p-5 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h2 className={`text-base font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>New Posts</h2>
+        <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className="px-5 pt-5 pb-3">
+            <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>New Posts</h2>
+          </div>
           {newPosts.length > 0 ? (
-            <div className="space-y-3">
-              {newPosts.map((post) => (
-                <div key={post.id} className="flex items-center gap-3">
-                  <div className={`flex flex-col items-center px-2 py-1 rounded border ${
-                    post.voteCount > 0
-                      ? 'bg-blue-50 border-blue-200 text-blue-600'
-                      : theme === 'dark' ? 'bg-gray-700 border-gray-600 text-gray-400' : 'bg-gray-50 border-gray-200 text-gray-400'
-                  }`}>
-                    <ThumbsUp className="w-3 h-3" />
-                    <span className="text-xs font-bold">{post.voteCount}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{post.board.name}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+              <thead>
+                <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'}>
+                  {['Upvote', 'Title', 'Status', 'Comments'].map((h, i) => (
+                    <th key={h} className={`py-2.5 text-xs font-semibold ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}
+                      style={{ textAlign: i === 3 ? 'right' : 'left', paddingLeft: i === 0 ? '16px' : '12px', paddingRight: i === 3 ? '16px' : '12px' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {newPosts.slice(0, 10).map((post) => {
+                  const sc: Record<string, string> = { open: 'text-blue-600', under_review: 'text-yellow-600', planned: 'text-purple-600', in_progress: 'text-orange-500', live: 'text-green-600', closed: 'text-gray-500', hold: 'text-red-500' };
+                  return (
+                    <tr key={post.id} onClick={() => navigate(`/admin/posts/${post.slug}`, { state: { from: '/admin/settings', source: 'settings' } })}
+                      className={`border-t border-dashed cursor-pointer transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
+                      <td className="py-3" style={{ paddingLeft: '16px', width: '70px' }} onClick={(e) => { e.stopPropagation(); toggleVote(post.id); }}>
+                        <div className={`inline-flex flex-col items-center justify-center h-9 rounded-lg border font-bold cursor-pointer transition-all ${
+                          votes[post.id]?.voted ? 'bg-[#1c252e] border-[#1c252e] text-white' : (theme === 'dark' ? 'border-gray-600 text-gray-400 hover:border-gray-400' : 'border-gray-200 text-gray-500 hover:border-gray-400')
+                        }`} style={{ width: '40px', fontSize: '11px', gap: '1px' }}>
+                          <ArrowUpRight className="w-3 h-3 rotate-[-45deg]" />
+                          <span>{votes[post.id]?.count ?? post.voteCount}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 max-w-0 overflow-hidden">
+                        <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
+                        {post.description && <p className={`text-xs truncate mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>}
+                      </td>
+                      <td className="py-3 px-3" style={{ width: '110px' }}>
+                        <span className={`text-xs font-semibold ${sc[post.status] || 'text-gray-500'}`}>
+                          {post.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                        </span>
+                      </td>
+                      <td className={`py-3 text-sm text-right ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ paddingRight: '16px', width: '80px' }}>
+                        {post.commentCount ?? 0}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           ) : (
             <p className={`text-sm text-center py-12 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No new posts</p>
           )}
@@ -310,7 +370,7 @@ export default function AdminReporting() {
 
         {/* Stale Posts */}
         <div className={`p-5 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h2 className={`text-base font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Stale Posts</h2>
+          <h2 className={`font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Stale Posts</h2>
           <p className={`text-xs mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>No activity for 7+ days</p>
           {stalePosts.length > 0 ? (
             <div className="space-y-3">
@@ -333,145 +393,200 @@ export default function AdminReporting() {
       </div>
 
       {/* Admin Activity Table */}
-      <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="px-4 py-4">
-          <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Admin Activity</h2>
-          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{admins.length} admin{admins.length !== 1 ? 's' : ''}</p>
+      <div className={`rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div style={{ padding: '24px 24px 16px 24px' }}>
+          <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Admin Activity</h2>
         </div>
-        <table className="w-full">
-          <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
-            <tr>
+        <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+          <thead>
+            <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
               {['Admin', 'Votes', 'Posts', 'Comments'].map((h, i) => (
-                <th key={h} className={`px-4 py-3 ${i === 0 ? 'text-left' : 'text-center'} text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
+                <th key={h} className={`font-semibold ${theme === 'dark' ? 'text-gray-400' : ''}`}
+                  style={{ fontSize: '14px', color: theme === 'dark' ? undefined : '#1C252E', textAlign: i === 0 ? 'left' : 'center',
+                    width: i === 0 ? '400px' : '150px' }}>
+                  <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: '16px' }}>{h}</div>
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {admins.length > 0 ? admins.map((admin) => (
-              <tr key={admin.id} className={`border-t transition ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
-                <td className="px-4 py-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                      {admin.name[0].toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{admin.name}</p>
-                      <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{admin.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className={`px-4 py-3.5 text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                  {admin._count.votes || '—'}
-                </td>
-                <td className={`px-4 py-3.5 text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                  {admin._count.posts || '—'}
-                </td>
-                <td className={`px-4 py-3.5 text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
-                  {admin._count.comments || '—'}
-                </td>
-              </tr>
-            )) : (
-              <tr>
-                <td colSpan={4} className={`px-4 py-12 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No admin activity</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Activity Log Table */}
-      <div className={`rounded-lg border mt-6 overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="px-4 py-4">
-          <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Activity Log</h2>
-          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{logTotal} activities</p>
-        </div>
-        <table className="w-full">
-          <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
-            <tr>
-              {['User', 'Action', 'Description', 'Post', 'Board', 'Time'].map(h => (
-                <th key={h} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {activityLogs.length > 0 ? (
-              activityLogs.map((log) => (
-                <tr key={log.id} className={`border-t transition ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-750' : 'border-gray-100 hover:bg-gray-50'}`}>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                        {log.user.name[0].toUpperCase()}
+            {(() => {
+              const paginatedAdmins = admins.slice(adminPage * adminRowsPerPage, (adminPage + 1) * adminRowsPerPage);
+              return paginatedAdmins.length > 0 ? paginatedAdmins.map((admin) => (
+                <tr key={admin.id} className={`border-b border-dashed transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <td className={adminDenseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        {admin.name[0].toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{log.user.name}</p>
-                        <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{log.user.email}</p>
+                        <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{admin.name}</p>
+                        <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{admin.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3.5">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold ${getActionBadge(log.action)}`}>
-                      {log.action.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td className={`px-4 py-3.5 text-xs max-w-[220px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {log.description}
-                  </td>
-                  <td className={`px-4 py-3.5 text-xs truncate max-w-[150px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {log.post?.title || '—'}
-                  </td>
-                  <td className={`px-4 py-3.5 text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {log.board?.name || '—'}
-                  </td>
-                  <td className={`px-4 py-3.5 text-xs whitespace-nowrap ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(log.createdAt).toLocaleTimeString()}
-                  </td>
+                  <td className={`px-4 ${adminDenseMode ? 'py-1.5' : 'py-4'} text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>{admin._count.votes || '—'}</td>
+                  <td className={`px-4 ${adminDenseMode ? 'py-1.5' : 'py-4'} text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>{admin._count.posts || '—'}</td>
+                  <td className={`px-4 ${adminDenseMode ? 'py-1.5' : 'py-4'} text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>{admin._count.comments || '—'}</td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={6} className={`px-4 py-12 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                  No activity logs
-                </td>
-              </tr>
-            )}
+              )) : (
+                <tr><td colSpan={4}>
+                  <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '200px' }}>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No admin activity</p>
+                  </div>
+                </td></tr>
+              );
+            })()}
           </tbody>
         </table>
 
         {/* Pagination */}
-        <div className={`flex items-center justify-between px-4 py-3 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center gap-2">
-            <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Rows per page:</span>
-            <CustomDropdown label="Rows" value={String(logRowsPerPage)}
-              options={[{value:'10',label:'10'},{value:'25',label:'25'},{value:'50',label:'50'},{value:'100',label:'100'}]}
-              onChange={(v) => { setLogRowsPerPage(Number(v)); setLogPage(0); }} minWidth="80px" />
-          </div>
-
+        <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-              {logPage * logRowsPerPage + 1}–{Math.min((logPage + 1) * logRowsPerPage, logTotal)} of {logTotal}
+            <button onClick={() => setAdminDenseMode(!adminDenseMode)}
+              className={`relative w-9 h-5 rounded-full transition-colors ${adminDenseMode ? 'bg-[#0c68e9]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${adminDenseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+            </button>
+            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+              <div className="relative">
+                <button onClick={() => setAdminRowsDropOpen(!adminRowsDropOpen)}
+                  className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                  {adminRowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${adminRowsDropOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {adminRowsDropOpen && (
+                  <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                    {[10, 25, 50, 100].map(n => (
+                      <button key={n} onClick={() => { setAdminRowsPerPage(n); setAdminRowsDropOpen(false); setAdminPage(0); }}
+                        className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
+                          adminRowsPerPage === n ? (theme === 'dark' ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
+                          : (theme === 'dark' ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
+                        }`}>{n}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              {admins.length > 0 ? `${adminPage * adminRowsPerPage + 1}–${Math.min((adminPage + 1) * adminRowsPerPage, admins.length)}` : '0–0'} of {admins.length}
             </span>
             <div className="flex gap-1">
-              <button
-                onClick={() => setLogPage(Math.max(0, logPage - 1))}
-                disabled={logPage === 0}
-                className={`p-1.5 rounded transition disabled:opacity-30 ${
-                  theme === 'dark' ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
-                }`}
-              >
+              <button onClick={() => setAdminPage(Math.max(0, adminPage - 1))} disabled={adminPage === 0}
+                className={`p-1.5 rounded transition disabled:opacity-30 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => setLogPage(Math.min(totalLogPages - 1, logPage + 1))}
-                disabled={logPage >= totalLogPages - 1}
-                className={`p-1.5 rounded transition disabled:opacity-30 ${
-                  theme === 'dark' ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
-                }`}
-              >
+              <button onClick={() => setAdminPage(Math.min(Math.ceil(admins.length / adminRowsPerPage) - 1, adminPage + 1))} disabled={adminPage >= Math.ceil(admins.length / adminRowsPerPage) - 1}
+                className={`p-1.5 rounded transition disabled:opacity-30 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
+        {adminRowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setAdminRowsDropOpen(false)} />}
+      </div>
+
+      {/* Activity Log Table */}
+      <div className={`rounded-xl border mt-6 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div style={{ padding: '24px 24px 16px 24px' }}>
+          <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Activity Log</h2>
+        </div>
+        <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+          <thead>
+            <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
+              {['User', 'Action', 'Description', 'Post', 'Board', 'Time'].map((h, i) => (
+                <th key={h} className={`font-semibold ${theme === 'dark' ? 'text-gray-400' : ''}`}
+                  style={{ fontSize: '14px', color: theme === 'dark' ? undefined : '#1C252E', textAlign: 'left',
+                    width: i === 0 ? '220px' : i === 1 ? '120px' : i === 2 ? '250px' : i === 3 ? '180px' : i === 4 ? '130px' : '160px' }}>
+                  <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: '16px' }}>{h}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {activityLogs.length > 0 ? activityLogs.map((log) => (
+              <tr key={log.id} className={`border-b border-dashed transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <td className={logDenseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {log.user.name[0].toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{log.user.name}</p>
+                      <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{log.user.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'}`}>
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ${getActionBadge(log.action)}`}>
+                    {log.action.replace(/_/g, ' ')}
+                  </span>
+                </td>
+                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm max-w-[250px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{log.description}</td>
+                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm truncate max-w-[180px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{log.post?.title || '—'}</td>
+                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{log.board?.name || '—'}</td>
+                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm whitespace-nowrap ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </td>
+              </tr>
+            )) : (
+              <tr><td colSpan={6}>
+                <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '200px' }}>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No activity logs</p>
+                </div>
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setLogDenseMode(!logDenseMode)}
+              className={`relative w-9 h-5 rounded-full transition-colors ${logDenseMode ? 'bg-[#0c68e9]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${logDenseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+            </button>
+            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+              <div className="relative">
+                <button onClick={() => setLogRowsDropOpen(!logRowsDropOpen)}
+                  className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                  {logRowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${logRowsDropOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {logRowsDropOpen && (
+                  <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                    {[10, 25, 50, 100].map(n => (
+                      <button key={n} onClick={() => { setLogRowsPerPage(n); setLogRowsDropOpen(false); setLogPage(0); }}
+                        className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
+                          logRowsPerPage === n ? (theme === 'dark' ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
+                          : (theme === 'dark' ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
+                        }`}>{n}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              {logTotal > 0 ? `${logPage * logRowsPerPage + 1}–${Math.min((logPage + 1) * logRowsPerPage, logTotal)}` : '0–0'} of {logTotal}
+            </span>
+            <div className="flex gap-1">
+              <button onClick={() => setLogPage(Math.max(0, logPage - 1))} disabled={logPage === 0}
+                className={`p-1.5 rounded transition disabled:opacity-30 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => setLogPage(Math.min(totalLogPages - 1, logPage + 1))} disabled={logPage >= totalLogPages - 1}
+                className={`p-1.5 rounded transition disabled:opacity-30 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+        {logRowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setLogRowsDropOpen(false)} />}
       </div>
     </div>
   );

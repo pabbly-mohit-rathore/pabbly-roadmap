@@ -57,6 +57,10 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
       if (onPostPage) return source === 'roadmap';
       return location.pathname.startsWith('/admin/roadmap');
     }
+    if (path === '/admin/settings') {
+      if (onPostPage) return source === 'settings';
+      return location.pathname.startsWith('/admin/settings');
+    }
     return location.pathname.startsWith(path);
   };
 

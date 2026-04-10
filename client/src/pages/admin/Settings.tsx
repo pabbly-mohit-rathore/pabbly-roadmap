@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { BarChart3, Tags as TagsIcon, Settings as SettingsIcon, Users } from 'lucide-react';
+import { BarChart3, Tags as TagsIcon, Settings as SettingsIcon, Users, Plus } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
@@ -8,10 +8,10 @@ import AdminTags from './Tags';
 import AdminTeamMembers from './TeamMembers';
 
 const ALL_TABS = [
-  { id: 'activity-log', label: 'Activity Log', icon: BarChart3 },
-  { id: 'tags', label: 'Tags', icon: TagsIcon },
-  { id: 'team-members', label: 'Team Members', icon: Users },
-  { id: 'general', label: 'General', icon: SettingsIcon },
+  { id: 'activity-log', label: 'Activity Log', icon: BarChart3, heading: 'Activity Log', description: 'View activity logs, reports, and analytics.', btnLabel: '' },
+  { id: 'tags', label: 'Tags', icon: TagsIcon, heading: 'Tags', description: 'Create and manage tags for your posts.', btnLabel: 'Create Tag' },
+  { id: 'team-members', label: 'Team Members', icon: Users, heading: 'Team Members', description: 'Manage team members and their access levels.', btnLabel: 'Add Member' },
+  { id: 'general', label: 'General', icon: SettingsIcon, heading: 'General', description: 'Application settings and system information.', btnLabel: '' },
 ];
 
 export default function AdminSettings() {
@@ -24,40 +24,47 @@ export default function AdminSettings() {
   const isRealAdmin = user?.role === 'admin';
   const isTeamMember = isTeamAccess && !isRealAdmin;
 
-  // Hide Team Members and General tabs for team access users
   const tabs = useMemo(() => {
-    if (isTeamMember) {
-      return ALL_TABS.filter(t => t.id !== 'team-members' && t.id !== 'general');
-    }
+    if (isTeamMember) return ALL_TABS.filter(t => t.id !== 'team-members' && t.id !== 'general');
     return ALL_TABS;
   }, [isTeamMember]);
 
   const [activeTab, setActiveTab] = useState('activity-log');
+  const [triggerAction, setTriggerAction] = useState(0);
+  const currentTab = ALL_TABS.find(t => t.id === activeTab)!;
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setTriggerAction(0);
+  };
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
-        <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-          Manage activity logs, tags{!isTeamMember ? ', team members, and application settings' : ' and more'}.
-        </p>
+      {/* Header + Button */}
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{currentTab.heading}</h1>
+          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{currentTab.description}</p>
+        </div>
+        {currentTab.btnLabel && (
+          <button onClick={() => setTriggerAction(prev => prev + 1)}
+            className="flex items-center gap-2 bg-[#0C68E9] text-white rounded-lg hover:bg-[#0b5dd0] transition shrink-0"
+            style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+            <Plus className="w-5 h-5" /> {currentTab.btnLabel}
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-6 mb-5">
+      <div className={`flex items-center gap-6 sticky z-30 ${d ? 'bg-gray-950' : 'bg-[#fafafa]'}`} style={{ top: '8px', marginTop: '26px', marginBottom: '26px', paddingTop: '10px', paddingBottom: '10px' }}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
           return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+            <button key={tab.id} onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-2 pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
-                active
-                  ? `border-black ${d ? 'text-white' : 'text-gray-900'}`
-                  : `border-transparent ${d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
-              }`}
-            >
+                active ? `border-black ${d ? 'text-white' : 'text-gray-900'}` : `border-transparent ${d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+              }`}>
               <Icon className="w-4 h-4" />
               {tab.label}
             </button>
@@ -67,8 +74,8 @@ export default function AdminSettings() {
 
       {/* Tab Content */}
       {activeTab === 'activity-log' && <AdminReporting />}
-      {activeTab === 'tags' && <AdminTags />}
-      {activeTab === 'team-members' && !isTeamMember && <AdminTeamMembers />}
+      {activeTab === 'tags' && <AdminTags triggerCreate={triggerAction} />}
+      {activeTab === 'team-members' && !isTeamMember && <AdminTeamMembers triggerCreate={triggerAction} />}
       {activeTab === 'general' && !isTeamMember && (
         <div>
           <div className={`p-6 rounded-lg border mb-8 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>

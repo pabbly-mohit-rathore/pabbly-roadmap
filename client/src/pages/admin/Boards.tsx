@@ -343,10 +343,10 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
               {/* Board Color */}
               <div>
                 <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Board Color</p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="flex flex-wrap gap-4" style={{ marginLeft: '14px' }}>
                   {colors.map((color) => (
                     <button key={color} onClick={() => setFormData({ ...formData, color })}
-                      className={`w-full h-10 rounded-lg border-2 transition-all ${formData.color === color ? 'border-white shadow-lg scale-105' : 'border-transparent'}`}
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${formData.color === color ? 'border-gray-900 scale-110 ring-2 ring-offset-2 ring-gray-400' : 'border-transparent hover:scale-110'}`}
                       style={{ backgroundColor: color }} title={color} />
                   ))}
                 </div>

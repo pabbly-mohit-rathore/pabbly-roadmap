@@ -4,6 +4,7 @@ import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 
 interface BoardInfo { board: { id: string; name: string; slug: string; color: string; }; }
 interface User {
@@ -16,8 +17,10 @@ export default function AdminUsers() {
   const theme = useThemeStore((s) => s.theme);
   const d = theme === 'dark';
   const [users, setUsers] = useState<User[]>([]);
+  const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [boardFilter, setBoardFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [copiedField, setCopiedField] = useState('');
@@ -29,7 +32,11 @@ export default function AdminUsers() {
   const tabsRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { fetchUsers(); fetchBoards(); }, []);
+
+  const fetchBoards = async () => {
+    try { const r = await api.get('/boards'); if (r.data.success) setBoards(r.data.data.boards); } catch {}
+  };
 
   useEffect(() => {
     const el = tabsRef.current[statusFilter];
@@ -48,6 +55,7 @@ export default function AdminUsers() {
     if (searchQuery && !u.name.toLowerCase().includes(searchQuery.toLowerCase()) && !u.email.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (statusFilter === 'active' && !u.isActive) return false;
     if (statusFilter === 'banned' && u.isActive) return false;
+    if (boardFilter !== 'all' && !u.boardAccess?.some(ba => ba.board.id === boardFilter)) return false;
     return true;
   });
 
@@ -81,6 +89,18 @@ export default function AdminUsers() {
               onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
               className={`bg-transparent text-sm outline-none w-full ${d ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`} />
           </div>
+
+          <CustomDropdown label="Board" value={boardFilter}
+            options={[{ value: 'all', label: 'All Boards' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
+            onChange={(v) => { setBoardFilter(v); setPage(0); }} />
+
+          {(searchQuery || boardFilter !== 'all') && (
+            <button onClick={() => { setSearchQuery(''); setBoardFilter('all'); setPage(0); }}
+              className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors"
+              style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+              <X className="w-5 h-5" /> Clear Filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -127,7 +147,7 @@ export default function AdminUsers() {
                     style={{
                       fontSize: '14px', color: d ? undefined : '#1C252E',
                       textAlign: i === 2 || i === 3 || i === 4 ? 'center' as const : i === 7 ? 'right' as const : 'left' as const,
-                      width: i === 0 ? '280px' : i === 1 ? '120px' : i === 2 ? '100px' : i === 3 ? '100px' : i === 4 ? '100px' : i === 5 ? '120px' : i === 6 ? '150px' : i === 7 ? '70px' : undefined,
+                      width: i === 0 ? '280px' : i === 1 ? '120px' : i === 2 ? '100px' : i === 3 ? '100px' : i === 4 ? '100px' : i === 5 ? '120px' : i === 6 ? '120px' : i === 7 ? '60px' : undefined,
                     }}>
                     <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 7 ? '24px' : '16px' }}>{h}</div>
                   </th>

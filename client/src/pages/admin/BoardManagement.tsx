@@ -46,7 +46,7 @@ export default function BoardManagement() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-6" style={{ marginTop: '26px', marginBottom: '26px' }}>
+      <div className={`flex items-center gap-6 sticky z-30 ${d ? 'bg-gray-950' : 'bg-[#fafafa]'}`} style={{ top: '-1px', marginTop: '26px', marginBottom: '26px', paddingTop: '10px', paddingBottom: '10px' }}>
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
