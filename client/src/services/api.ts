@@ -1,17 +1,11 @@
-// ============================================================
-// AXIOS INSTANCE
-// Ye ek ready-made HTTP client hai jo har API call mein:
-//   - Base URL automatically lagata hai (localhost:5000)
-//   - Token automatically header mein bhejta hai
-// ============================================================
-
 import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  timeout: 30000, // 30s timeout
 });
 
-// Har request ke pehle token header mein daalo
+// Request interceptor - har request me token lagao
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
@@ -19,5 +13,85 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Response interceptor - 401 pe token refresh karo aur retry karo
+let isRefreshing = false;
+let failedQueue: { resolve: (token: string) => void; reject: (error: unknown) => void }[] = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) prom.reject(error);
+    else prom.resolve(token!);
+  });
+  failedQueue = [];
+};
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Skip refresh for auth endpoints
+    if (
+      error.response?.status !== 401 ||
+      originalRequest._retry ||
+      originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/register') ||
+      originalRequest.url?.includes('/auth/refresh-token') ||
+      originalRequest.url?.includes('/auth/google')
+    ) {
+      return Promise.reject(error);
+    }
+
+    // Token expired - try refresh
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({
+          resolve: (token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          },
+          reject,
+        });
+      });
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) {
+      isRefreshing = false;
+      // No refresh token - logout
+      localStorage.removeItem('user');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/refresh-token`,
+        { refreshToken }
+      );
+      const newToken = res.data.data.accessToken;
+      localStorage.setItem('accessToken', newToken);
+      originalRequest.headers.Authorization = `Bearer ${newToken}`;
+      processQueue(null, newToken);
+      return api(originalRequest);
+    } catch (refreshError) {
+      processQueue(refreshError, null);
+      // Refresh failed - logout
+      localStorage.removeItem('user');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      window.location.href = '/login';
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
+  }
+);
 
 export default api;

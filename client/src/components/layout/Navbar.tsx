@@ -87,14 +87,18 @@ export default function Navbar() {
                   }`}
                   title="Profile"
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ${
                     theme === 'dark' ? 'bg-gray-700' : 'bg-neutral-200'
                   }`}>
-                    <span className={`text-sm font-medium ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-neutral-700'
-                    }`}>
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </span>
+                    {user?.avatar ? (
+                      <img src={user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${user.avatar}`} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className={`text-sm font-medium ${
+                        theme === 'dark' ? 'text-gray-300' : 'text-neutral-700'
+                      }`}>
+                        {user?.name?.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   <span className={`text-sm font-medium ${
                     theme === 'dark' ? 'text-gray-300' : 'text-gray-700'

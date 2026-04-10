@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, X, Users, Share2, FolderInput, MoreVertical } from 'lucide-react';
+import { Search, Plus, X, Users, Share2, FolderInput, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
+import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import toast from 'react-hot-toast';
 
@@ -56,6 +57,23 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   const [updateAccessLevel, setUpdateAccessLevel] = useState<'admin' | 'manager'>('manager');
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [openSharedMenuId, setOpenSharedMenuId] = useState<string | null>(null);
+
+  // Pagination for Team Members table
+  const [tmPage, setTmPage] = useState(0);
+  const [tmRowsPerPage, setTmRowsPerPage] = useState(10);
+  const [tmDenseMode, setTmDenseMode] = useState(false);
+  const [tmRowsDropOpen, setTmRowsDropOpen] = useState(false);
+
+  // Pagination for Shared With You table
+  const [swPage, setSwPage] = useState(0);
+  const [swRowsPerPage, setSwRowsPerPage] = useState(10);
+  const [swDenseMode, setSwDenseMode] = useState(false);
+  const [swRowsDropOpen, setSwRowsDropOpen] = useState(false);
+
+  const [adding, setAdding] = useState(false);
+  const [updatingAccess, setUpdatingAccess] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -91,6 +109,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
     if (!formData.email.trim()) { toast.error('Enter team member email'); return; }
     if (!formData.boardId) { toast.error('Select a board'); return; }
 
+    setAdding(true);
     try {
       const res = await api.post('/team-members', formData);
       if (res.data.success) {
@@ -101,11 +120,14 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to add team member');
+    } finally {
+      setAdding(false);
     }
   };
 
   const handleRemoveMember = async (memberId: string) => {
     if (!confirm('Are you sure you want to remove access for this team member?')) return;
+    setRemovingId(memberId);
     try {
       const res = await api.delete(`/team-members/${memberId}`);
       if (res.data.success) {
@@ -115,11 +137,14 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
       }
     } catch (error) {
       toast.error('Failed to remove access');
+    } finally {
+      setRemovingId(null);
     }
   };
 
   const handleUpdateAccess = async () => {
     if (!showUpdateModal) return;
+    setUpdatingAccess(true);
     try {
       const res = await api.put(`/team-members/${showUpdateModal.id}`, { accessLevel: updateAccessLevel });
       if (res.data.success) {
@@ -129,15 +154,22 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
       }
     } catch (error) {
       toast.error('Failed to update access');
+    } finally {
+      setUpdatingAccess(false);
     }
   };
 
-  // Group members by user for display
   const filteredMembers = members.filter(m => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return m.user.email.toLowerCase().includes(q) || m.user.name.toLowerCase().includes(q);
   });
+
+  const tmTotalPages = Math.ceil(filteredMembers.length / tmRowsPerPage);
+  const paginatedMembers = filteredMembers.slice(tmPage * tmRowsPerPage, (tmPage + 1) * tmRowsPerPage);
+
+  const swTotalPages = Math.ceil(sharedWithMe.length / swRowsPerPage);
+  const paginatedShared = sharedWithMe.slice(swPage * swRowsPerPage, (swPage + 1) * swRowsPerPage);
 
   const STAT_CONFIG: Record<string, { iconColor: string; glowColor: string }> = {
     'Unique Team Members Added': { iconColor: 'text-orange-400', glowColor: 'linear-gradient(180deg, rgba(251,146,60,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
@@ -155,8 +187,11 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
     return <LoadingBar />;
   }
 
+  const TM_HEADERS = ['S.No', 'Team Member Email', 'Board Shared', 'Permission Type', 'Actions'];
+  const SW_HEADERS = ['S.No', 'Shared On', 'Board Name', 'Permission Type', 'Actions'];
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {statCards.map((card) => {
@@ -196,200 +231,299 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
         })}
       </div>
 
+      {/* Filter Bar */}
+      <div className={`p-4 rounded-lg border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[180px] max-w-[380px] ${d ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`} style={{ padding: '0 14px', height: '48px' }}>
+            <Search className="w-4 h-4 text-gray-400" />
+            <input type="text" placeholder="Search by email..." value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setTmPage(0); }}
+              className={`bg-transparent text-sm outline-none w-full ${d ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`} />
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 bg-[#0C68E9] text-white rounded-lg hover:bg-[#0b5dd0] transition shrink-0"
+            style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}
+          >
+            <Plus className="w-5 h-5" />
+            Add Team Member
+          </button>
+        </div>
+      </div>
+
       {/* Team Members Table */}
       <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="p-5 pb-0">
-          <h2 className={`text-xl font-bold mb-4 ${d ? 'text-white' : 'text-gray-900'}`}>Team Members</h2>
+        <div style={{ padding: '24px 24px 16px 24px' }}>
+          <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Team Members</h2>
+        </div>
 
-          {/* Search & Actions Bar */}
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border flex-1 max-w-md ${
-              d ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-            }`}>
-              <Search className="w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`bg-transparent text-sm outline-none w-full ${
-                  d ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'
-                }`}
-              />
-            </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white text-sm font-medium rounded-lg hover:bg-[#0b5dd0] transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Team Member
+        <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+          <thead>
+            <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
+              {TM_HEADERS.map((h, i) => (
+                <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                  style={{
+                    fontSize: '14px', color: d ? undefined : '#1C252E',
+                    textAlign: i === 4 ? 'right' as const : 'left' as const,
+                    width: i === 0 ? '80px' : i === 4 ? '70px' : undefined,
+                  }}>
+                  <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedMembers.length > 0 ? paginatedMembers.map((member, idx) => (
+              <tr key={member.id} className={`border-b border-dashed transition-colors ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <td className={`${tmDenseMode ? 'py-1.5' : 'py-4'} text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ paddingLeft: '24px' }}>
+                  {tmPage * tmRowsPerPage + idx + 1}
+                </td>
+                <td className={`px-4 ${tmDenseMode ? 'py-1.5' : 'py-4'}`}>
+                  <div>
+                    <p className={`text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{member.user.name}</p>
+                    <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>{member.user.email}</p>
+                  </div>
+                </td>
+                <td className={`px-4 ${tmDenseMode ? 'py-1.5' : 'py-4'}`}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: member.board.color }} />
+                    <span className={`text-sm ${d ? 'text-gray-300' : 'text-gray-700'}`}>{member.board.name}</span>
+                  </div>
+                </td>
+                <td className={`px-4 ${tmDenseMode ? 'py-1.5' : 'py-4'}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    member.accessLevel === 'admin'
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {member.accessLevel === 'admin' ? 'Admin Access' : 'Manager Access'}
+                  </span>
+                </td>
+                <td className={`${tmDenseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }}>
+                  <div className="relative inline-block">
+                    <button onClick={() => setOpenMenuId(openMenuId === member.id ? null : member.id)}
+                      className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
+                      <MoreVertical className="w-4 h-4 text-gray-400" />
+                    </button>
+                    {openMenuId === member.id && (
+                      <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px' }}>
+                        <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
+                        <button onClick={() => {
+                          setUpdateAccessLevel(member.accessLevel as 'admin' | 'manager');
+                          setShowUpdateModal(member);
+                          setOpenMenuId(null);
+                        }}
+                          className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
+                          <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Update Access
+                        </button>
+                        <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
+                        <button onClick={() => handleRemoveMember(member.id)}
+                          disabled={removingId === member.id}
+                          className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'} ${removingId === member.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                          <Trash2 className="w-[18px] h-[18px]" /> {removingId === member.id ? 'Removing...' : 'Remove Access'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )) : (
+              <tr><td colSpan={5}>
+                <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                    <Users className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
+                  </div>
+                  <p className={`text-base font-semibold mb-1 ${d ? 'text-gray-300' : 'text-gray-600'}`}>
+                    {searchQuery ? 'No Results Found' : 'No Team Members'}
+                  </p>
+                  <p className={`text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {searchQuery ? 'No team members match your search' : 'Add your first team member to get started.'}
+                  </p>
+                </div>
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setTmDenseMode(!tmDenseMode)}
+              className={`relative w-9 h-5 rounded-full transition-colors ${tmDenseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${tmDenseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
             </button>
+            <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+              <div className="relative">
+                <button onClick={() => setTmRowsDropOpen(!tmRowsDropOpen)}
+                  className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
+                  {tmRowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${tmRowsDropOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {tmRowsDropOpen && (
+                  <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                    {[10, 25, 50, 100].map(n => (
+                      <button key={n} onClick={() => { setTmRowsPerPage(n); setTmRowsDropOpen(false); setTmPage(0); }}
+                        className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
+                          tmRowsPerPage === n ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
+                          : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
+                        }`}>{n}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+              {filteredMembers.length > 0 ? `${tmPage * tmRowsPerPage + 1}–${Math.min((tmPage + 1) * tmRowsPerPage, filteredMembers.length)}` : '0–0'} of {filteredMembers.length}
+            </span>
+            <div className="flex gap-1">
+              <button onClick={() => setTmPage(Math.max(0, tmPage - 1))} disabled={tmPage === 0}
+                className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => setTmPage(Math.min(tmTotalPages - 1, tmPage + 1))} disabled={tmPage >= tmTotalPages - 1}
+                className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* Table */}
-        <div style={{ overflow: 'visible' }}>
-          <table className="w-full">
-            <thead className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
-              <tr>
-                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>S.No</th>
-                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Team Member Email</th>
-                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Board Shared</th>
-                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Permission Type</th>
-                <th className={`px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMembers.length > 0 ? (
-                filteredMembers.map((member, idx) => (
-                  <tr key={member.id} className={`border-t ${d ? 'border-gray-700 hover:bg-gray-700/30' : 'border-gray-100 hover:bg-gray-50'}`}>
-                    <td className={`px-5 py-4 text-sm font-medium ${d ? 'text-blue-400' : 'text-blue-600'}`}>{idx + 1}</td>
-                    <td className="px-5 py-4">
-                      <div>
-                        <p className={`text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{member.user.name}</p>
-                        <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>{member.user.email}</p>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: member.board.color }} />
-                        <span className={`text-sm ${d ? 'text-gray-300' : 'text-gray-700'}`}>{member.board.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        member.accessLevel === 'admin'
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {member.accessLevel === 'admin' ? 'Admin Access' : 'Manager Access'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="relative inline-block">
-                        <button
-                          onClick={() => setOpenMenuId(openMenuId === member.id ? null : member.id)}
-                          className={`p-2 rounded-lg transition-colors ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}
-                        >
-                          <MoreVertical className="w-4 h-4 text-gray-500" />
-                        </button>
-                        {openMenuId === member.id && (
-                          <div className={`absolute right-0 bottom-full mb-1 w-44 rounded-lg shadow-2xl z-[9999] overflow-hidden ${
-                            d ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200'
-                          }`}>
-                            <button
-                              onClick={() => {
-                                setUpdateAccessLevel(member.accessLevel as 'admin' | 'manager');
-                                setShowUpdateModal(member);
-                                setOpenMenuId(null);
-                              }}
-                              className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
-                                d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50'
-                              }`}
-                            >
-                              Update Access
-                            </button>
-                            <button
-                              onClick={() => handleRemoveMember(member.id)}
-                              className={`w-full px-4 py-2.5 text-left text-sm text-red-500 transition-colors ${
-                                d ? 'hover:bg-gray-600' : 'hover:bg-gray-50'
-                              }`}
-                            >
-                              Remove Access
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className={`px-5 py-10 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {searchQuery ? 'No team members match your search' : 'No team members added yet'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {tmRowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setTmRowsDropOpen(false)} />}
       </div>
 
       {/* Boards Shared With You Table */}
       <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="p-5 pb-0">
-          <h2 className={`text-xl font-bold mb-4 ${d ? 'text-white' : 'text-gray-900'}`}>Boards Shared With You</h2>
+        <div style={{ padding: '24px 24px 16px 24px' }}>
+          <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Boards Shared With You</h2>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
-              <tr>
-                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>S.No</th>
-                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Shared On</th>
-                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Board Name</th>
-                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Permission Type</th>
-                <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-500'}`}>Access Board</th>
+        <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+          <thead>
+            <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
+              {SW_HEADERS.map((h, i) => (
+                <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                  style={{
+                    fontSize: '14px', color: d ? undefined : '#1C252E',
+                    textAlign: i === 4 ? 'right' as const : 'left' as const,
+                    width: i === 0 ? '80px' : i === 4 ? '160px' : undefined,
+                  }}>
+                  <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedShared.length > 0 ? paginatedShared.map((item, idx) => (
+              <tr key={item.id} className={`border-b border-dashed transition-colors ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <td className={`${swDenseMode ? 'py-1.5' : 'py-4'} text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ paddingLeft: '24px' }}>
+                  {swPage * swRowsPerPage + idx + 1}
+                </td>
+                <td className={`px-4 ${swDenseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {new Date(item.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                </td>
+                <td className={`px-4 ${swDenseMode ? 'py-1.5' : 'py-4'}`}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.board.color }} />
+                    <span className={`text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{item.board.name}</span>
+                  </div>
+                </td>
+                <td className={`px-4 ${swDenseMode ? 'py-1.5' : 'py-4'}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    item.accessLevel === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {item.accessLevel === 'admin' ? 'Full Access' : 'Manager Access'}
+                  </span>
+                </td>
+                <td className={`${swDenseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }}>
+                  <button
+                    onClick={() => {
+                      enterTeamAccess({
+                        accessLevel: item.accessLevel,
+                        boardId: item.board.id,
+                        boardName: item.board.name,
+                        memberName: user?.name || '',
+                      });
+                      navigate('/admin/dashboard');
+                    }}
+                    className={`whitespace-nowrap px-4 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                      d ? 'border-[#0c68e9] text-[#0c68e9] hover:bg-[#0c68e9]/10' : 'border-[#0c68e9] text-[#0c68e9] hover:bg-blue-50'
+                    }`}
+                  >
+                    Access Now
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {sharedWithMe.length > 0 ? (
-                sharedWithMe.map((item, idx) => (
-                  <tr key={item.id} className={`border-t ${d ? 'border-gray-700 hover:bg-gray-700/30' : 'border-gray-100 hover:bg-gray-50'}`}>
-                    <td className={`px-5 py-4 text-sm font-medium ${d ? 'text-blue-400' : 'text-blue-600'}`}>{idx + 1}</td>
-                    <td className={`px-5 py-4 text-sm ${d ? 'text-gray-300' : 'text-gray-600'}`}>
-                      {new Date(item.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.board.color }} />
-                        <span className={`text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{item.board.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        item.accessLevel === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {item.accessLevel === 'admin' ? 'Full Access' : 'Manager Access'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <button
-                        onClick={() => {
-                          enterTeamAccess({
-                            accessLevel: item.accessLevel,
-                            boardId: item.board.id,
-                            boardName: item.board.name,
-                            memberName: user?.name || '',
-                          });
-                          navigate('/admin/dashboard');
-                        }}
-                        className={`px-4 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                          d ? 'border-blue-500 text-blue-400 hover:bg-blue-500/10' : 'border-blue-500 text-blue-600 hover:bg-blue-50'
-                        }`}
-                      >
-                        Access Now
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className={`px-5 py-10 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                    No boards shared with you yet
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+            )) : (
+              <tr><td colSpan={5}>
+                <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                    <FolderInput className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
+                  </div>
+                  <p className={`text-base font-semibold mb-1 ${d ? 'text-gray-300' : 'text-gray-600'}`}>No Shared Boards</p>
+                  <p className={`text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No boards have been shared with you yet.</p>
+                </div>
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSwDenseMode(!swDenseMode)}
+              className={`relative w-9 h-5 rounded-full transition-colors ${swDenseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${swDenseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+            </button>
+            <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+              <div className="relative">
+                <button onClick={() => setSwRowsDropOpen(!swRowsDropOpen)}
+                  className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
+                  {swRowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${swRowsDropOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {swRowsDropOpen && (
+                  <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                    {[10, 25, 50, 100].map(n => (
+                      <button key={n} onClick={() => { setSwRowsPerPage(n); setSwRowsDropOpen(false); setSwPage(0); }}
+                        className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
+                          swRowsPerPage === n ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
+                          : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
+                        }`}>{n}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+              {sharedWithMe.length > 0 ? `${swPage * swRowsPerPage + 1}–${Math.min((swPage + 1) * swRowsPerPage, sharedWithMe.length)}` : '0–0'} of {sharedWithMe.length}
+            </span>
+            <div className="flex gap-1">
+              <button onClick={() => setSwPage(Math.max(0, swPage - 1))} disabled={swPage === 0}
+                className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => setSwPage(Math.min(swTotalPages - 1, swPage + 1))} disabled={swPage >= swTotalPages - 1}
+                className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
+        {swRowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setSwRowsDropOpen(false)} />}
       </div>
+
+      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
+      {openSharedMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenSharedMenuId(null)} />}
 
       {/* Add Team Member Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full max-w-md ${d ? 'bg-gray-800' : 'bg-white'}`}>
-            {/* Header */}
             <div className={`flex items-center justify-between p-6 border-b ${d ? 'border-gray-700' : 'border-gray-200'}`}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Add Team Member</h2>
               <button onClick={() => setShowAddModal(false)} className={`p-1 rounded-lg ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
@@ -398,7 +532,6 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
             </div>
 
             <div className="p-6 space-y-5">
-              {/* Email */}
               <div>
                 <label className={`block text-sm font-medium mb-1.5 ${d ? 'text-gray-300' : 'text-gray-700'}`}>
                   Pabbly Account Email Address
@@ -417,7 +550,6 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 </p>
               </div>
 
-              {/* Board Selection */}
               <div>
                 <CustomDropdown
                   label="Board"
@@ -432,7 +564,6 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 </p>
               </div>
 
-              {/* Access Type */}
               <div>
                 <CustomDropdown
                   label="Access Level"
@@ -447,7 +578,6 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 </p>
               </div>
 
-              {/* Points to Remember */}
               <div className={`p-4 rounded-lg ${d ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
                 <h3 className={`text-sm font-bold mb-2 ${d ? 'text-gray-200' : 'text-gray-800'}`}>Points To Remember</h3>
                 <ul className={`text-xs space-y-1.5 list-disc pl-4 ${d ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -458,14 +588,14 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 </ul>
               </div>
 
-              {/* Buttons */}
               <div className="flex gap-3 justify-end pt-2">
-                <button
+                <LoadingButton
+                  loading={adding}
                   onClick={handleAddMember}
                   className="px-6 py-2.5 bg-[#0c68e9] text-white text-sm font-medium rounded-lg hover:bg-[#0b5dd0] transition-colors"
                 >
                   Add
-                </button>
+                </LoadingButton>
                 <button
                   onClick={() => { setShowAddModal(false); setFormData({ email: '', boardId: '', accessLevel: 'manager' }); }}
                   className={`px-6 py-2.5 rounded-lg border text-sm font-medium ${
@@ -514,10 +644,10 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 />
               </div>
               <div className="flex gap-3 justify-end pt-2">
-                <button onClick={handleUpdateAccess}
+                <LoadingButton loading={updatingAccess} onClick={handleUpdateAccess}
                   className="px-5 py-2 bg-[#0c68e9] text-white text-sm font-medium rounded-lg hover:bg-[#0b5dd0] transition-colors">
                   Update
-                </button>
+                </LoadingButton>
                 <button onClick={() => setShowUpdateModal(null)}
                   className={`px-5 py-2 rounded-lg border text-sm font-medium ${
                     d ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'

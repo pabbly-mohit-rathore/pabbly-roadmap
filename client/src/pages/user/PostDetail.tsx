@@ -168,13 +168,15 @@ export default function UserPostDetail() {
 
   const handlePin = async () => {
     if (!isAuthenticated) { setShowLoginModal(true); return; }
+    const wasPinned = post?.isPinned;
+    // Optimistic update - instant UI change
+    setPost(prev => prev ? { ...prev, isPinned: !prev.isPinned } : null);
     try {
-      const response = await api.put(`/posts/${post?.id}/pin`);
-      if (response.data.success) {
-        setPost(prev => prev ? { ...prev, isPinned: !prev.isPinned } : null);
-        toast.success(post?.isPinned ? 'Post unpinned' : 'Post pinned');
-      }
+      await api.put(`/posts/${post?.id}/pin`);
+      toast.success(wasPinned ? 'Post unpinned' : 'Post pinned');
     } catch {
+      // Revert on error
+      setPost(prev => prev ? { ...prev, isPinned: !!wasPinned } : null);
       toast.error('Failed to pin post');
     }
   };

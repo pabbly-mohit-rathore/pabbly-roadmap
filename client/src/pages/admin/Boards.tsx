@@ -83,6 +83,8 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
   };
 
   const [creatingBoard, setCreatingBoard] = useState(false);
+  const [updatingBoard, setUpdatingBoard] = useState(false);
+  const [deletingBoard, setDeletingBoard] = useState(false);
 
   const handleCreateBoard = async () => {
     if (!formData.name.trim()) {
@@ -118,6 +120,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
       return;
     }
 
+    setUpdatingBoard(true);
     try {
       const response = await api.put(`/boards/${selectedBoard.id}`, {
         name: formData.name,
@@ -135,12 +138,15 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
     } catch (error) {
       console.error('Error updating board:', error);
       alert('Failed to update board');
+    } finally {
+      setUpdatingBoard(false);
     }
   };
 
   const handleDeleteBoard = async (boardId: string) => {
     if (!confirm('Are you sure you want to delete this board? This action cannot be undone.')) return;
 
+    setDeletingBoard(true);
     try {
       const response = await api.delete(`/boards/${boardId}`);
       if (response.data.success) {
@@ -149,6 +155,8 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
     } catch (error) {
       console.error('Error deleting board:', error);
       alert('Failed to delete board');
+    } finally {
+      setDeletingBoard(false);
     }
   };
 
@@ -456,7 +464,8 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
               {/* Buttons */}
               <div className="flex gap-3 justify-between pt-2">
                 <button onClick={() => { const id = selectedBoard.id; setShowEditModal(false); setSelectedBoard(null); handleDeleteBoard(id); }}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium border transition-colors ${
+                  disabled={deletingBoard}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium border transition-colors disabled:opacity-70 ${
                     theme === 'dark' ? 'border-red-800 text-red-400 hover:bg-red-900/20' : 'border-red-200 text-red-600 hover:bg-red-50'
                   }`} style={{ borderRadius: '8px' }}>
                   <Trash2 className="w-4 h-4" /> Delete Board
@@ -464,8 +473,8 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                 <div className="flex gap-3">
                   <button onClick={() => { setShowEditModal(false); setSelectedBoard(null); }}
                     className={`px-3 py-1.5 text-sm font-medium border transition-colors ${theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
-                  <button onClick={handleUpdateBoard}
-                    className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors" style={{ borderRadius: '8px' }}>Update Board</button>
+                  <LoadingButton onClick={handleUpdateBoard} loading={updatingBoard}
+                    className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update Board</LoadingButton>
                 </div>
               </div>
             </div>

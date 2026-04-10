@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserRoundPlus, Shield, User } from 'lucide-react';
+import { UserRoundPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
@@ -13,7 +13,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'user'>('user');
+  const [role] = useState<'admin' | 'user'>('user');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
@@ -88,33 +88,6 @@ export default function RegisterPage() {
             Get started with Pabbly Roadmap today
           </p>
 
-          {/* Role Selector */}
-          <div className="flex bg-gray-100 rounded-2xl p-1 mb-6">
-            <button
-              type="button"
-              onClick={() => setRole('user')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                role === 'user'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              Register as User
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('admin')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                role === 'admin'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              Register as Admin
-            </button>
-          </div>
 
           {/* Google Button + Divider — only when GOOGLE_CLIENT_ID is set */}
           {GOOGLE_CLIENT_ID && (

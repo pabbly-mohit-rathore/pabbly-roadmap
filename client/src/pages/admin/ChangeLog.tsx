@@ -104,7 +104,8 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
       setCreating(true);
       const response = await api.post('/changelog', {
         title: form.title,
-        content: form.description,
+        description: form.description,
+        content: '<p></p>',
         type: form.type,
         allBoards: form.allBoards,
         boardIds: form.boardIds,

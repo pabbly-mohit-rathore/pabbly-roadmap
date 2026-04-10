@@ -224,10 +224,13 @@ export default function AdminFeedback() {
   };
 
   const handleTogglePin = async (postId: string, isPinned: boolean) => {
+    // Optimistic update - instant UI change
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, isPinned: !isPinned } : p));
     try {
       await api.put(`/posts/${postId}/pin`, { isPinned: !isPinned });
-      fetchPosts();
     } catch {
+      // Revert on error
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, isPinned } : p));
       toast.error('Failed to toggle pin');
     }
   };

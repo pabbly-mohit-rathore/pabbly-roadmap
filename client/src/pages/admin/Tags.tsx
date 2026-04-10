@@ -24,6 +24,8 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [formData, setFormData] = useState({ name: '', color: '#6366f1' });
   const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -60,15 +62,17 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
 
   const handleUpdateTag = async () => {
     if (!selectedTag || !formData.name.trim()) { toast.error('Please enter tag name'); return; }
+    setUpdating(true);
     try {
       const r = await api.put(`/tags/${selectedTag.id}`, { name: formData.name, color: formData.color });
       if (r.data.success) { setShowEditModal(false); setSelectedTag(null); setFormData({ name: '', color: '#6366f1' }); fetchTags(); toast.success('Tag updated'); }
-    } catch { toast.error('Failed to update tag'); }
+    } catch { toast.error('Failed to update tag'); } finally { setUpdating(false); }
   };
 
   const handleDeleteTag = async (tagId: string) => {
     if (!confirm('Delete this tag?')) return;
-    try { await api.delete(`/tags/${tagId}`); setTags(prev => prev.filter(t => t.id !== tagId)); setOpenMenuId(null); toast.success('Tag deleted'); } catch { toast.error('Failed to delete'); }
+    setDeletingId(tagId);
+    try { await api.delete(`/tags/${tagId}`); setTags(prev => prev.filter(t => t.id !== tagId)); setOpenMenuId(null); toast.success('Tag deleted'); } catch { toast.error('Failed to delete'); } finally { setDeletingId(null); }
   };
 
   const filteredTags = tags.filter(t => !searchQuery || t.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -156,8 +160,8 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
                             <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
                           </button>
                           <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
-                          <button onClick={() => handleDeleteTag(tag.id)}
-                            className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
+                          <button onClick={() => handleDeleteTag(tag.id)} disabled={deletingId === tag.id}
+                            className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg disabled:opacity-50 ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
                             <Trash2 className="w-[18px] h-[18px]" /> Delete
                           </button>
                         </div>
@@ -312,8 +316,8 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
               <div className="flex gap-3 justify-end pt-2">
                 <button onClick={() => { setShowEditModal(false); setSelectedTag(null); }}
                   className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
-                <button onClick={handleUpdateTag}
-                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors" style={{ borderRadius: '8px' }}>Update</button>
+                <LoadingButton onClick={handleUpdateTag} loading={updating}
+                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update</LoadingButton>
               </div>
             </div>
           </div>

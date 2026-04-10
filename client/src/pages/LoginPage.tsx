@@ -16,6 +16,9 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
+  // Check if user came via invite link
+  const hasInviteAccess = Object.keys(localStorage).some(key => key.startsWith('invite_token_'));
+
   const handleGoogleSuccess = async (accessToken: string) => {
     setLoading(true);
     try {
@@ -125,33 +128,35 @@ export default function LoginPage() {
             Sign in to continue to Pabbly Roadmap
           </p>
 
-          {/* Role Selector */}
-          <div className="flex bg-gray-100 rounded-2xl p-1 mb-6">
-            <button
-              type="button"
-              onClick={() => setLoginAs('user')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                loginAs === 'user'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              Login as User
-            </button>
-            <button
-              type="button"
-              onClick={() => setLoginAs('admin')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                loginAs === 'admin'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              Login as Admin
-            </button>
-          </div>
+          {/* Role Selector - hide when user came via invite link */}
+          {!hasInviteAccess && (
+            <div className="flex bg-gray-100 rounded-2xl p-1 mb-6">
+              <button
+                type="button"
+                onClick={() => setLoginAs('user')}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  loginAs === 'user'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <User className="w-4 h-4" />
+                Login as User
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginAs('admin')}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  loginAs === 'admin'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                Login as Admin
+              </button>
+            </div>
+          )}
 
           {/* Google Button + Divider — only when GOOGLE_CLIENT_ID is set */}
           {GOOGLE_CLIENT_ID && (

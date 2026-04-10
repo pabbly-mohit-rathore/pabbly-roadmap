@@ -149,6 +149,7 @@ const ResizableImage = Node.create({
 interface ChangelogEntry {
   id: string;
   title: string;
+  description: string | null;
   content: string;
   type: string;
   status: string;
@@ -169,6 +170,7 @@ export default function ChangelogEditor() {
 
   const [entry, setEntry] = useState<ChangelogEntry | null>(null);
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -237,6 +239,7 @@ export default function ChangelogEditor() {
         const data = response.data.data.entry;
         setEntry(data);
         setTitle(data.title);
+        setDescription(data.description || '');
       }
     } catch (error) {
       toast.error('Failed to load entry');
@@ -257,17 +260,17 @@ export default function ChangelogEditor() {
     if (!id || !editor) return;
     const content = editor.getHTML();
     try {
-      await api.put(`/changelog/${id}`, { title, content });
+      await api.put(`/changelog/${id}`, { title, description, content });
       setLastSaved(new Date().toLocaleTimeString());
     } catch {
       // silent fail for auto-save
     }
   };
 
-  // Auto-save on title change too
+  // Auto-save on title/description change too
   useEffect(() => {
     if (entry) triggerAutoSave();
-  }, [title]);
+  }, [title, description]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -281,7 +284,7 @@ export default function ChangelogEditor() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await api.put(`/changelog/${id}`, { title, content: getEditorContent() });
+      await api.put(`/changelog/${id}`, { title, description, content: getEditorContent() });
       setLastSaved(new Date().toLocaleTimeString());
       toast.success('Saved successfully!');
     } catch { toast.error('Failed to save'); }
@@ -295,7 +298,7 @@ export default function ChangelogEditor() {
     }
     try {
       setPublishing(true);
-      await api.put(`/changelog/${id}`, { title, content: getEditorContent() });
+      await api.put(`/changelog/${id}`, { title, description, content: getEditorContent() });
       await api.post(`/changelog/${id}/publish`);
       toast.success('Published!');
       navigate('/admin/board-management', { state: { tab: 'changelog' } });
@@ -307,7 +310,7 @@ export default function ChangelogEditor() {
     if (!scheduleDate) { toast.error('Select a date'); return; }
     try {
       setScheduling(true);
-      await api.put(`/changelog/${id}`, { title, content: getEditorContent() });
+      await api.put(`/changelog/${id}`, { title, description, content: getEditorContent() });
       await api.post(`/changelog/${id}/publish`, { scheduledAt: scheduleDate });
       toast.success('Scheduled!');
       setShowScheduleModal(false);
@@ -341,29 +344,41 @@ export default function ChangelogEditor() {
     e.target.value = '';
   };
 
-  const setAlign = (alignment: string) => {
-    if (!editor) return;
-    // Check if a resizableImage node is selected
+  const getSelectedImage = () => {
+    if (!editor) return null;
     const { state } = editor;
     const { from } = state.selection;
     const node = state.doc.nodeAt(from);
-    if (node?.type.name === 'resizableImage') {
-      // Update image alignment
-      editor.chain().focus().updateAttributes('resizableImage', { align: alignment }).run();
+    if (node?.type.name === 'resizableImage') return { node, pos: from };
+    const $from = state.doc.resolve(from);
+    for (let d = $from.depth; d >= 0; d--) {
+      const ancestor = $from.node(d);
+      if (ancestor.type.name === 'resizableImage') return { node: ancestor, pos: $from.before(d) };
+    }
+    if (from > 0) {
+      const nodeBefore = state.doc.nodeAt(from - 1);
+      if (nodeBefore?.type.name === 'resizableImage') return { node: nodeBefore, pos: from - 1 };
+    }
+    return null;
+  };
+
+  const setAlign = (alignment: string) => {
+    if (!editor) return;
+    const img = getSelectedImage();
+    if (img) {
+      editor.chain().focus().command(({ tr }) => {
+        tr.setNodeMarkup(img.pos, undefined, { ...img.node.attrs, align: alignment });
+        return true;
+      }).run();
     } else {
-      // Normal text alignment
       editor.chain().focus().setTextAlign(alignment).run();
     }
   };
 
   const getAlignActive = (alignment: string) => {
     if (!editor) return false;
-    const { state } = editor;
-    const { from } = state.selection;
-    const node = state.doc.nodeAt(from);
-    if (node?.type.name === 'resizableImage') {
-      return (node.attrs.align || 'left') === alignment;
-    }
+    const img = getSelectedImage();
+    if (img) return (img.node.attrs.align || 'left') === alignment;
     return editor.isActive({ textAlign: alignment });
   };
 
@@ -441,7 +456,7 @@ export default function ChangelogEditor() {
         <div className="flex gap-6 h-full">
           {/* Left: Editor Card */}
           <div className="flex-1 flex flex-col min-w-0 overflow-visible">
-            {/* Title Input */}
+            {/* Title & Description */}
             <div className={`px-5 py-4 rounded-t-xl border border-b-0 ${
               theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
             }`}>
@@ -449,6 +464,11 @@ export default function ChangelogEditor() {
                 placeholder="Entry title"
                 className={`w-full text-xl font-bold outline-none bg-transparent ${
                   theme === 'dark' ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-300'
+                }`} />
+              <input type="text" value={description} onChange={(e) => setDescription(e.target.value)}
+                placeholder="Short description (optional)"
+                className={`w-full text-sm outline-none bg-transparent mt-1 ${
+                  theme === 'dark' ? 'text-gray-400 placeholder-gray-600' : 'text-gray-500 placeholder-gray-300'
                 }`} />
             </div>
 
@@ -617,6 +637,9 @@ export default function ChangelogEditor() {
             <div className="px-6 py-5 flex-1 overflow-y-auto">
               {title && (
                 <h1 className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{title}</h1>
+              )}
+              {description && (
+                <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{description}</p>
               )}
               {previewHtml && previewHtml !== '<p></p>' ? (
                 <div className={`tiptap-preview ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}

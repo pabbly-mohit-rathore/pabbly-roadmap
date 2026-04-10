@@ -4,6 +4,7 @@ import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import LoadingBar from '../../components/ui/LoadingBar';
+import LoadingButton from '../../components/ui/LoadingButton';
 
 interface User {
   id: string;
@@ -35,6 +36,8 @@ export default function AdminBoardMembers() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBoards();
@@ -92,6 +95,7 @@ export default function AdminBoardMembers() {
       return;
     }
 
+    setAdding(true);
     try {
       const response = await api.post(`/boards/${selectedBoard}/members`, {
         userId: selectedUserId,
@@ -105,12 +109,15 @@ export default function AdminBoardMembers() {
     } catch (error) {
       console.error('Error adding member:', error);
       alert('Failed to add member');
+    } finally {
+      setAdding(false);
     }
   };
 
   const handleRemoveMember = async (userId: string) => {
     if (!confirm('Remove this member?')) return;
 
+    setRemovingId(userId);
     try {
       const response = await api.delete(`/boards/${selectedBoard}/members/${userId}`);
       if (response.data.success) {
@@ -119,6 +126,8 @@ export default function AdminBoardMembers() {
     } catch (error) {
       console.error('Error removing member:', error);
       alert('Failed to remove member');
+    } finally {
+      setRemovingId(null);
     }
   };
 
@@ -244,11 +253,19 @@ export default function AdminBoardMembers() {
                       <td className="px-4 py-3.5">
                         <button
                           onClick={() => handleRemoveMember(member.userId)}
+                          disabled={removingId === member.userId}
                           className={`p-2 rounded-lg transition-colors ${
                             theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
-                          }`}
+                          } ${removingId === member.userId ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                          <Trash2 className="w-4 h-4 text-red-500" />
+                          {removingId === member.userId ? (
+                            <svg className="animate-spin w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                          ) : (
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          )}
                         </button>
                       </td>
                     </tr>
@@ -313,12 +330,13 @@ export default function AdminBoardMembers() {
                 >
                   Cancel
                 </button>
-                <button
+                <LoadingButton
                   onClick={handleAddMember}
-                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
+                  loading={adding}
+                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors disabled:opacity-70"
                 >
                   Add Member
-                </button>
+                </LoadingButton>
               </div>
             </div>
           </div>

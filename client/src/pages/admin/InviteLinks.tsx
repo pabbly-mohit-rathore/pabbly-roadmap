@@ -35,6 +35,8 @@ export default function AdminInviteLinks({ triggerCreate }: { triggerCreate?: nu
   const [rowsDropOpen, setRowsDropOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
   const tabsRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
 
@@ -68,8 +70,8 @@ export default function AdminInviteLinks({ triggerCreate }: { triggerCreate?: nu
     } catch { toast.error('Failed to create link'); } finally { setCreating(false); }
   };
 
-  const handleDeleteLink = async (id: string) => { if (!confirm('Delete this invite link?')) return; try { await api.delete(`/invite-links/${id}`); setLinks(prev => prev.filter(l => l.id !== id)); setOpenMenuId(null); toast.success('Deleted'); } catch { toast.error('Failed to delete'); } };
-  const handleRevokeLink = async (id: string, isActive: boolean) => { try { await api.put(`/invite-links/${id}/revoke`, { isActive: !isActive }); fetchLinks(); setOpenMenuId(null); toast.success(isActive ? 'Revoked' : 'Reactivated'); } catch { toast.error('Failed'); } };
+  const handleDeleteLink = async (id: string) => { if (!confirm('Delete this invite link?')) return; setDeletingId(id); try { await api.delete(`/invite-links/${id}`); setLinks(prev => prev.filter(l => l.id !== id)); setOpenMenuId(null); toast.success('Deleted'); } catch { toast.error('Failed to delete'); } finally { setDeletingId(null); } };
+  const handleRevokeLink = async (id: string, isActive: boolean) => { setRevokingId(id); try { await api.put(`/invite-links/${id}/revoke`, { isActive: !isActive }); fetchLinks(); setOpenMenuId(null); toast.success(isActive ? 'Revoked' : 'Reactivated'); } catch { toast.error('Failed'); } finally { setRevokingId(null); } };
   const copyToClipboard = (token: string) => { navigator.clipboard.writeText(`${window.location.origin}/invite/${token}`); toast.success('Link copied!'); };
 
   const getStatus = (link: InviteLink) => {
@@ -202,13 +204,29 @@ export default function AdminInviteLinks({ triggerCreate }: { triggerCreate?: nu
                           <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '170px' }}>
                             <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
                             <button onClick={() => handleRevokeLink(link.id, link.isActive)}
-                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
-                              <Edit2 className="w-[18px] h-[18px] text-amber-500" /> {link.isActive ? 'Revoke' : 'Reactivate'}
+                              disabled={revokingId === link.id}
+                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'} ${revokingId === link.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              {revokingId === link.id ? (
+                                <svg className="animate-spin w-[18px] h-[18px] text-amber-500" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                              ) : (
+                                <Edit2 className="w-[18px] h-[18px] text-amber-500" />
+                              )} {link.isActive ? 'Revoke' : 'Reactivate'}
                             </button>
                             <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
                             <button onClick={() => handleDeleteLink(link.id)}
-                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
-                              <Trash2 className="w-[18px] h-[18px]" /> Delete
+                              disabled={deletingId === link.id}
+                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'} ${deletingId === link.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              {deletingId === link.id ? (
+                                <svg className="animate-spin w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                              ) : (
+                                <Trash2 className="w-[18px] h-[18px]" />
+                              )} Delete
                             </button>
                           </div>
                         )}
