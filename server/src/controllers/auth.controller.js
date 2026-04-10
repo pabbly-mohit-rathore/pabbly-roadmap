@@ -47,7 +47,7 @@ const generateRefreshToken = (userId) => {
 // ============================================================
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, role: requestedRole } = req.body;
+    const { name, email, password } = req.body;
 
     // Step 1: Kya email pehle se registered hai?
     const existingUser = await prisma.user.findUnique({
@@ -62,13 +62,10 @@ const register = async (req, res, next) => {
     }
 
     // Step 2: Password hash karo
-    // "Admin@123" → "$2a$12$LJ3m5..." (unreadable string)
-    // Kyun? Agar database hack ho jaye toh bhi password safe rahe
-    // 12 = salt rounds (jitna zyada, utna secure but slow)
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Step 3: Database mein naya user banao
-    const validRole = requestedRole === 'admin' ? 'admin' : 'user';
+    // Step 3: Database mein naya user banao (always 'user' role via registration)
+    const validRole = 'user';
     const user = await prisma.user.create({
       data: {
         name,
@@ -471,7 +468,7 @@ const resetPassword = async (req, res, next) => {
 // ============================================================
 const googleLogin = async (req, res, next) => {
   try {
-    const { accessToken: googleAccessToken, role: requestedRole } = req.body;
+    const { accessToken: googleAccessToken } = req.body;
 
     if (!googleAccessToken) {
       return res.status(400).json({ success: false, message: 'Google access token is required.' });
@@ -508,15 +505,14 @@ const googleLogin = async (req, res, next) => {
         return res.status(403).json({ success: false, message: 'Your account has been deactivated.' });
       }
     } else {
-      // Naya user banao
-      const validRole = requestedRole === 'admin' ? 'admin' : 'user';
+      // Naya user banao (always 'user' role via Google OAuth)
       user = await prisma.user.create({
         data: {
           name,
           email,
           googleId,
           avatar: picture,
-          role: validRole,
+          role: 'user',
           emailVerified: true,
         },
       });
@@ -545,6 +541,39 @@ const googleLogin = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// UPLOAD AVATAR — Profile picture upload karo
+// ============================================================
+const fs = require('fs');
+const path = require('path');
+
+const uploadAvatarHandler = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+    // Delete old avatar file if exists
+    const currentUser = await prisma.user.findUnique({ where: { id: req.user.id }, select: { avatar: true } });
+    if (currentUser?.avatar && currentUser.avatar.startsWith('/uploads/avatars/')) {
+      const oldPath = path.join(__dirname, '../../', currentUser.avatar);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { avatar: avatarUrl },
+      select: { id: true, name: true, email: true, phone: true, avatar: true, role: true },
+    });
+
+    res.json({ success: true, message: 'Avatar updated.', data: { user } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -555,4 +584,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   googleLogin,
+  uploadAvatarHandler,
 };

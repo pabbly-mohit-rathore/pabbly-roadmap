@@ -28,7 +28,9 @@ const {
   forgotPassword,
   resetPassword,
   googleLogin,
+  uploadAvatarHandler,
 } = require('../controllers/auth.controller');
+const { uploadAvatar } = require('../middleware/upload');
 
 // ──────────────────────────────────────
 // Validation Rules
@@ -110,5 +112,6 @@ router.post('/reset-password', resetPasswordRules, validate, resetPassword);
 router.get('/profile', authenticate, getProfile);
 router.put('/profile', authenticate, updateProfile);
 router.put('/change-password', authenticate, changePasswordRules, validate, changePassword);
+router.post('/upload-avatar', authenticate, uploadAvatar.single('avatar'), uploadAvatarHandler);
 
 module.exports = router;

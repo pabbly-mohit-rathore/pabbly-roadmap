@@ -88,6 +88,10 @@ app.use(cors({
 // JSON — request body ko JSON format mein parse karo
 app.use(express.json({ limit: '50mb' }));
 
+// Static files — uploads folder serve karo
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // ──────────────────────────────────────
 // ROUTES — kaunsa URL kahan jayega
 // ──────────────────────────────────────

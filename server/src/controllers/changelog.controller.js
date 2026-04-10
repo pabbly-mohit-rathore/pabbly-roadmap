@@ -9,11 +9,12 @@ const createEntry = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Only admins can create changelog entries.' });
     }
 
-    const { title, content, type, boardIds, allBoards } = req.body;
+    const { title, description, content, type, boardIds, allBoards } = req.body;
 
     const entry = await prisma.changelogEntry.create({
       data: {
         title,
+        description: description || null,
         content,
         type: type || 'new',
         status: 'draft',
@@ -70,6 +71,7 @@ const getEntry = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user?.userId;
+    const role = req.user?.role;
 
     const entry = await prisma.changelogEntry.findUnique({
       where: { id },
@@ -83,6 +85,26 @@ const getEntry = async (req, res, next) => {
 
     if (!entry) {
       return res.status(404).json({ success: false, message: 'Entry not found.' });
+    }
+
+    // Non-admin users: check board access
+    if (role !== 'admin') {
+      if (!entry.allBoards) {
+        const userAccess = await prisma.userBoardAccess.findMany({
+          where: { userId },
+          select: { boardId: true },
+        });
+        const userBoardIds = userAccess.map(a => a.boardId);
+        const entryBoardIds = entry.boards.map(b => b.boardId);
+        const hasAccess = entryBoardIds.some(bid => userBoardIds.includes(bid));
+        if (!hasAccess) {
+          return res.status(403).json({ success: false, message: 'You do not have access to this changelog entry.' });
+        }
+      }
+      // Non-admin can only see published entries
+      if (entry.status !== 'published') {
+        return res.status(404).json({ success: false, message: 'Entry not found.' });
+      }
     }
 
     res.json({
@@ -109,7 +131,7 @@ const updateEntry = async (req, res, next) => {
     }
 
     const { id } = req.params;
-    const { title, content, type, boardIds, allBoards } = req.body;
+    const { title, description, content, type, boardIds, allBoards } = req.body;
 
     // Delete existing board associations and recreate
     if (boardIds !== undefined || allBoards !== undefined) {
@@ -120,6 +142,7 @@ const updateEntry = async (req, res, next) => {
       where: { id },
       data: {
         ...(title && { title }),
+        ...(description !== undefined && { description: description || null }),
         ...(content && { content }),
         ...(type && { type }),
         ...(allBoards !== undefined && { allBoards }),
@@ -242,8 +265,30 @@ const getPublicEntries = async (req, res, next) => {
 // POST /changelog/:id/like — Toggle like (authenticated users)
 const toggleLike = async (req, res, next) => {
   try {
-    const { userId } = req.user;
+    const { userId, role } = req.user;
     const { id } = req.params;
+
+    // Verify entry exists and is published
+    const entry = await prisma.changelogEntry.findUnique({
+      where: { id },
+      include: { boards: { select: { boardId: true } } },
+    });
+    if (!entry || entry.status !== 'published') {
+      return res.status(404).json({ success: false, message: 'Entry not found.' });
+    }
+
+    // Non-admin: check board access
+    if (role !== 'admin' && !entry.allBoards) {
+      const userAccess = await prisma.userBoardAccess.findMany({
+        where: { userId },
+        select: { boardId: true },
+      });
+      const userBoardIds = userAccess.map(a => a.boardId);
+      const hasAccess = entry.boards.some(b => userBoardIds.includes(b.boardId));
+      if (!hasAccess) {
+        return res.status(403).json({ success: false, message: 'Access denied.' });
+      }
+    }
 
     const existing = await prisma.changelogLike.findUnique({
       where: { changelogEntryId_userId: { changelogEntryId: id, userId } },

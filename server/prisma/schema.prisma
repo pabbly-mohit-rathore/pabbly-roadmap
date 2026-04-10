@@ -497,6 +497,7 @@ model PasswordResetToken {
 model ChangelogEntry {
   id          String              @id @default(uuid())
   title       String
+  description String?                               // Short description/subtitle
   content     String              @db.Text          // Markdown content
   type        ChangelogType       @default(new)     // New, Improved, Fixed
   status      ChangelogStatus     @default(draft)   // Draft, Scheduled, Published

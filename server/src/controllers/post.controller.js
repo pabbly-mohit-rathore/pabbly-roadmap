@@ -50,7 +50,21 @@ const getPosts = async (req, res, next) => {
       });
       const adminBoardIds = adminBoards.map(b => b.id);
       where.boardId = boardId ? (adminBoardIds.includes(boardId) ? boardId : 'none') : { in: adminBoardIds };
+    } else if (req.user) {
+      // Regular user — sirf accessible boards ke posts dikhe
+      const userAccess = await prisma.userBoardAccess.findMany({
+        where: { userId: req.user.userId },
+        select: { boardId: true },
+      });
+      const userBoardIds = userAccess.map(a => a.boardId);
+      if (boardId) {
+        // Check if user has access to this specific board
+        where.boardId = userBoardIds.includes(boardId) ? boardId : 'none';
+      } else {
+        where.boardId = { in: userBoardIds };
+      }
     } else if (boardId) {
+      // Unauthenticated — only if boardId provided (public boards)
       where.boardId = boardId;
     }
 
