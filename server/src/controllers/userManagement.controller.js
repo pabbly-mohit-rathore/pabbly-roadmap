@@ -21,7 +21,7 @@ const prisma = require('../config/database');
 // ============================================================
 const listUsers = async (req, res, next) => {
   try {
-    const { role } = req.user;
+    const { role, userId } = req.user;
     const { status, search, limit = 20, offset = 0 } = req.query;
 
     if (role !== 'admin') {
@@ -31,8 +31,33 @@ const listUsers = async (req, res, next) => {
       });
     }
 
-    // Build where clause for filtering
-    const where = {};
+    // Get admin's boards (created by this admin)
+    const adminBoards = await prisma.board.findMany({
+      where: { createdById: userId },
+      select: { id: true },
+    });
+    const adminBoardIds = adminBoards.map(b => b.id);
+
+    // Build where clause — only show users who have access to admin's boards
+    const where = {
+      id: { not: userId }, // Don't show self
+    };
+
+    // If admin has boards, filter users by board access
+    if (adminBoardIds.length > 0) {
+      where.AND = [
+        { role: { not: 'admin' } }, // Don't show other admins
+        {
+          OR: [
+            { boardAccess: { some: { boardId: { in: adminBoardIds } } } }, // Users with board access
+            { boardMemberships: { some: { boardId: { in: adminBoardIds } } } }, // Team members (managers)
+          ],
+        },
+      ];
+    } else {
+      // Admin has no boards yet — show no users
+      where.id = 'none';
+    }
 
     // Filter by status (active or banned)
     if (status === 'active') {
@@ -44,18 +69,8 @@ const listUsers = async (req, res, next) => {
     // Search by name or email
     if (search) {
       where.OR = [
-        {
-          name: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
-        {
-          email: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
       ];
     }
 

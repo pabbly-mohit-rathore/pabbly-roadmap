@@ -68,14 +68,25 @@ const getNewPosts = async (req, res, next) => {
     const where = { createdAt: { gte: start } };
     if (boardId && boardId !== 'all') where.boardId = boardId;
 
+    const userId = req.user.userId;
     const posts = await prisma.post.findMany({
       where,
-      select: { id: true, title: true, slug: true, voteCount: true, createdAt: true, board: { select: { name: true } } },
+      select: {
+        id: true, title: true, slug: true, description: true, status: true, voteCount: true, commentCount: true, createdAt: true,
+        board: { select: { name: true } },
+        votes: { where: { userId }, select: { userId: true }, take: 1 },
+      },
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
 
-    res.json({ success: true, data: { posts } });
+    const postsWithVoteStatus = posts.map(p => ({
+      ...p,
+      hasVoted: p.votes?.length > 0,
+      votes: undefined,
+    }));
+
+    res.json({ success: true, data: { posts: postsWithVoteStatus } });
   } catch (error) { next(error); }
 };
 
