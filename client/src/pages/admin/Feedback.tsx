@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, Edit2, Pin, Trash2, Search, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, FileText, Clock, Eye, Zap, Rocket, XCircle, PauseCircle, MessageSquare, Bug, Puzzle, Inbox, ArrowUpRight } from 'lucide-react';
+import { Plus, X, Edit2, Pin, Trash2, Search, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, FileText, Clock, Eye, Zap, Rocket, XCircle, PauseCircle, MessageSquare, Bug, Puzzle, Inbox, ArrowUpRight, TrendingUp, CheckCircle2 } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
+import CommentEditor from '../../components/CommentEditor';
 
 interface Post {
   id: string;
@@ -83,6 +84,7 @@ export default function AdminFeedback() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [denseMode, setDenseMode] = useState(false);
   const [rowsDropOpen, setRowsDropOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'trending' | 'newest' | 'most-voted'>('newest');
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -156,10 +158,17 @@ export default function AdminFeedback() {
     (typeFilter === 'all' || post.type === typeFilter)
   );
 
-  const paginatedPosts = filteredPosts.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
-  const totalPages = Math.ceil(filteredPosts.length / rowsPerPage);
+  const sortedPosts = [...filteredPosts].sort((a, b) => {
+    if (sortBy === 'most-voted') return (b.voteCount ?? 0) - (a.voteCount ?? 0);
+    if (sortBy === 'trending') return ((b.voteCount ?? 0) + (b.commentCount ?? 0)) - ((a.voteCount ?? 0) + (a.commentCount ?? 0));
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+  const paginatedPosts = sortedPosts.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+  const totalPages = Math.ceil(sortedPosts.length / rowsPerPage);
 
-  const handleCreatePost = async () => {
+  const [postContent, setPostContent] = useState('');
+
+  const handleCreatePost = async (htmlContent?: string) => {
     const errors: Record<string, string> = {};
     if (!formData.title.trim()) errors.title = 'Title is required';
     if (!formData.boardId) errors.boardId = 'Please select a board';
@@ -170,11 +179,14 @@ export default function AdminFeedback() {
     setFormErrors({});
     setCreating(true);
     try {
-      const response = await api.post('/posts', { ...formData, isDraft: true });
+      const content = htmlContent || postContent;
+      const response = await api.post('/posts', { ...formData, content, isDraft: false });
       if (response.data.success) {
         setShowCreateModal(false);
         setFormData({ title: '', description: '', type: 'feature', boardId: boards[0]?.id || '', priority: 'none' });
-        navigate(`/admin/posts/${response.data.data.post.id}/edit`);
+        setPostContent('');
+        toast.success('Post published!');
+        fetchPosts();
       }
     } catch {
       toast.error('Failed to create post');
@@ -260,7 +272,7 @@ export default function AdminFeedback() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>Feedback Management</h1>
-          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredPosts.length} posts</p>
+          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{sortedPosts.length} posts</p>
         </div>
         <button onClick={() => { setShowCreateModal(true); setFormErrors({}); }}
           className="flex items-center gap-2 bg-[#0C68E9] text-white rounded-lg hover:bg-[#0b5dd0] transition" style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
@@ -293,6 +305,25 @@ export default function AdminFeedback() {
               <X className="w-5 h-5" /> Clear Filters
             </button>
           )}
+
+          {/* Sort Buttons */}
+          <div className="flex items-center gap-2 ml-auto">
+            {([
+              { key: 'trending', label: 'Trending', icon: TrendingUp },
+              { key: 'newest', label: 'Newest', icon: Clock },
+              { key: 'most-voted', label: 'Most Voted', icon: CheckCircle2 },
+            ] as const).map(({ key, label, icon: SortIcon }) => (
+              <button key={key} onClick={() => { setSortBy(key); setPage(0); }}
+                className={`flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                  sortBy === key
+                    ? 'bg-[#059669] text-white'
+                    : d ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                }`} style={{ height: '36px' }}>
+                <SortIcon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -394,16 +425,16 @@ export default function AdminFeedback() {
                       <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px', paddingRight: '12px', width: '120px' }}
                         onClick={(e) => { e.stopPropagation(); handleVote(post.id); }}>
                         <div
-                          className="inline-flex flex-col items-center justify-center h-11 rounded-lg border font-bold cursor-pointer overflow-hidden"
+                          className="inline-flex flex-row items-center justify-center rounded-lg border font-bold cursor-pointer overflow-hidden"
                           style={{
-                            width: '56px',
+                            padding: '8px 14px',
                             fontSize: '13px',
-                            gap: '1px',
-                            backgroundColor: votes[post.id]?.voted ? '#1c252e' : 'transparent',
-                            borderColor: votes[post.id]?.voted ? '#1c252e' : (d ? '#4b5563' : '#e5e7eb'),
+                            gap: '6px',
+                            backgroundColor: votes[post.id]?.voted ? '#059669' : 'transparent',
+                            borderColor: votes[post.id]?.voted ? '#059669' : (d ? '#4b5563' : '#e5e7eb'),
                             color: votes[post.id]?.voted ? '#ffffff' : (d ? '#d1d5db' : '#374151'),
                           }}
-                          onMouseEnter={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = '#1c252e'; }}
+                          onMouseEnter={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
                           onMouseLeave={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = d ? '#4b5563' : '#e5e7eb'; }}
                         >
                           <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
@@ -570,7 +601,7 @@ export default function AdminFeedback() {
                   </div>
                 </div>
                 <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {filteredPosts.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, filteredPosts.length)}` : '0–0'} of {filteredPosts.length}
+                  {sortedPosts.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, sortedPosts.length)}` : '0–0'} of {sortedPosts.length}
                 </span>
                 <div className="flex gap-1">
                   <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
@@ -594,80 +625,70 @@ export default function AdminFeedback() {
       {/* Create Post Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
-            <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
+          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px' }}>
+            {/* Sticky Header */}
+            <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Create New Post</h2>
               <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-5" style={{ padding: '24px' }}>
-              {/* Title */}
-              <div>
-                <div className="relative">
-                  <input type="text" value={formData.title} placeholder=" "
+            {/* Scrollable Content */}
+            <div style={{ padding: '24px' }}>
+              <div className="space-y-4">
+                {/* Title */}
+                <div>
+                  <input type="text" value={formData.title} placeholder="Write the post title here"
                     onChange={(e) => { setFormData({ ...formData, title: e.target.value }); if (formErrors.title) setFormErrors(prev => { const n = { ...prev }; delete n.title; return n; }); }}
-                    style={{ padding: '16.5px 14px' }}
-                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
-                      formErrors.title
-                        ? (d ? 'border-red-500 bg-gray-800 text-white' : 'border-red-500 bg-white text-gray-900')
-                        : (d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400')
+                    className={`w-full text-lg font-semibold outline-none bg-transparent ${
+                      d ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-400'
                     }`} />
-                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
-                    top-1/2 -translate-y-1/2
-                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
-                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
-                    ${formErrors.title ? 'text-red-500' : (d ? 'text-gray-400' : 'text-gray-500')}
-                    ${d ? 'bg-gray-900' : 'bg-white'}`}>Title *</span>
+                  {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
                 </div>
-                {formErrors.title
-                  ? <p className="text-red-500 text-xs" style={{ margin: '8px 14px 0' }}>{formErrors.title}</p>
-                  : <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Enter the title for your post.</p>
-                }
-              </div>
 
-              {/* Description */}
-              <div>
-                <div className="relative">
-                  <input type="text" value={formData.description} placeholder=" "
+                {/* Description */}
+                <div>
+                  <input type="text" value={formData.description} placeholder="Short description (optional)"
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    style={{ padding: '16.5px 14px' }}
-                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
-                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    className={`w-full text-sm outline-none bg-transparent ${
+                      d ? 'text-gray-400 placeholder-gray-600' : 'text-gray-500 placeholder-gray-400'
                     }`} />
-                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
-                    top-1/2 -translate-y-1/2
-                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
-                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
-                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Description</span>
                 </div>
-                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Short description for your post.</p>
-              </div>
 
-              {/* Board */}
-              <div>
-                <CustomDropdown label="Board *" value={formData.boardId}
-                  options={[{ value: '', label: 'Select Board' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
-                  onChange={(v) => { setFormData({ ...formData, boardId: v }); if (formErrors.boardId) setFormErrors(prev => { const n = { ...prev }; delete n.boardId; return n; }); }}
-                  minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} />
-                {formErrors.boardId
-                  ? <p className="text-red-500 text-xs" style={{ margin: '8px 14px 0' }}>{formErrors.boardId}</p>
-                  : <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Select the board for this post.</p>
-                }
-              </div>
+                {/* Rich Text Editor */}
+                <CommentEditor
+                  onSubmit={(html) => { setPostContent(html); handleCreatePost(html); }}
+                  placeholder="Write your post content here... Add images, links, and more."
+                  buttonLabel="Publish Post"
+                  submitting={creating}
+                  hideButton
+                  maxEditorHeight="450px"
+                  onContentChange={(html) => setPostContent(html)}
+                />
 
-              <div>
-                <CustomDropdown label="Type" value={formData.type}
-                  options={[{ value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
-                  onChange={(v) => setFormData({ ...formData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} />
-                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Select the type of post.</p>
-              </div>
+                {/* Board & Type - bottom, overflow visible */}
+                <div className="flex gap-4 relative z-[60]">
+                  <div className="flex-1">
+                    <CustomDropdown label="Board *" value={formData.boardId}
+                      options={[{ value: '', label: 'Select Board' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
+                      onChange={(v) => { setFormData({ ...formData, boardId: v }); if (formErrors.boardId) setFormErrors(prev => { const n = { ...prev }; delete n.boardId; return n; }); }}
+                      minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                    {formErrors.boardId && <p className="text-red-500 text-xs mt-1">{formErrors.boardId}</p>}
+                  </div>
+                  <div className="flex-1">
+                    <CustomDropdown label="Type" value={formData.type}
+                      options={[{ value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
+                      onChange={(v) => setFormData({ ...formData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                  </div>
+                </div>
 
-              <div className="flex gap-3 justify-end pt-2">
-                <button onClick={() => { setShowCreateModal(false); setFormErrors({}); }}
-                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
-                <LoadingButton loading={creating} onClick={handleCreatePost}
-                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Next</LoadingButton>
+                {/* Cancel + Publish */}
+                <div className="flex gap-3 justify-end pt-2">
+                  <button onClick={() => { setShowCreateModal(false); setFormErrors({}); }}
+                    className={`px-5 py-2.5 text-sm font-medium rounded-lg border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancel</button>
+                  <LoadingButton onClick={() => handleCreatePost()} loading={creating}
+                    className="px-5 py-2.5 bg-[#0C68E9] text-white text-sm font-semibold rounded-lg hover:bg-[#0b5dd0] transition-colors disabled:opacity-70">Publish Post</LoadingButton>
+                </div>
               </div>
             </div>
           </div>

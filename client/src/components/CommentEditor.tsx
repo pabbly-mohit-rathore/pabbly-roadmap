@@ -34,6 +34,10 @@ interface CommentEditorProps {
   buttonLabel?: string;
   submitting?: boolean;
   compact?: boolean;
+  initialContent?: string;
+  hideButton?: boolean;
+  maxEditorHeight?: string;
+  onContentChange?: (html: string) => void;
 }
 
 export default function CommentEditor({
@@ -42,6 +46,10 @@ export default function CommentEditor({
   buttonLabel = 'Public Comment',
   submitting = false,
   compact = false,
+  initialContent,
+  hideButton = false,
+  maxEditorHeight,
+  onContentChange,
 }: CommentEditorProps) {
   const theme = useThemeStore((state) => state.theme);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,9 +72,13 @@ export default function CommentEditor({
       Placeholder.configure({ placeholder }),
       ButtonExtension,
     ],
+    content: initialContent || '',
+    onUpdate: ({ editor: e }) => {
+      if (onContentChange) onContentChange(e.getHTML());
+    },
     editorProps: {
       attributes: {
-        class: `outline-none px-4 py-3 text-sm ${isReply ? 'comment-editor-compact' : 'comment-editor-full'}`,
+        class: `outline-none px-4 py-3 text-sm ${maxEditorHeight ? '' : (isReply ? 'comment-editor-compact' : 'comment-editor-full')}`,
       },
     },
   });
@@ -142,7 +154,8 @@ export default function CommentEditor({
   return (
     <div ref={editorRef} className={`rounded-lg border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
       {/* Editor Content */}
-      <EditorContent editor={editor} className={`${d ? 'text-white' : 'text-gray-900'} comment-editor-content`} />
+      <EditorContent editor={editor} className={`${d ? 'text-white' : 'text-gray-900'} comment-editor-content`}
+        style={maxEditorHeight ? { maxHeight: maxEditorHeight, overflowY: 'auto' } : undefined} />
 
       {/* Toolbar + Submit */}
       <div className={`flex items-center justify-between px-3 py-2 border-t ${d ? 'border-gray-700' : 'border-gray-100'}`}>
@@ -161,10 +174,12 @@ export default function CommentEditor({
           <TB dark={d} icon={MousePointerClick} title="Button" action={() => { setEditingButtonAttrs(undefined); setShowButtonModal(true); }} />
         </div>
 
-        <LoadingButton onClick={handleSubmit} loading={submitting} type="button"
-          className="px-5 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition disabled:opacity-70">
-          {buttonLabel}
-        </LoadingButton>
+        {!hideButton && (
+          <LoadingButton onClick={handleSubmit} loading={submitting} type="button"
+            className="px-5 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition disabled:opacity-70">
+            {buttonLabel}
+          </LoadingButton>
+        )}
       </div>
 
       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,video/*" className="hidden" />

@@ -1,5 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, MapPin, Users, Grid3x3, Settings } from 'lucide-react';
+import { LayoutDashboard, Settings } from 'lucide-react';
+import { Icon } from '@iconify/react';
+
+function RoadmapIcon({ className }: { className?: string }) {
+  return <Icon icon="streamline:arrow-roadmap" className={className} width={20} height={20} />;
+}
 import useThemeStore from '../../store/themeStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
 import useAuthStore from '../../store/authStore';
@@ -20,10 +25,8 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
   // Full admin menu
   const allMenuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { label: 'Feedback', icon: MessageSquare, path: '/admin/feedback' },
-    { label: 'Roadmap', icon: MapPin, path: '/admin/roadmap' },
-    { label: 'Board Management', icon: Grid3x3, path: '/admin/board-management' },
-    { label: 'Users', icon: Users, path: '/admin/users' },
+    { label: 'All Posts', icon: ({ className }: { className?: string }) => <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />, path: '/admin/feedback' },
+    { label: 'Roadmap', icon: RoadmapIcon, path: '/admin/roadmap' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
   ];
 

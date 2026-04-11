@@ -375,11 +375,11 @@ export default function AdminBoardDetail() {
                     {/* Upvote */}
                     <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px', paddingRight: '12px', width: '120px' }}
                       onClick={(e) => { e.stopPropagation(); handleVote(post.id); }}>
-                      <div className="inline-flex flex-col items-center justify-center h-11 rounded-lg border font-bold transition-all cursor-pointer overflow-hidden"
+                      <div className="inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden"
                         style={{
-                          width: '56px', fontSize: '13px', gap: '1px',
-                          backgroundColor: votes[post.id]?.voted ? '#1c252e' : 'transparent',
-                          borderColor: votes[post.id]?.voted ? '#1c252e' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
+                          padding: '8px 14px', fontSize: '13px', gap: '6px',
+                          backgroundColor: votes[post.id]?.voted ? '#059669' : 'transparent',
+                          borderColor: votes[post.id]?.voted ? '#059669' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
                           color: votes[post.id]?.voted ? '#ffffff' : (theme === 'dark' ? '#d1d5db' : '#374151'),
                         }}>
                         <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />

@@ -136,7 +136,7 @@ export default function UserSettings() {
         </div>
 
         {/* Tabs */}
-        <div className={`flex items-center gap-6 sticky z-30 ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`} style={{ top: '-1px', marginTop: '26px', marginBottom: '26px', paddingTop: '10px', paddingBottom: '10px' }}>
+        <div className={`flex items-center gap-6 sticky z-30 ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`} style={{ top: '0px', marginTop: '26px', marginBottom: '26px', paddingTop: '10px', paddingBottom: '10px' }}>
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;

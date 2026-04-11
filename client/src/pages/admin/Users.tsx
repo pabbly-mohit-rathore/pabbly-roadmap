@@ -72,14 +72,6 @@ export default function AdminUsers() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className={`text-2xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>Users</h1>
-          <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredUsers.length} users</p>
-        </div>
-      </div>
-
       {/* Filters */}
       <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="flex flex-wrap items-center gap-4">

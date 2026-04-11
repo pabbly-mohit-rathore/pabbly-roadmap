@@ -27,20 +27,9 @@ const BoardManagement = lazy(() => import('./pages/admin/BoardManagement'));
 const AdminBoardMembers = lazy(() => import('./pages/admin/BoardMembers'));
 const AdminSettings = lazy(() => import('./pages/admin/Settings'));
 const AdminUsers = lazy(() => import('./pages/admin/Users'));
-const UserDashboard = lazy(() => import('./pages/user/Dashboard'));
 const UserFeatureRequests = lazy(() => import('./pages/user/FeatureRequests'));
-const UserBoardsPage = lazy(() => import('./pages/user/BoardsPage'));
 const UserRoadmapPage = lazy(() => import('./pages/user/RoadmapPage'));
-const UserBoardDetail = lazy(() => import('./pages/user/BoardDetail'));
 const UserPostDetail = lazy(() => import('./pages/user/PostDetail'));
-const UserChangelog = lazy(() => import('./pages/user/Changelog'));
-const UserChangelogDetail = lazy(() => import('./pages/user/ChangelogDetail'));
-const UserSettings = lazy(() => import('./pages/user/Settings'));
-
-// Helper to check if user has invite access
-function hasInviteAccess() {
-  return Object.keys(localStorage || {}).some(key => key.startsWith('invite_'));
-}
 
 function App() {
   const theme = useThemeStore((state) => state.theme);
@@ -64,25 +53,15 @@ function App() {
       <Suspense fallback={null}>
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={!isAuthenticated ? <LoginPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/dashboard" />} />
-          <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/dashboard" />} />
+          <Route path="/login" element={!isAuthenticated ? <LoginPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/all-posts" />} />
+          <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/all-posts" />} />
           <Route path="/invite/:token" element={<InvitePage />} />
 
-          {/* User Routes */}
+          {/* Root redirect */}
           <Route path="/" element={
             isAuthenticated ? (
-              isAdmin ? (
-                <Navigate to="/admin/dashboard" />
-              ) : (
-                <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                  <Navbar />
-                  <RoadmapPage />
-                  <Toaster position="top-right" />
-                </div>
-              )
-            ) : (
-              <Navigate to="/login" />
-            )
+              isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/all-posts" />
+            ) : <Navigate to="/user/all-posts" />
           } />
 
           <Route path="/board/:slug" element={
@@ -165,46 +144,34 @@ function App() {
             ) : <Navigate to="/login" />
           } />
 
-          {/* User Protected Routes */}
-          <Route path="/user/dashboard" element={
-            isAuthenticated || hasInviteAccess() ? <><UserDashboard /><Toaster position="top-right" /></> : <Navigate to="/login" />
+          {/* User Routes - All Posts is accessible without login */}
+          <Route path="/user/all-posts" element={
+            <><UserFeatureRequests /><Toaster position="top-right" /></>
           } />
-          <Route path="/user/feature-requests" element={
-            isAuthenticated || hasInviteAccess() ? <><UserFeatureRequests /><Toaster position="top-right" /></> : <Navigate to="/login" />
-          } />
-          <Route path="/user/boards" element={
-            isAuthenticated || hasInviteAccess() ? <><UserBoardsPage /><Toaster position="top-right" /></> : <Navigate to="/login" />
-          } />
-
           <Route path="/user/roadmap" element={
-            isAuthenticated || hasInviteAccess() ? <><UserRoadmapPage /><Toaster position="top-right" /></> : <Navigate to="/login" />
-          } />
-          <Route path="/user/boards/:boardId" element={
-            isAuthenticated || hasInviteAccess() ? <><UserBoardDetail /><Toaster position="top-right" /></> : <Navigate to="/login" />
+            <><UserRoadmapPage /><Toaster position="top-right" /></>
           } />
           <Route path="/user/posts/:slug" element={
-            isAuthenticated || hasInviteAccess() ? <><UserPostDetail /><Toaster position="top-right" /></> : <Navigate to="/login" />
+            <><UserPostDetail /><Toaster position="top-right" /></>
           } />
-          {/* User Post Editor - Full width, no sidebar */}
+          {/* User Post Editor - Full width, no sidebar (login required) */}
           <Route path="/user/posts/:id/edit" element={
-            isAuthenticated || hasInviteAccess() ? (
+            isAuthenticated ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
                 <Navbar /><PostEditor /><Toaster position="top-right" />
               </div>
             ) : <Navigate to="/login" />
           } />
-          <Route path="/user/changelog" element={
-            isAuthenticated || hasInviteAccess() ? <><UserChangelog /><Toaster position="top-right" /></> : <Navigate to="/login" />
-          } />
-          <Route path="/user/changelog/:id" element={
-            isAuthenticated || hasInviteAccess() ? <><UserChangelogDetail /><Toaster position="top-right" /></> : <Navigate to="/login" />
-          } />
-          <Route path="/user/settings" element={
-            isAuthenticated || hasInviteAccess() ? <><UserSettings /><Toaster position="top-right" /></> : <Navigate to="/login" />
-          } />
+
+          {/* Redirects for old routes */}
+          <Route path="/user/feature-requests" element={<Navigate to="/user/all-posts" replace />} />
+          <Route path="/user/dashboard" element={<Navigate to="/user/all-posts" replace />} />
+          <Route path="/user/boards" element={<Navigate to="/user/all-posts" replace />} />
+          <Route path="/user/changelog" element={<Navigate to="/user/all-posts" replace />} />
+          <Route path="/user/settings" element={<Navigate to="/user/all-posts" replace />} />
 
           {/* Fallback */}
-          <Route path="*" element={<Navigate to={isAdmin ? "/admin/dashboard" : "/"} />} />
+          <Route path="*" element={<Navigate to={isAdmin ? "/admin/dashboard" : "/user/all-posts"} />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

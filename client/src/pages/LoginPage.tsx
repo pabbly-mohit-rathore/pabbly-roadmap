@@ -17,7 +17,7 @@ export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
 
   // Check if user came via invite link
-  const hasInviteAccess = Object.keys(localStorage).some(key => key.startsWith('invite_token_'));
+  const hasInviteAccess = !!localStorage.getItem('invite_token');
 
   const handleGoogleSuccess = async (accessToken: string) => {
     setLoading(true);
@@ -30,10 +30,10 @@ export default function LoginPage() {
       login(user, jwtToken, refreshToken);
       toast.success('Login successful!');
 
-      const inviteTokenKeys = Object.keys(localStorage).filter(key => key.startsWith('invite_token_'));
-      if (inviteTokenKeys.length > 0) {
-        const inviteToken = inviteTokenKeys[0].replace('invite_token_', '');
-        try { await api.post('/invite-links/redeem', { token: inviteToken }); } catch {}
+      const pendingInvite = localStorage.getItem('invite_token');
+      if (pendingInvite) {
+        try { await api.post('/invite-links/redeem', { token: pendingInvite }); } catch { /* silent */ }
+        localStorage.removeItem('invite_token');
       }
       Object.keys(localStorage).filter(key => key.startsWith('invite_')).forEach(key => localStorage.removeItem(key));
 
@@ -44,7 +44,7 @@ export default function LoginPage() {
       } else {
         const redirectUrl = localStorage.getItem('loginRedirect');
         if (redirectUrl) localStorage.removeItem('loginRedirect');
-        navigate(redirectUrl || '/user/dashboard');
+        navigate(redirectUrl || '/user/all-posts');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -68,33 +68,27 @@ export default function LoginPage() {
 
       toast.success('Login successful!');
 
-      // Redeem any pending invite tokens BEFORE clearing localStorage
-      const inviteTokenKeys = Object.keys(localStorage).filter(key => key.startsWith('invite_token_'));
-      if (inviteTokenKeys.length > 0) {
-        const inviteToken = inviteTokenKeys[0].replace('invite_token_', '');
-        try {
-          await api.post('/invite-links/redeem', { token: inviteToken });
-        } catch (error) {
-          console.error('Error redeeming invite:', error);
-        }
+      // Redeem any pending invite token
+      const pendingInvite = localStorage.getItem('invite_token');
+      if (pendingInvite) {
+        try { await api.post('/invite-links/redeem', { token: pendingInvite }); } catch { /* silent */ }
+        localStorage.removeItem('invite_token');
       }
 
-      // Clear invite data from localStorage after redemption
+      // Clear old invite data
       Object.keys(localStorage)
         .filter(key => key.startsWith('invite_'))
         .forEach(key => localStorage.removeItem(key));
 
-      // Check if there's a redirect URL stored in localStorage
       const redirectUrl = localStorage.getItem('loginRedirect');
 
-      // Navigate based on selected role tab
       if (loginAs === 'admin' && user.role === 'admin') {
         navigate('/admin/dashboard');
       } else if (loginAs === 'admin' && user.role !== 'admin') {
         toast.error('This account does not have admin access.');
         return;
       } else {
-        const finalUrl = redirectUrl || '/user/boards';
+        const finalUrl = redirectUrl || '/user/all-posts';
         if (redirectUrl) {
           localStorage.removeItem('loginRedirect');
         }

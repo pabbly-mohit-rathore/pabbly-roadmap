@@ -14,6 +14,7 @@ interface Board {
   description?: string;
   color: string;
   icon?: string;
+  isPublic?: boolean;
   order: number;
 }
 
@@ -25,7 +26,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<Board | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', color: '#6366f1', icon: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', color: '#6366f1', icon: '', isPublic: true });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const cardLogoInputRef = useRef<HTMLInputElement>(null);
@@ -99,12 +100,13 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
         description: formData.description,
         color: formData.color,
         icon: formData.icon,
+        isPublic: formData.isPublic,
       });
 
       if (response.data.success) {
         toast.success('Board created successfully');
         setShowCreateModal(false);
-        setFormData({ name: '', description: '', color: '#6366f1', icon: '' });
+        setFormData({ name: '', description: '', color: '#6366f1', icon: '', isPublic: true });
         fetchBoards();
       }
     } catch {
@@ -127,12 +129,13 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
         description: formData.description,
         color: formData.color,
         icon: formData.icon,
+        isPublic: formData.isPublic,
       });
 
       if (response.data.success) {
         setShowEditModal(false);
         setSelectedBoard(null);
-        setFormData({ name: '', description: '', color: '#6366f1', icon: '' });
+        setFormData({ name: '', description: '', color: '#6366f1', icon: '', isPublic: true });
         fetchBoards();
       }
     } catch (error) {
@@ -162,7 +165,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
 
   const openEditModal = (board: Board) => {
     setSelectedBoard(board);
-    setFormData({ name: board.name, description: board.description || '', color: board.color, icon: board.icon || '' });
+    setFormData({ name: board.name, description: board.description || '', color: board.color, icon: board.icon || '', isPublic: board.isPublic !== false });
     setShowEditModal(true);
   };
 
@@ -360,8 +363,25 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                 </div>
               </div>
 
+              {/* Visibility */}
+              <div>
+                <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Visibility</p>
+                <div className="flex items-center gap-3" style={{ marginLeft: '14px' }}>
+                  <button onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${formData.isPublic ? 'bg-[#0c68e9]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${formData.isPublic ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                  </button>
+                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {formData.isPublic ? 'Public' : 'Private'}
+                  </span>
+                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {formData.isPublic ? '— Visible to all users' : '— Only invited users'}
+                  </span>
+                </div>
+              </div>
+
               <div className="flex gap-3 justify-end pt-2">
-                <button onClick={() => { setShowCreateModal(false); setFormData({ name: '', description: '', color: '#6366f1', icon: '' }); }}
+                <button onClick={() => { setShowCreateModal(false); setFormData({ name: '', description: '', color: '#6366f1', icon: '', isPublic: true }); }}
                   className={`px-3 py-1.5 text-sm font-medium border transition-colors ${theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                 <LoadingButton onClick={handleCreateBoard} loading={creatingBoard}
                   className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Create Board</LoadingButton>
@@ -458,6 +478,23 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                       className={`w-full h-10 rounded-lg border-2 transition-all ${formData.color === color ? 'border-white shadow-lg scale-105' : 'border-transparent'}`}
                       style={{ backgroundColor: color }} />
                   ))}
+                </div>
+              </div>
+
+              {/* Visibility */}
+              <div>
+                <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Visibility</p>
+                <div className="flex items-center gap-3" style={{ marginLeft: '14px' }}>
+                  <button onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${formData.isPublic ? 'bg-[#0c68e9]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${formData.isPublic ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                  </button>
+                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {formData.isPublic ? 'Public' : 'Private'}
+                  </span>
+                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {formData.isPublic ? '— Visible to all users' : '— Only invited users'}
+                  </span>
                 </div>
               </div>
 

@@ -200,16 +200,16 @@ export default function UserDashboard() {
                   <td className="py-4" style={{ paddingLeft: '24px', paddingRight: '12px', width: '120px' }}
                     onClick={(e) => { e.stopPropagation(); handleVote(post.id); }}>
                     <div
-                      className={`inline-flex flex-col items-center justify-center h-11 rounded-lg border font-bold transition-all cursor-pointer overflow-hidden`}
+                      className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden`}
                       style={{
-                        width: '56px',
+                        padding: '8px 14px',
                         fontSize: '13px',
-                        gap: '1px',
-                        backgroundColor: votes[post.id]?.voted ? '#1c252e' : 'transparent',
-                        borderColor: votes[post.id]?.voted ? '#1c252e' : (d ? '#4b5563' : '#e5e7eb'),
+                        gap: '6px',
+                        backgroundColor: votes[post.id]?.voted ? '#059669' : 'transparent',
+                        borderColor: votes[post.id]?.voted ? '#059669' : (d ? '#4b5563' : '#e5e7eb'),
                         color: votes[post.id]?.voted ? '#ffffff' : (d ? '#d1d5db' : '#374151'),
                       }}
-                      onMouseEnter={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = '#1c252e'; }}
+                      onMouseEnter={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
                       onMouseLeave={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = d ? '#4b5563' : '#e5e7eb'; }}
                     >
                       <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />

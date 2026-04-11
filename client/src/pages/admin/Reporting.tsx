@@ -339,9 +339,9 @@ export default function AdminReporting() {
                     <tr key={post.id} onClick={() => navigate(`/admin/posts/${post.slug}`, { state: { from: '/admin/settings', source: 'settings' } })}
                       className={`border-t border-dashed cursor-pointer transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
                       <td className="py-3" style={{ paddingLeft: '16px', width: '70px' }} onClick={(e) => { e.stopPropagation(); toggleVote(post.id); }}>
-                        <div className={`inline-flex flex-col items-center justify-center h-9 rounded-lg border font-bold cursor-pointer transition-all ${
-                          votes[post.id]?.voted ? 'bg-[#1c252e] border-[#1c252e] text-white' : (theme === 'dark' ? 'border-gray-600 text-gray-400 hover:border-gray-400' : 'border-gray-200 text-gray-500 hover:border-gray-400')
-                        }`} style={{ width: '40px', fontSize: '11px', gap: '1px' }}>
+                        <div className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold cursor-pointer transition-all ${
+                          votes[post.id]?.voted ? 'bg-[#059669] border-[#059669] text-white' : (theme === 'dark' ? 'border-gray-600 text-gray-400 hover:border-gray-400' : 'border-gray-200 text-gray-500 hover:border-gray-400')
+                        }`} style={{ padding: '8px 14px', fontSize: '11px', gap: '6px' }}>
                           <ArrowUpRight className="w-3 h-3 rotate-[-45deg]" />
                           <span>{votes[post.id]?.count ?? post.voteCount}</span>
                         </div>

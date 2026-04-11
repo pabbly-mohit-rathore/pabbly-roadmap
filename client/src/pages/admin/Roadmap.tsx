@@ -383,11 +383,11 @@ export default function AdminRoadmap() {
                           {/* Top: Vote + Title/Description */}
                           <div className="flex gap-3">
                             <div onClick={(e) => { e.stopPropagation(); toggleVote(post.id); }}
-                              className={`inline-flex flex-col items-center justify-center h-10 rounded-lg border font-bold shrink-0 cursor-pointer transition-all ${
+                              className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold shrink-0 cursor-pointer transition-all ${
                                 votes[post.id]?.voted
-                                  ? 'bg-[#1c252e] border-[#1c252e] text-white'
-                                  : (theme === 'dark' ? 'border-gray-600 text-gray-300 hover:border-gray-400' : 'border-gray-200 text-gray-700 hover:border-gray-400')
-                              }`} style={{ width: '44px', fontSize: '12px', gap: '1px' }}>
+                                  ? 'bg-[#059669] border-[#059669] text-white'
+                                  : (theme === 'dark' ? 'border-gray-600 text-gray-300 hover:border-[#059669]' : 'border-gray-200 text-gray-700 hover:border-[#059669]')
+                              }`} style={{ padding: '6px 10px', fontSize: '12px', gap: '5px' }}>
                               <ArrowUpRight className="w-3.5 h-3.5 rotate-[-45deg]" />
                               <span>{votes[post.id]?.count ?? post._count?.votes ?? 0}</span>
                             </div>

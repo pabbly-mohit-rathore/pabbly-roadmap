@@ -31,39 +31,30 @@ export default function Navbar() {
             <div className="flex items-center gap-1">
               {/* Toggle between Admin/User view */}
               {user?.role === 'admin' && (
-                <>
-                  {location.pathname.startsWith('/admin') ? (
-                    <Link
-                      to="/user/dashboard"
-                      className={`flex items-center gap-3 pl-2 pr-1.5 py-1.5 rounded-lg border transition-colors duration-200 ${
-                        theme === 'dark'
-                          ? 'border-gray-700 text-gray-300 bg-gray-800'
-                          : 'border-gray-200 text-gray-600 bg-gray-50'
-                      }`}
-                      title="User View"
-                    >
-                      <span className="text-sm font-medium">User View</span>
-                      <div className={`w-7 h-7 rounded-md flex items-center justify-center shadow-sm ${theme === 'dark' ? 'bg-gray-600' : 'bg-white border border-gray-200'}`}>
-                        <Eye className="w-3.5 h-3.5" />
-                      </div>
-                    </Link>
-                  ) : (
-                    <Link
-                      to="/admin/dashboard"
-                      className={`flex items-center gap-3 pl-2 pr-1.5 py-1.5 rounded-lg border transition-colors duration-200 ${
-                        theme === 'dark'
-                          ? 'border-gray-700 text-gray-300 bg-gray-800'
-                          : 'border-gray-200 text-gray-600 bg-gray-50'
-                      }`}
-                      title="Admin Dashboard"
-                    >
-                      <span className="text-sm font-medium">Admin View</span>
-                      <div className={`w-7 h-7 rounded-md flex items-center justify-center shadow-sm ${theme === 'dark' ? 'bg-gray-600' : 'bg-white border border-gray-200'}`}>
-                        <Layout className="w-3.5 h-3.5" />
-                      </div>
-                    </Link>
-                  )}
-                </>
+                <div className={`flex rounded-lg border overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <Link
+                    to="/user/all-posts"
+                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                      !location.pathname.startsWith('/admin')
+                        ? 'bg-emerald-600 text-white'
+                        : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    User View
+                  </Link>
+                  <Link
+                    to="/admin/dashboard"
+                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                      location.pathname.startsWith('/admin')
+                        ? 'bg-emerald-600 text-white'
+                        : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Layout className="w-3.5 h-3.5" />
+                    Dashboard
+                  </Link>
+                </div>
               )}
 
               {/* Notifications */}

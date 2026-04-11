@@ -1,5 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Grid3x3, MapPin, History, Settings } from 'lucide-react';
+import { Icon } from '@iconify/react';
+
+function RoadmapIcon({ className }: { className?: string }) {
+  return <Icon icon="streamline:arrow-roadmap" className={className} width={20} height={20} />;
+}
 import useThemeStore from '../../store/themeStore';
 
 export default function UserSidebar() {
@@ -7,28 +11,18 @@ export default function UserSidebar() {
   const theme = useThemeStore((state) => state.theme);
 
   const menuItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/user/dashboard' },
-    { label: 'Feature Request', icon: MessageSquare, path: '/user/feature-requests' },
-    { label: 'Boards', icon: Grid3x3, path: '/user/boards' },
-    { label: 'Roadmap', icon: MapPin, path: '/user/roadmap' },
-    { label: 'Changelog', icon: History, path: '/user/changelog' },
-    { label: 'Settings', icon: Settings, path: '/user/settings' },
+    { label: 'All Posts', icon: ({ className }: { className?: string }) => <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />, path: '/user/all-posts' },
+    { label: 'Roadmap', icon: RoadmapIcon, path: '/user/roadmap' },
   ];
 
   const isActive = (path: string) => {
-    const source = (location.state as any)?.source;
     const onPostPage = location.pathname.startsWith('/user/posts');
 
-    if (path === '/user/feature-requests') {
-      if (onPostPage) return !source || source === 'feedback';
-      return location.pathname.startsWith('/user/feature-requests');
-    }
-    if (path === '/user/boards') {
-      if (onPostPage) return source === 'board';
-      return location.pathname.startsWith('/user/boards');
+    if (path === '/user/all-posts') {
+      if (onPostPage) return true;
+      return location.pathname.startsWith('/user/all-posts');
     }
     if (path === '/user/roadmap') {
-      if (onPostPage) return source === 'roadmap';
       return location.pathname.startsWith('/user/roadmap');
     }
     return location.pathname === path || location.pathname.startsWith(path + '/');

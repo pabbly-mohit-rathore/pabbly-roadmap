@@ -75,6 +75,7 @@ export default function AdminPostDetail() {
   const [loading, setLoading] = useState(!post);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [submittingReply, setSubmittingReply] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
@@ -278,16 +279,17 @@ export default function AdminPostDetail() {
     }
   };
 
-  const handleEditComment = async (commentId: string) => {
-    if (!editText.trim()) {
+  const [editingComment, setEditingComment] = useState(false);
+  const handleEditComment = async (commentId: string, htmlContent?: string) => {
+    const content = htmlContent || editText;
+    if (!content.trim() || content === '<p></p>') {
       toast.error('Comment cannot be empty');
       return;
     }
 
     try {
-      const response = await api.put(`/comments/${commentId}`, {
-        content: editText,
-      });
+      setEditingComment(true);
+      const response = await api.put(`/comments/${commentId}`, { content });
 
       if (response.data.success) {
         setEditingCommentId(null);
@@ -298,6 +300,8 @@ export default function AdminPostDetail() {
     } catch (error) {
       console.error('Error editing comment:', error);
       toast.error('Failed to edit comment');
+    } finally {
+      setEditingComment(false);
     }
   };
 
@@ -392,6 +396,7 @@ export default function AdminPostDetail() {
     }
 
     try {
+      setSubmittingReply(true);
       const response = await api.post(`/comments/post/${post?.id}`, {
         content,
         parentId,
@@ -400,7 +405,6 @@ export default function AdminPostDetail() {
       if (response.data.success) {
         setReplyText('');
         setReplyingToId(null);
-        // Add reply to parent comment immediately
         const newReply = response.data.data?.comment;
         if (newReply) {
           setComments(prev => prev.map(c =>
@@ -417,6 +421,8 @@ export default function AdminPostDetail() {
     } catch (error) {
       console.error('Error adding reply:', error);
       toast.error('Failed to add reply');
+    } finally {
+      setSubmittingReply(false);
     }
   };
 
@@ -482,16 +488,16 @@ export default function AdminPostDetail() {
                     <div className="flex items-start gap-4">
                       <div
                         onClick={handleVote}
-                        className="inline-flex flex-col items-center justify-center h-11 rounded-lg border font-bold transition-all cursor-pointer overflow-hidden flex-shrink-0"
+                        className="inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden flex-shrink-0"
                         style={{
-                          width: '56px',
+                          padding: '8px 14px',
                           fontSize: '13px',
-                          gap: '1px',
-                          backgroundColor: votes[post!.id]?.voted ? '#1c252e' : 'transparent',
-                          borderColor: votes[post!.id]?.voted ? '#1c252e' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
+                          gap: '6px',
+                          backgroundColor: votes[post!.id]?.voted ? '#059669' : 'transparent',
+                          borderColor: votes[post!.id]?.voted ? '#059669' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
                           color: votes[post!.id]?.voted ? '#ffffff' : (theme === 'dark' ? '#d1d5db' : '#374151'),
                         }}
-                        onMouseEnter={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = '#1c252e'; }}
+                        onMouseEnter={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
                         onMouseLeave={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = theme === 'dark' ? '#4b5563' : '#e5e7eb'; }}
                       >
                         <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
@@ -580,12 +586,14 @@ export default function AdminPostDetail() {
                               {/* Comment Content */}
                               {editingCommentId === comment.id ? (
                                 <div className="mt-2">
-                                  <textarea value={editText} onChange={(e) => setEditText(e.target.value)}
-                                    className={`w-full px-3 py-2 rounded-lg border mb-2 ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200'}`} rows={3} />
-                                  <div className="flex gap-2">
-                                    <button onClick={() => handleEditComment(comment.id)} className="px-3 py-1 bg-[#0c68e9] text-white text-sm rounded hover:bg-[#0b5dd0]">Save</button>
-                                    <button onClick={() => setEditingCommentId(null)} className={`px-3 py-1 text-sm rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
-                                  </div>
+                                  <CommentEditor
+                                    onSubmit={(html) => handleEditComment(comment.id, html)}
+                                    placeholder="Edit comment..."
+                                    buttonLabel="Save"
+                                    submitting={editingComment}
+                                    initialContent={comment.content}
+                                  />
+                                  <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>Cancel</button>
                                 </div>
                               ) : (
                                 <div className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -602,7 +610,7 @@ export default function AdminPostDetail() {
                                     <button onClick={() => handleLikeComment(comment.id)} className={`flex items-center gap-1 ${likedCommentIds.has(comment.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
                                       <Heart className="w-3.5 h-3.5" fill={likedCommentIds.has(comment.id) ? 'currentColor' : 'none'} /> {comment.likeCount}
                                     </button>
-                                    <button onClick={() => { setEditingCommentId(comment.id); setEditText(comment.content); }} className={theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Edit</button>
+                                    <button onClick={() => { setEditingCommentId(comment.id); setEditText(comment.content.replace(/<[^>]*>/g, '')); }} className={theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Edit</button>
                                     <button onClick={() => handlePinComment(comment.id)} className={comment.isPinned ? 'text-yellow-500' : theme === 'dark' ? 'text-gray-400 hover:text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}>{comment.isPinned ? '📌 Unpin' : '📌 Pin'}</button>
                                     <button onClick={() => setReplyingToId(replyingToId === comment.id ? null : comment.id)} className={replyingToId === comment.id ? 'text-blue-600' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Reply</button>
                                   </>
@@ -618,6 +626,7 @@ export default function AdminPostDetail() {
                                     onSubmit={(html) => handleReply(comment.id, html)}
                                     placeholder="Write a reply..."
                                     buttonLabel="Reply"
+                                    submitting={submittingReply}
                                   />
                                 </div>
                               )}
@@ -647,12 +656,15 @@ export default function AdminPostDetail() {
                                           </div>
                                           {editingCommentId === reply.id ? (
                                             <div className="mt-2">
-                                              <textarea value={editText} onChange={(e) => setEditText(e.target.value)}
-                                                className={`w-full px-2 py-1 rounded text-sm border mb-2 ${theme === 'dark' ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-200'}`} rows={2} />
-                                              <div className="flex gap-2">
-                                                <button onClick={() => handleEditComment(reply.id)} className="px-2 py-1 bg-[#0c68e9] text-white text-xs rounded hover:bg-[#0b5dd0]">Save</button>
-                                                <button onClick={() => setEditingCommentId(null)} className={`px-2 py-1 text-xs rounded border ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-600' : 'border-gray-200 hover:bg-gray-100'}`}>Cancel</button>
-                                              </div>
+                                              <CommentEditor
+                                                onSubmit={(html) => handleEditComment(reply.id, html)}
+                                                placeholder="Edit reply..."
+                                                buttonLabel="Save"
+                                                submitting={editingComment}
+                                                initialContent={reply.content}
+                                                compact
+                                              />
+                                              <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>Cancel</button>
                                             </div>
                                           ) : (
                                             <div className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -667,7 +679,7 @@ export default function AdminPostDetail() {
                                                 <button onClick={() => handleLikeComment(reply.id)} className={`flex items-center gap-1 ${likedCommentIds.has(reply.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
                                                   <Heart className="w-3 h-3" fill={likedCommentIds.has(reply.id) ? 'currentColor' : 'none'} /> {reply.likeCount}
                                                 </button>
-                                                <button onClick={() => { setEditingCommentId(reply.id); setEditText(reply.content); }} className={theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Edit</button>
+                                                <button onClick={() => { setEditingCommentId(reply.id); setEditText(reply.content.replace(/<[^>]*>/g, '')); }} className={theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Edit</button>
                                                 <button onClick={() => setReplyingToId(replyingToId === reply.id ? null : reply.id)} className={replyingToId === reply.id ? 'text-blue-600' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Reply</button>
                                               </>
                                             )}
@@ -679,6 +691,7 @@ export default function AdminPostDetail() {
                                                 onSubmit={(html) => handleReply(comment.id, html)}
                                                 placeholder="Write a reply..."
                                                 buttonLabel="Reply"
+                                                submitting={submittingReply}
                                               />
                                             </div>
                                           )}

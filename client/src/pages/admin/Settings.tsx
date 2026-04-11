@@ -1,18 +1,24 @@
 import { useState, useMemo, useRef } from 'react';
-import { BarChart3, Tags as TagsIcon, Settings as SettingsIcon, Users, Plus, Camera } from 'lucide-react';
+import { BarChart3, Tags as TagsIcon, Settings as SettingsIcon, Users, Plus, Camera, Grid3x3, Link2 } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import AdminReporting from './Reporting';
+import AdminUsers from './Users';
+import AdminBoards from './Boards';
+import AdminInviteLinks from './InviteLinks';
 import AdminTags from './Tags';
 import AdminTeamMembers from './TeamMembers';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
 const ALL_TABS = [
+  { id: 'boards', label: 'Boards', icon: Grid3x3, heading: 'Boards', description: 'Create and manage your product boards.', btnLabel: 'Create Board' },
+  { id: 'invite-links', label: 'Invite Links', icon: Link2, heading: 'Invite Links', description: 'Create and manage user invitation links.', btnLabel: 'Generate Link' },
   { id: 'activity-log', label: 'Activity Log', icon: BarChart3, heading: 'Activity Log', description: 'View activity logs, reports, and analytics.', btnLabel: '' },
+  { id: 'users', label: 'Users', icon: Users, heading: 'Users', description: 'Manage registered users and their accounts.', btnLabel: '' },
   { id: 'tags', label: 'Tags', icon: TagsIcon, heading: 'Tags', description: 'Create and manage tags for your posts.', btnLabel: 'Create Tag' },
   { id: 'team-members', label: 'Team Members', icon: Users, heading: 'Team Members', description: 'Manage team members and their access levels.', btnLabel: '' },
   { id: 'general', label: 'General', icon: SettingsIcon, heading: 'General', description: 'Manage your profile, appearance and account settings.', btnLabel: '' },
@@ -33,7 +39,7 @@ export default function AdminSettings() {
     return ALL_TABS;
   }, [isTeamMember]);
 
-  const [activeTab, setActiveTab] = useState('activity-log');
+  const [activeTab, setActiveTab] = useState('boards');
   const [triggerAction, setTriggerAction] = useState(0);
   const currentTab = ALL_TABS.find(t => t.id === activeTab)!;
 
@@ -120,7 +126,7 @@ export default function AdminSettings() {
       </div>
 
       {/* Tabs */}
-      <div className={`flex items-center gap-6 sticky z-30 ${d ? 'bg-gray-950' : 'bg-[#fafafa]'}`} style={{ top: '8px', marginTop: '26px', marginBottom: '26px', paddingTop: '10px', paddingBottom: '10px' }}>
+      <div className={`flex items-center gap-6 sticky z-30 ${d ? 'bg-gray-950' : 'bg-[#fafafa]'}`} style={{ top: '0px', marginTop: '26px', marginBottom: '26px', paddingTop: '10px', paddingBottom: '10px' }}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
@@ -137,7 +143,10 @@ export default function AdminSettings() {
       </div>
 
       {/* Tab Content */}
+      {activeTab === 'boards' && !isTeamMember && <AdminBoards triggerCreate={triggerAction} />}
+      {activeTab === 'invite-links' && !isTeamMember && <AdminInviteLinks triggerCreate={triggerAction} />}
       {activeTab === 'activity-log' && <AdminReporting />}
+      {activeTab === 'users' && !isTeamMember && <AdminUsers />}
       {activeTab === 'tags' && <AdminTags triggerCreate={triggerAction} />}
       {activeTab === 'team-members' && !isTeamMember && <AdminTeamMembers triggerCreate={triggerAction} />}
       {activeTab === 'general' && !isTeamMember && (
