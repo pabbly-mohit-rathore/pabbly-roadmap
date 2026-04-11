@@ -16,7 +16,7 @@ const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
 const validate = require('../middleware/validate');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, optionalAuth } = require('../middleware/auth');
 
 const {
   getBoards,
@@ -88,7 +88,7 @@ const idParamRules = [
 
 // Public (no auth needed) — but we'll require auth to see accessible boards only
 // GET /boards — Authenticated user dekhe apne accessible boards
-router.get('/', authenticate, getBoards);
+router.get('/', optionalAuth, getBoards);
 
 // GET /boards/:slug — Specific board dekho (access check hoga controller mein)
 router.get('/:slug', authenticate, slugParamRules, validate, getBoardBySlug);

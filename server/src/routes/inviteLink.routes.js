@@ -24,6 +24,7 @@ const {
   reactivateInviteLink,
   deleteInviteLink,
   redeemInviteLink,
+  getOrCreateSimpleInviteLink,
 } = require('../controllers/inviteLink.controller');
 
 // ──────────────────────────────────────
@@ -66,6 +67,9 @@ const redeemInviteLinkRules = [
 // ──────────────────────────────────────
 // Routes
 // ──────────────────────────────────────
+
+// GET /invite-links/simple — Get or create simple invite link (admin only)
+router.get('/invite-links/simple', authenticate, getOrCreateSimpleInviteLink);
 
 // GET /invite-links/:token — Validate invite link (PUBLIC - no auth required)
 router.get('/invite-links/:token', validateInviteLink);

@@ -88,12 +88,12 @@ const getDashboardStats = async (req, res, next) => {
 // ============================================================
 // 2. GET TOP VOTED POSTS (Admin only)
 //
-// Top 10 most voted posts
+// Top 5 most voted posts
 // ============================================================
 const getTopVotedPosts = async (req, res, next) => {
   try {
     const { userId, role } = req.user;
-    const { limit = 10 } = req.query;
+    const { limit = 5 } = req.query;
 
     if (role !== 'admin') {
       return res.status(403).json({

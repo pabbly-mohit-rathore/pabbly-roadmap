@@ -657,6 +657,58 @@ const validateInviteLink = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// 8. GET OR CREATE SIMPLE INVITE LINK (Admin only)
+//
+// Auto-generates a single permanent invite link per admin
+// No board selection, no expiry, no max uses
+// Redeemed users get access to all public boards automatically
+// ============================================================
+const getOrCreateSimpleInviteLink = async (req, res, next) => {
+  try {
+    const { userId, role } = req.user;
+
+    if (role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Only admins can manage invite links.' });
+    }
+
+    // Check if admin already has a simple invite link
+    let inviteLink = await prisma.boardInviteLink.findFirst({
+      where: { createdById: userId, name: '__simple_invite__' },
+    });
+
+    if (!inviteLink) {
+      // Create one
+      const token = crypto.randomBytes(16).toString('hex');
+      inviteLink = await prisma.boardInviteLink.create({
+        data: {
+          token,
+          name: '__simple_invite__',
+          boardIds: '[]',
+          createdById: userId,
+          expiresAt: null,
+          maxUses: null,
+        },
+      });
+    }
+
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const inviteUrl = `${clientUrl}/invite/${inviteLink.token}`;
+
+    res.json({
+      success: true,
+      data: {
+        inviteLink: {
+          ...inviteLink,
+          url: inviteUrl,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   generateInviteLink,
   listInviteLinks,
@@ -665,4 +717,5 @@ module.exports = {
   reactivateInviteLink,
   deleteInviteLink,
   redeemInviteLink,
+  getOrCreateSimpleInviteLink,
 };

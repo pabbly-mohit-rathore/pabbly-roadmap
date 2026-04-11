@@ -20,11 +20,22 @@ const prisma = require('../config/database');
 // ============================================================
 const getBoards = async (req, res, next) => {
   try {
-    const { userId, role } = req.user;
+    const userId = req.user?.userId;
+    const role = req.user?.role;
 
     let boards;
 
-    if (role === 'admin') {
+    if (!req.user) {
+      // Unauthenticated - only public boards
+      boards = await prisma.board.findMany({
+        where: { isPublic: true },
+        orderBy: { order: 'asc' },
+        select: {
+          id: true, name: true, slug: true, description: true, icon: true, color: true, isPublic: true, order: true, createdAt: true, updatedAt: true,
+          _count: { select: { posts: true } },
+        },
+      });
+    } else if (role === 'admin') {
       // Admin ko sirf apne boards dikhe
       boards = await prisma.board.findMany({
         where: { createdById: userId },
@@ -49,14 +60,13 @@ const getBoards = async (req, res, next) => {
         },
       });
     } else {
-      // Regular user ko sirf apne accessible boards dikhe
+      // Regular user ko dikhe: public boards + invited private boards
       boards = await prisma.board.findMany({
         where: {
-          userAccess: {
-            some: {
-              userId: userId,
-            },
-          },
+          OR: [
+            { isPublic: true },
+            { userAccess: { some: { userId: userId } } },
+          ],
         },
         orderBy: { order: 'asc' },
         select: {
@@ -66,6 +76,7 @@ const getBoards = async (req, res, next) => {
           description: true,
           icon: true,
           color: true,
+          isPublic: true,
           order: true,
           createdAt: true,
           updatedAt: true,
@@ -160,10 +171,9 @@ const getBoardBySlug = async (req, res, next) => {
 // ============================================================
 const createBoard = async (req, res, next) => {
   try {
-    const { name, description, icon, color } = req.body;
+    const { name, description, icon, color, isPublic } = req.body;
     const { userId, role } = req.user;
 
-    // Check: Kya user admin hai?
     if (role !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -171,15 +181,12 @@ const createBoard = async (req, res, next) => {
       });
     }
 
-    // Slug banao (name se)
-    // "Pabbly Connect" → "pabbly-connect"
     const slug = name
       .toLowerCase()
       .trim()
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '');
 
-    // Check: Kya slug pehle se exist karta hai?
     const existingBoard = await prisma.board.findUnique({
       where: { slug },
     });
@@ -191,7 +198,6 @@ const createBoard = async (req, res, next) => {
       });
     }
 
-    // Board create karo
     const board = await prisma.board.create({
       data: {
         name,
@@ -199,6 +205,7 @@ const createBoard = async (req, res, next) => {
         description: description || '',
         icon: icon || '',
         color: color || '#6366f1',
+        isPublic: isPublic !== false,
         createdById: userId,
       },
     });
@@ -232,7 +239,7 @@ const createBoard = async (req, res, next) => {
 const updateBoard = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, description, icon, color } = req.body;
+    const { name, description, icon, color, isPublic } = req.body;
     const { userId, role } = req.user;
 
     // Board dhundho
@@ -281,6 +288,7 @@ const updateBoard = async (req, res, next) => {
         ...(description !== undefined && { description }),
         ...(icon !== undefined && { icon }),
         ...(color && { color }),
+        ...(isPublic !== undefined && { isPublic }),
       },
     });
 

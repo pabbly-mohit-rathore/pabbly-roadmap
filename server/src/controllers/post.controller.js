@@ -51,21 +51,35 @@ const getPosts = async (req, res, next) => {
       const adminBoardIds = adminBoards.map(b => b.id);
       where.boardId = boardId ? (adminBoardIds.includes(boardId) ? boardId : 'none') : { in: adminBoardIds };
     } else if (req.user) {
-      // Regular user — sirf accessible boards ke posts dikhe
+      // Regular user — public boards + invited private boards ke posts dikhe
       const userAccess = await prisma.userBoardAccess.findMany({
         where: { userId: req.user.userId },
         select: { boardId: true },
       });
       const userBoardIds = userAccess.map(a => a.boardId);
+      const publicBoards = await prisma.board.findMany({
+        where: { isPublic: true },
+        select: { id: true },
+      });
+      const publicBoardIds = publicBoards.map(b => b.id);
+      const allAccessibleIds = [...new Set([...userBoardIds, ...publicBoardIds])];
       if (boardId) {
-        // Check if user has access to this specific board
-        where.boardId = userBoardIds.includes(boardId) ? boardId : 'none';
+        where.boardId = allAccessibleIds.includes(boardId) ? boardId : 'none';
       } else {
-        where.boardId = { in: userBoardIds };
+        where.boardId = { in: allAccessibleIds };
       }
-    } else if (boardId) {
-      // Unauthenticated — only if boardId provided (public boards)
-      where.boardId = boardId;
+    } else {
+      // Unauthenticated — only public board posts
+      const publicBoards = await prisma.board.findMany({
+        where: { isPublic: true },
+        select: { id: true },
+      });
+      if (boardId) {
+        const isPublic = publicBoards.some(b => b.id === boardId);
+        where.boardId = isPublic ? boardId : 'none';
+      } else {
+        where.boardId = { in: publicBoards.map(b => b.id) };
+      }
     }
 
     if (status) {
@@ -206,14 +220,15 @@ const getPostBySlug = async (req, res, next) => {
 // ============================================================
 const createPost = async (req, res, next) => {
   try {
-    const { title, description, type = 'feature', boardId, tagIds = [], isDraft = false, priority = 'none' } = req.body;
+    const { title, description, content, type = 'feature', boardId, tagIds = [], isDraft = false, priority = 'none' } = req.body;
     const { userId } = req.user;
 
     const hasAccess = await prisma.userBoardAccess.findUnique({
       where: { userId_boardId: { userId, boardId } },
     });
+    const board = await prisma.board.findUnique({ where: { id: boardId }, select: { isPublic: true } });
 
-    if (req.user.role !== 'admin' && !hasAccess) {
+    if (req.user.role !== 'admin' && !hasAccess && !board?.isPublic) {
       return res.status(403).json({
         success: false,
         message: 'You do not have access to this board.',
@@ -227,6 +242,7 @@ const createPost = async (req, res, next) => {
         title,
         slug,
         description: description || '',
+        content: content || null,
         type,
         priority,
         boardId,

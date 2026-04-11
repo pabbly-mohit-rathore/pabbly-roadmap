@@ -72,6 +72,7 @@ model Board {
   description String?
   icon        String?
   color       String   @default("#6366f1")  // Default purple color
+  isPublic    Boolean  @default(true)       // Public = visible to all users, Private = invite only
   order       Int      @default(0)          // Boards ko reorder karne ke liye
   createdById String?                       // Kis admin ne banaya — null for old boards
   createdAt   DateTime @default(now())
