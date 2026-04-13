@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, Edit2, Pin, Trash2, Search, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, FileText, Clock, Eye, Zap, Rocket, XCircle, PauseCircle, MessageSquare, Bug, Puzzle, Inbox, ArrowUpRight, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Plus, X, Edit2, Trash2, Search, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, FileText, Clock, Eye, Zap, Rocket, XCircle, PauseCircle, MessageSquare, Bug, Puzzle, Inbox, ArrowUpRight, TrendingUp, CheckCircle2, Download } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
@@ -9,11 +9,13 @@ import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import CommentEditor from '../../components/CommentEditor';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface Post {
   id: string;
   title: string;
   description?: string;
+  content?: string;
   slug: string;
   status: string;
   type: string;
@@ -23,8 +25,8 @@ interface Post {
   priority: string;
   priorityScore: number;
   createdAt: string;
-  author: { name: string };
-  board?: { name: string };
+  author: { name: string; avatar?: string };
+  board?: { name: string; color?: string };
   tags?: Array<{ id: string; name: string; color: string }>;
 }
 
@@ -52,6 +54,13 @@ const EMPTY_STATE_CONFIG: Record<string, { icon: React.ElementType; title: strin
   live: { icon: Rocket, title: 'No Live Posts', description: 'No posts are live yet. Completed posts will show up here.' },
   closed: { icon: XCircle, title: 'No Closed Posts', description: 'No posts have been closed. Resolved posts will appear here.' },
   hold: { icon: PauseCircle, title: 'No Posts On Hold', description: 'No posts are on hold right now. Paused posts will show up here.' },
+};
+
+const TYPE_COLOR: Record<string, { bg: string; text: string }> = {
+  feature: { bg: 'bg-indigo-50', text: 'text-indigo-700' },
+  bug: { bg: 'bg-red-50', text: 'text-red-700' },
+  improvement: { bg: 'bg-amber-50', text: 'text-amber-700' },
+  integration: { bg: 'bg-cyan-50', text: 'text-cyan-700' },
 };
 
 const EMPTY_TYPE_CONFIG: Record<string, { icon: React.ElementType; title: string; description: string }> = {
@@ -84,13 +93,30 @@ export default function AdminFeedback() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [denseMode, setDenseMode] = useState(false);
   const [rowsDropOpen, setRowsDropOpen] = useState(false);
+  const rowsDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!rowsDropOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (rowsDropdownRef.current && !rowsDropdownRef.current.contains(e.target as Node)) {
+        setRowsDropOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [rowsDropOpen]);
   const [sortBy, setSortBy] = useState<'trending' | 'newest' | 'most-voted'>('newest');
+  const [hoverPost, setHoverPost] = useState<{ post: Post; x: number; y: number; rowTop: number } | null>(null);
+  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
     type: 'feature',
     boardId: '',
     priority: 'none',
@@ -139,7 +165,7 @@ export default function AdminFeedback() {
       if (statusFilter !== 'all') params.status = statusFilter;
       if (boardFilter !== 'all') params.boardId = boardFilter;
 
-      const response = await api.get('/posts', { params });
+      const response = await api.get('/posts', { params: { ...params, limit: 'all' } });
       if (response.data.success) {
         const fetchedPosts = response.data.data.posts;
         setPosts(fetchedPosts);
@@ -172,6 +198,9 @@ export default function AdminFeedback() {
     const errors: Record<string, string> = {};
     if (!formData.title.trim()) errors.title = 'Title is required';
     if (!formData.boardId) errors.boardId = 'Please select a board';
+    if (!formData.type) errors.type = 'Please select a type';
+    const contentText = (htmlContent || postContent || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (contentText.length < 10) errors.content = 'Content must be at least 10 characters';
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
@@ -183,8 +212,9 @@ export default function AdminFeedback() {
       const response = await api.post('/posts', { ...formData, content, isDraft: false });
       if (response.data.success) {
         setShowCreateModal(false);
-        setFormData({ title: '', description: '', type: 'feature', boardId: boards[0]?.id || '', priority: 'none' });
+        setFormData({ title: '', type: 'feature', boardId: boards[0]?.id || '', priority: 'none' });
         setPostContent('');
+        setPage(0);
         toast.success('Post published!');
         fetchPosts();
       }
@@ -201,7 +231,6 @@ export default function AdminFeedback() {
     try {
       const response = await api.put(`/posts/${selectedPost.id}`, {
         title: formData.title,
-        description: formData.description,
         type: formData.type,
         priority: formData.priority,
       });
@@ -218,14 +247,18 @@ export default function AdminFeedback() {
     }
   };
 
-  const handleDeletePost = async (postId: string) => {
-    if (!confirm('Delete this post?')) return;
+  const handleDeletePost = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
     try {
-      await api.delete(`/posts/${postId}`);
+      await api.delete(`/posts/${deleteConfirm.id}`);
+      setDeleteConfirm(null);
       fetchPosts();
       toast.success('Post deleted');
     } catch {
       toast.error('Failed to delete');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -235,22 +268,54 @@ export default function AdminFeedback() {
     setTimeout(() => setAnimatingPosts(prev => { const next = new Set(prev); next.delete(postId); return next; }), 400);
   };
 
-  const handleTogglePin = async (postId: string, isPinned: boolean) => {
-    // Optimistic update - instant UI change
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, isPinned: !isPinned } : p));
-    try {
-      await api.put(`/posts/${postId}/pin`, { isPinned: !isPinned });
-    } catch {
-      // Revert on error
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, isPinned } : p));
-      toast.error('Failed to toggle pin');
-    }
-  };
-
   const openEditModal = (post: Post) => {
     setSelectedPost(post);
-    setFormData({ title: post.title, description: '', type: post.type, boardId: '', priority: post.priority });
+    setFormData({ title: post.title, type: post.type, boardId: '', priority: post.priority });
     setShowEditModal(true);
+  };
+
+  const toggleSelectPost = (postId: string) => {
+    setSelectedPosts(prev => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId); else next.add(postId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedPosts.size === sortedPosts.length) setSelectedPosts(new Set());
+    else setSelectedPosts(new Set(sortedPosts.map(p => p.id)));
+  };
+
+  const exportPostsCSV = (postsToExport: Post[]) => {
+    if (postsToExport.length === 0) { toast.error('No posts to export'); return; }
+    const esc = (val: string) => `"${val.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
+    const headers = ['Title', 'Status', 'Type', 'Board', 'Author', 'Votes', 'Comments', 'Created', 'Content'];
+    const rows = postsToExport.map(p => [
+      esc(p.title || ''),
+      esc(p.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())),
+      esc(p.type.charAt(0).toUpperCase() + p.type.slice(1)),
+      esc(p.board?.name || ''),
+      esc(p.author.name || ''),
+      p.voteCount ?? 0,
+      p.commentCount ?? 0,
+      esc(new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
+      esc((p.content || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()),
+    ].join(','));
+    const BOM = '\uFEFF';
+    const csv = BOM + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `posts_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${postsToExport.length} posts`);
+    setShowExportMenu(false);
+    setSelectedPosts(new Set());
   };
 
   const clearFilters = () => {
@@ -267,7 +332,7 @@ export default function AdminFeedback() {
 
   return (
     <div>
-      <style>{`@keyframes slideUpCount { 0% { opacity: 0; transform: translateY(8px) scale(0.85); } 60% { opacity: 1; transform: translateY(-2px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } }`}</style>
+      <style>{`@keyframes slideUpCount { 0% { opacity: 0; transform: translateY(8px) scale(0.85); } 60% { opacity: 1; transform: translateY(-2px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } } @keyframes previewFadeIn { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } } .mui-checkbox { width: 18px; height: 18px; border-radius: 3px; border: 2px solid #919eab; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; flex-shrink: 0; } .mui-checkbox:hover { border-color: #637381; } .mui-checkbox.checked { background: #0c68e9; border-color: #0c68e9; } .mui-checkbox.indeterminate { background: #0c68e9; border-color: #0c68e9; }`}</style>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -339,11 +404,43 @@ export default function AdminFeedback() {
         <LoadingBar />
       ) : (
         <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          {/* Title */}
-          <div style={{ padding: '24px 24px 16px 24px' }}>
+          {/* Title + Export */}
+          <div className="flex items-center justify-between" style={{ padding: '24px 24px 16px 24px' }}>
             <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>
               {statusFilter === 'all' ? 'All Posts' : `${statusFilter.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Posts`}
             </h2>
+            <div className="relative">
+              <button onClick={() => {
+                if (selectedPosts.size > 0) {
+                  exportPostsCSV(sortedPosts.filter(p => selectedPosts.has(p.id)));
+                } else {
+                  setShowExportMenu(!showExportMenu);
+                }
+              }}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  d ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}>
+                <Download className="w-4 h-4" /> Export{selectedPosts.size > 0 ? ` (${selectedPosts.size})` : ''}
+              </button>
+              {showExportMenu && selectedPosts.size === 0 && (
+                <div className={`absolute right-0 top-full mt-2 rounded-xl border shadow-lg z-50 p-1.5 ${d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '240px' }}>
+                  {boardFilter !== 'all' ? (() => {
+                    const activeBoard = boards.find(b => b.id === boardFilter);
+                    return (
+                      <button onClick={() => exportPostsCSV(sortedPosts)}
+                        className={`w-full px-3 py-2 text-left text-[14px] font-medium rounded-lg transition-colors ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
+                        Export "{activeBoard?.name}" ({sortedPosts.length} posts)
+                      </button>
+                    );
+                  })() : (
+                    <button onClick={() => exportPostsCSV(sortedPosts)}
+                      className={`w-full px-3 py-2 text-left text-[14px] font-medium rounded-lg transition-colors ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
+                      Export All Posts ({sortedPosts.length})
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           {/* Title Divider */}
           <div className={`border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} />
@@ -388,27 +485,49 @@ export default function AdminFeedback() {
           <table className="w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-                {['Upvote', 'Title', 'Status', 'Comments', 'Author', 'Created', 'Actions'].map((h, i) => (
-                  <th key={h}
-                    className={`font-semibold ${d ? 'text-gray-400' : ''}`}
-                    style={{
-                      fontSize: '14px',
-                      color: d ? undefined : '#1C252E',
-                      textAlign: i === 3 ? 'center' as const : i === 6 ? 'right' as const : 'left' as const,
-                      width: i === 0 ? '120px' : i === 2 ? '150px' : i === 3 ? '330px' : i === 4 ? '250px' : i === 5 ? '180px' : i === 6 ? '60px' : undefined,
-                    }}>
-                    <div style={{
-                      paddingLeft: i === 0 ? '24px' : '16px',
-                      paddingRight: i === 6 ? '24px' : '16px',
-                    }}>{h}</div>
+                <th style={{ width: '44px', paddingLeft: '16px' }}>
+                  <div className="relative group/selall">
+                    <div onClick={toggleSelectAll}
+                      className={`mui-checkbox ${selectedPosts.size === sortedPosts.length && sortedPosts.length > 0 ? 'checked' : selectedPosts.size > 0 ? 'indeterminate' : ''}`}>
+                      {selectedPosts.size === sortedPosts.length && sortedPosts.length > 0 ? (
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      ) : selectedPosts.size > 0 ? (
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6H9.5" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+                      ) : null}
+                    </div>
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover/selall:flex flex-col items-center z-50 pointer-events-none">
+                      <div className="bg-gray-900 text-white text-[11px] font-medium px-2 py-1 rounded-md whitespace-nowrap shadow-lg">Select</div>
+                      <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[5px] border-t-gray-900 -mt-[1px]" />
+                    </div>
+                  </div>
+                </th>
+                {selectedPosts.size > 0 ? (
+                  <th colSpan={7} style={{ paddingLeft: '12px', textAlign: 'left' }}>
+                    <span className={`text-sm font-semibold ${d ? 'text-blue-300' : 'text-blue-600'}`}>{selectedPosts.size} selected</span>
                   </th>
-                ))}
+                ) : (
+                  ['Upvote', 'Title', 'Status', 'Comments', 'Author', 'Created', 'Actions'].map((h, i) => (
+                    <th key={h}
+                      className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                      style={{
+                        fontSize: '14px',
+                        color: d ? undefined : '#1C252E',
+                        textAlign: i === 3 ? 'center' as const : i === 6 ? 'right' as const : 'left' as const,
+                        width: i === 0 ? '90px' : i === 2 ? '140px' : i === 3 ? '280px' : i === 4 ? '250px' : i === 5 ? '150px' : i === 6 ? '100px' : undefined,
+                      }}>
+                      <div style={{
+                        paddingLeft: i === 0 ? '12px' : '16px',
+                        paddingRight: i === 6 ? '24px' : '16px',
+                      }}>{h}</div>
+                    </th>
+                  ))
+                )}
               </tr>
             </thead>
             <tbody>
               {tableLoading ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div className={`flex items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
                       <div className="w-8 h-8 border-[3px] border-gray-200 border-t-[#0c68e9] rounded-full animate-spin" />
                     </div>
@@ -421,8 +540,23 @@ export default function AdminFeedback() {
                     <tr key={post.id}
                       onClick={() => navigate(`/admin/posts/${post.slug}`)}
                       className={`border-b border-dashed cursor-pointer transition-colors ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
+                      {/* Checkbox */}
+                      <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '16px', width: '44px' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="relative group/sel">
+                          <div onClick={() => toggleSelectPost(post.id)}
+                            className={`mui-checkbox ${selectedPosts.has(post.id) ? 'checked' : ''}`}>
+                            {selectedPosts.has(post.id) && (
+                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            )}
+                          </div>
+                          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover/sel:flex flex-col items-center z-50 pointer-events-none">
+                            <div className="bg-gray-900 text-white text-[11px] font-medium px-2 py-1 rounded-md whitespace-nowrap shadow-lg">Select</div>
+                            <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[5px] border-t-gray-900 -mt-[1px]" />
+                          </div>
+                        </div>
+                      </td>
                       {/* Upvote */}
-                      <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px', paddingRight: '12px', width: '120px' }}
+                      <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '12px', paddingRight: '12px', width: '90px' }}
                         onClick={(e) => { e.stopPropagation(); handleVote(post.id); }}>
                         <div
                           className="inline-flex flex-row items-center justify-center rounded-lg border font-bold cursor-pointer overflow-hidden"
@@ -447,14 +581,20 @@ export default function AdminFeedback() {
                         </div>
                       </td>
 
-                      {/* Title + Description */}
-                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} px-5 max-w-0 overflow-hidden`}>
-                        <div className="flex items-center gap-2">
-                          {post.isPinned && <Pin className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500 shrink-0" />}
-                          <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                        </div>
-                        {post.description && (
-                          <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
+                      {/* Title + Content Preview */}
+                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} px-5 max-w-0 overflow-hidden`}
+                        onMouseEnter={(e) => {
+                          const td = e.currentTarget.getBoundingClientRect();
+                          if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+                          hoverTimeout.current = setTimeout(() => setHoverPost({ post, x: td.left, y: td.bottom + 4, rowTop: td.top }), 300);
+                        }}
+                        onMouseLeave={() => {
+                          if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+                          hoverTimeout.current = setTimeout(() => setHoverPost(null), 150);
+                        }}>
+                        <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
+                        {post.content && (
+                          <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ maxWidth: '85%' }}>{post.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}</p>
                         )}
                       </td>
 
@@ -466,16 +606,20 @@ export default function AdminFeedback() {
                       </td>
 
                       {/* Comments */}
-                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-center text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-center text-sm font-semibold text-emerald-600`}>
                         {post.commentCount}
                       </td>
 
                       {/* Author */}
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
                         <div className="flex items-center gap-2 group/author">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
-                            {post.author.name[0].toUpperCase()}
-                          </div>
+                          {post.author.avatar ? (
+                            <img src={post.author.avatar.startsWith('http') ? post.author.avatar : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${post.author.avatar}`} alt={post.author.name} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${d ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                              {post.author.name[0].toUpperCase()}
+                            </div>
+                          )}
                           <div className="relative">
                             <span className={`text-sm truncate block ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ maxWidth: '100px' }}>{post.author.name}</span>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/author:flex flex-col items-center z-50 pointer-events-none">
@@ -517,19 +661,9 @@ export default function AdminFeedback() {
                                   <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
                                 </div>
                               </div>
-                              <div className="relative group/pin">
-                                <button onClick={() => { handleTogglePin(post.id, post.isPinned); setOpenMenuId(null); }}
-                                  className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-100 text-gray-800'}`}>
-                                  <Pin className={`w-[18px] h-[18px] ${d ? 'text-gray-400' : 'text-gray-600'}`} /> {post.isPinned ? 'Unpin' : 'Pin'}
-                                </button>
-                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/pin:flex items-center z-[60] pointer-events-none">
-                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">{post.isPinned ? 'Unpin this post' : 'Pin this post'}</div>
-                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
-                                </div>
-                              </div>
                               <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
                               <div className="relative group/del">
-                                <button onClick={() => { handleDeletePost(post.id); setOpenMenuId(null); }}
+                                <button onClick={() => { setDeleteConfirm({ id: post.id, title: post.title }); setOpenMenuId(null); }}
                                   className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
                                   <Trash2 className="w-[18px] h-[18px]" /> Delete
                                 </button>
@@ -552,7 +686,7 @@ export default function AdminFeedback() {
                 const EmptyIcon = emptyConfig.icon;
                 return (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
                       <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
                         <EmptyIcon className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
@@ -579,13 +713,13 @@ export default function AdminFeedback() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
-                  <div className="relative" ref={(el) => { if (el) el.dataset.rowsDropdown = 'true'; }}>
+                  <div className="relative" ref={rowsDropdownRef}>
                     <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                       className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
                       {rowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${rowsDropOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {rowsDropOpen && (
-                      <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${
+                      <div className={`absolute bottom-full mb-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${
                         d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
                       }`}>
                         {[10, 25, 50, 100].map(n => (
@@ -620,7 +754,17 @@ export default function AdminFeedback() {
 
       {/* Close menu/dropdown on click outside */}
       {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
-      {rowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setRowsDropOpen(false)} />}
+      {showExportMenu && <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title="Do you really want to delete this post?"
+        message={`"${deleteConfirm?.title || ''}" will be permanently deleted. This action cannot be undone.`}
+        onConfirm={handleDeletePost}
+        onCancel={() => setDeleteConfirm(null)}
+        loading={deleting}
+      />
 
       {/* Create Post Modal */}
       {showCreateModal && (
@@ -638,47 +782,65 @@ export default function AdminFeedback() {
               <div className="space-y-4">
                 {/* Title */}
                 <div>
-                  <input type="text" value={formData.title} placeholder="Write the post title here"
-                    onChange={(e) => { setFormData({ ...formData, title: e.target.value }); if (formErrors.title) setFormErrors(prev => { const n = { ...prev }; delete n.title; return n; }); }}
-                    className={`w-full text-lg font-semibold outline-none bg-transparent ${
-                      d ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-400'
-                    }`} />
-                  {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
-                </div>
-
-                {/* Description */}
-                <div>
-                  <input type="text" value={formData.description} placeholder="Short description (optional)"
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className={`w-full text-sm outline-none bg-transparent ${
-                      d ? 'text-gray-400 placeholder-gray-600' : 'text-gray-500 placeholder-gray-400'
-                    }`} />
+                  <div className="relative">
+                    <input type="text" value={formData.title} placeholder=" "
+                      onChange={(e) => { setFormData({ ...formData, title: e.target.value }); if (formErrors.title) setFormErrors(prev => { const n = { ...prev }; delete n.title; return n; }); }}
+                      style={{ padding: '16.5px 14px' }}
+                      className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                        d ? 'border-gray-700 bg-gray-800 text-white hover:border-gray-500 focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 hover:border-gray-400 focus:border-gray-400'
+                      }`} />
+                    <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                      top-1/2 -translate-y-1/2
+                      peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                      peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                      ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Title *</span>
+                    {/* Placeholder text visible only when focused and empty */}
+                    {!formData.title && (
+                      <span className={`absolute left-[14px] top-1/2 -translate-y-1/2 text-sm pointer-events-none opacity-0 peer-focus:opacity-100 transition-opacity ${
+                        d ? 'text-gray-600' : 'text-gray-400'
+                      }`}>Enter your post title</span>
+                    )}
+                  </div>
+                  <p className={`text-xs ${formErrors.title ? 'text-red-500' : (d ? 'text-gray-500' : 'text-gray-400')}`} style={{ margin: '8px 14px 0' }}>
+                    {formErrors.title || 'Enter the title for your post.'}
+                  </p>
                 </div>
 
                 {/* Rich Text Editor */}
-                <CommentEditor
-                  onSubmit={(html) => { setPostContent(html); handleCreatePost(html); }}
-                  placeholder="Write your post content here... Add images, links, and more."
-                  buttonLabel="Publish Post"
-                  submitting={creating}
-                  hideButton
-                  maxEditorHeight="450px"
-                  onContentChange={(html) => setPostContent(html)}
-                />
+                <div>
+                  <CommentEditor
+                    onSubmit={(html) => { setPostContent(html); handleCreatePost(html); }}
+                    placeholder="Write your post content here... Add images, links, and more."
+                    buttonLabel="Publish Post"
+                    submitting={creating}
+                    hideButton
+                    maxEditorHeight="450px"
+                    onContentChange={(html) => { setPostContent(html); if (formErrors.content) setFormErrors(prev => { const n = { ...prev }; delete n.content; return n; }); }}
+                  />
+                  <p className={`text-xs ${formErrors.content ? 'text-red-500' : (d ? 'text-gray-500' : 'text-gray-400')}`} style={{ margin: '8px 14px 0' }}>
+                    {formErrors.content || 'Minimum 10 characters required.'}
+                  </p>
+                </div>
 
                 {/* Board & Type - bottom, overflow visible */}
-                <div className="flex gap-4 relative z-[60]">
+                <div className="flex gap-4 relative z-[60]" style={{ marginTop: '20px' }}>
                   <div className="flex-1">
                     <CustomDropdown label="Board *" value={formData.boardId}
                       options={[{ value: '', label: 'Select Board' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
                       onChange={(v) => { setFormData({ ...formData, boardId: v }); if (formErrors.boardId) setFormErrors(prev => { const n = { ...prev }; delete n.boardId; return n; }); }}
                       minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
-                    {formErrors.boardId && <p className="text-red-500 text-xs mt-1">{formErrors.boardId}</p>}
+                    <p className={`text-xs ${formErrors.boardId ? 'text-red-500' : (d ? 'text-gray-500' : 'text-gray-400')}`} style={{ margin: '8px 14px 0' }}>
+                      {formErrors.boardId || 'Select the board for your post.'}
+                    </p>
                   </div>
                   <div className="flex-1">
-                    <CustomDropdown label="Type" value={formData.type}
+                    <CustomDropdown label="Type *" value={formData.type}
                       options={[{ value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
-                      onChange={(v) => setFormData({ ...formData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                      onChange={(v) => { setFormData({ ...formData, type: v }); if (formErrors.type) setFormErrors(prev => { const n = { ...prev }; delete n.type; return n; }); }}
+                      minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                    <p className={`text-xs ${formErrors.type ? 'text-red-500' : (d ? 'text-gray-500' : 'text-gray-400')}`} style={{ margin: '8px 14px 0' }}>
+                      {formErrors.type || 'Select the type of post.'}
+                    </p>
                   </div>
                 </div>
 
@@ -712,7 +874,7 @@ export default function AdminFeedback() {
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     style={{ padding: '16.5px 14px' }}
                     className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
-                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                      d ? 'border-gray-700 bg-gray-800 text-white hover:border-gray-500 focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 hover:border-gray-400 focus:border-gray-400'
                     }`} />
                   <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
                     top-1/2 -translate-y-1/2
@@ -720,7 +882,6 @@ export default function AdminFeedback() {
                     peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
                     ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Title</span>
                 </div>
-                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Enter the title for your post.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -736,22 +897,6 @@ export default function AdminFeedback() {
                   <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Set the priority level.</p>
                 </div>
               </div>
-              <div>
-                <div className="relative">
-                  <textarea value={formData.description} placeholder=" "
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={4} style={{ padding: '16.5px 14px' }}
-                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors resize-none ${
-                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
-                    }`} />
-                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
-                    top-3 translate-y-0
-                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
-                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
-                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Description</span>
-                </div>
-                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Add a detailed description for your post.</p>
-              </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button onClick={() => { setShowEditModal(false); setSelectedPost(null); }}
                   className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
@@ -762,6 +907,51 @@ export default function AdminFeedback() {
           </div>
         </div>
       )}
+
+      {/* Hover Preview Popup - fixed position portal */}
+      {hoverPost && (() => {
+        const hp = hoverPost.post;
+        const hsc = STATUS_CONFIG[hp.status] || STATUS_CONFIG.open;
+        const popupHeight = 320;
+        const spaceBelow = window.innerHeight - hoverPost.y;
+        const showAbove = spaceBelow < popupHeight + 20;
+        return (
+          <div key={hp.id} className={`fixed rounded-xl border shadow-2xl ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+            style={{
+              left: hoverPost.x, top: showAbove ? undefined : hoverPost.y, bottom: showAbove ? window.innerHeight - hoverPost.rowTop + 4 : undefined,
+              width: '380px', maxHeight: `${popupHeight}px`, overflow: 'hidden', zIndex: 9999,
+              animation: 'previewFadeIn 0.2s ease-out',
+            }}
+            onMouseEnter={() => { if (hoverTimeout.current) clearTimeout(hoverTimeout.current); }}
+            onMouseLeave={() => { hoverTimeout.current = setTimeout(() => setHoverPost(null), 150); }}>
+            <div style={{ padding: '16px 20px' }}>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {hp.board && (
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: (hp.board.color || '#6366f1') + '15', color: hp.board.color || '#6366f1' }}>
+                    {hp.board.name}
+                  </span>
+                )}
+                {(() => { const tc = TYPE_COLOR[hp.type] || TYPE_COLOR.feature; return (
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${tc.bg} ${tc.text}`}>
+                    {hp.type.charAt(0).toUpperCase() + hp.type.slice(1)}
+                  </span>
+                ); })()}
+                <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${hsc.bg} ${hsc.text}`}>
+                  {hp.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                </span>
+              </div>
+              <p className={`text-sm font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{hp.title}</p>
+              {hp.content && (
+                <div className={`text-xs leading-relaxed overflow-hidden ${d ? 'text-gray-400' : 'text-gray-500'}`}
+                  style={{ display: '-webkit-box', WebkitLineClamp: 10, WebkitBoxOrient: 'vertical' as const }}>
+                  {hp.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

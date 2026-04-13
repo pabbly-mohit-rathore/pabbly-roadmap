@@ -7,6 +7,7 @@ import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import toast from 'react-hot-toast';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface Board {
   id: string;
@@ -40,6 +41,8 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
   const [filterType, setFilterType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -124,14 +127,18 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this entry?')) return;
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
     try {
-      await api.delete(`/changelog/${id}`);
+      await api.delete(`/changelog/${deleteConfirm.id}`);
+      setDeleteConfirm(null);
       toast.success('Entry deleted');
       fetchEntries();
     } catch (error) {
       toast.error('Failed to delete');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -325,7 +332,7 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                               </>
                             )}
                             <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
-                            <button onClick={() => { handleDelete(entry.id); setOpenMenuId(null); }}
+                            <button onClick={() => { setDeleteConfirm({ id: entry.id, title: entry.title }); setOpenMenuId(null); }}
                               className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
                               <Trash2 className="w-[18px] h-[18px]" /> Delete
                             </button>
@@ -404,6 +411,15 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
 
       {/* Close menu on click outside */}
       {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title="Do you really want to delete this entry?"
+        message={`"${deleteConfirm?.title || ''}" will be permanently deleted. This action cannot be undone.`}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirm(null)}
+        loading={deleting}
+      />
 
       {/* Create Modal */}
       {showModal && (

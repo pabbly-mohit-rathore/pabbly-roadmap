@@ -5,6 +5,7 @@ import api from '../../services/api';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface User {
   id: string;
@@ -38,6 +39,7 @@ export default function AdminBoardMembers() {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ userId: string; name: string } | null>(null);
 
   useEffect(() => {
     fetchBoards();
@@ -114,13 +116,14 @@ export default function AdminBoardMembers() {
     }
   };
 
-  const handleRemoveMember = async (userId: string) => {
-    if (!confirm('Remove this member?')) return;
-
+  const handleRemoveMember = async () => {
+    if (!deleteConfirm) return;
+    const userId = deleteConfirm.userId;
     setRemovingId(userId);
     try {
       const response = await api.delete(`/boards/${selectedBoard}/members/${userId}`);
       if (response.data.success) {
+        setDeleteConfirm(null);
         fetchMembers();
       }
     } catch (error) {
@@ -252,7 +255,7 @@ export default function AdminBoardMembers() {
                       </td>
                       <td className="px-4 py-3.5">
                         <button
-                          onClick={() => handleRemoveMember(member.userId)}
+                          onClick={() => setDeleteConfirm({ userId: member.userId, name: member.user.name })}
                           disabled={removingId === member.userId}
                           className={`p-2 rounded-lg transition-colors ${
                             theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
@@ -284,6 +287,16 @@ export default function AdminBoardMembers() {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title="Remove this member?"
+        message={`${deleteConfirm?.name || 'This member'} will lose access to this board. You can re-add them anytime.`}
+        confirmLabel="Remove"
+        onConfirm={handleRemoveMember}
+        onCancel={() => setDeleteConfirm(null)}
+        loading={removingId !== null}
+      />
 
       {/* Add Member Modal */}
       {showAddModal && (

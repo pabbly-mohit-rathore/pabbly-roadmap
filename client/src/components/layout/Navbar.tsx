@@ -1,15 +1,78 @@
 
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { MessageSquareText, Eye, Bell, LogOut, Sun, Moon, Settings, ChevronDown, Layout } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { MessageSquareText, Eye, Bell, LogOut, Sun, Moon, Settings, ChevronDown, Layout, Check, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
+import useNotificationStore from '../../store/notificationStore';
+import useTeamAccessStore from '../../store/teamAccessStore';
+
+const getTimeAgo = (dateStr: string): string => {
+  const s = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  if (s < 604800) return `${Math.floor(s / 86400)}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+};
+
 export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [invitationBusyId, setInvitationBusyId] = useState<string | null>(null);
   const { theme, setTheme } = useThemeStore();
+  const { unreadCount, notifications, fetchUnreadCount, fetchNotifications, markAsRead, markAllRead, acceptInvitation, rejectInvitation } = useNotificationStore();
+  const navigate = useNavigate();
+  const notifRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
   const { isAuthenticated, user, logout } = useAuthStore();
+  const isTeamAccess = useTeamAccessStore((state) => state.isTeamAccess);
+  const showViewToggle = user?.role === 'admin' || isTeamAccess;
+
+  const parseInvitationId = (data?: string | null): string | null => {
+    if (!data) return null;
+    try {
+      const parsed = JSON.parse(data);
+      return typeof parsed?.invitationId === 'string' ? parsed.invitationId : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleAcceptInvitation = async (notificationId: string, invitationId: string) => {
+    setInvitationBusyId(notificationId);
+    const result = await acceptInvitation(notificationId, invitationId);
+    setInvitationBusyId(null);
+    if (result) {
+      toast.success(`Accepted — you now have ${result.accessLevel === 'admin' ? 'Admin' : 'Manager'} access to ${result.boardName}`);
+      setNotifOpen(false);
+      navigate('/admin/dashboard');
+    } else {
+      toast.error('Could not accept invitation');
+    }
+  };
+
+  const handleRejectInvitation = async (notificationId: string, invitationId: string) => {
+    setInvitationBusyId(notificationId);
+    const ok = await rejectInvitation(notificationId, invitationId);
+    setInvitationBusyId(null);
+    if (ok) {
+      toast.success('Invitation declined');
+    } else {
+      toast.error('Could not decline invitation');
+    }
+  };
+
+  // Fetch unread count on mount + poll every 30s
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
 
   return (
     <nav className={`sticky top-0 z-50 border-b transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
@@ -30,7 +93,7 @@ export default function Navbar() {
             // ──── Logged in navbar ────
             <div className="flex items-center gap-1">
               {/* Toggle between Admin/User view */}
-              {user?.role === 'admin' && (
+              {showViewToggle && (
                 <div className={`flex rounded-lg border overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                   <Link
                     to="/user/all-posts"
@@ -58,21 +121,109 @@ export default function Navbar() {
               )}
 
               {/* Notifications */}
-              <button
-                className={`relative p-2.5 ml-2 rounded-lg transition-colors duration-200 ${
-                  theme === 'dark'
-                    ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-                title="Notifications"
-              >
-                <Bell className="w-5 h-5" />
-              </button>
+              <div className="relative ml-2" ref={notifRef}>
+                <button
+                  onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); if (!notifOpen) fetchNotifications(); }}
+                  className={`relative p-2.5 rounded-lg transition-colors duration-200 ${
+                    theme === 'dark'
+                      ? 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                  title="Notifications"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {notifOpen && (
+                  <div className={`absolute right-0 mt-2 w-[380px] max-h-[480px] rounded-xl shadow-lg border z-50 flex flex-col ${
+                    theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  }`}>
+                    {/* Header */}
+                    <div className={`flex items-center justify-between px-4 py-3 border-b shrink-0 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Notifications</span>
+                      {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="flex items-center gap-1 text-xs font-medium text-[#0c68e9] hover:underline">
+                          <Check className="w-3 h-3" /> Mark all read
+                        </button>
+                      )}
+                    </div>
+                    {/* List */}
+                    <div className="overflow-y-auto flex-1">
+                      {notifications.length > 0 ? notifications.map(n => {
+                        const invitationId = n.type === 'team_access_request' ? parseInvitationId(n.data) : null;
+                        const isBusy = invitationBusyId === n.id;
+                        const isInteractive = !invitationId;
+                        return (
+                        <div key={n.id}
+                          onClick={() => {
+                            if (!isInteractive) return;
+                            markAsRead(n.id);
+                            if (n.post) { navigate(location.pathname.startsWith('/admin') ? `/admin/posts/${n.post.slug}` : `/user/posts/${n.post.slug}`); }
+                            setNotifOpen(false);
+                          }}
+                          className={`flex gap-3 px-4 py-3 transition-colors ${isInteractive ? 'cursor-pointer' : ''} ${
+                            !n.isRead
+                              ? (theme === 'dark' ? 'bg-blue-900/10 hover:bg-gray-700' : 'bg-blue-50/50 hover:bg-gray-50')
+                              : (theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50')
+                          }`}>
+                          {/* Dot */}
+                          <div className="pt-1.5 shrink-0">
+                            {!n.isRead ? (
+                              <div className="w-2 h-2 rounded-full bg-[#0c68e9]" />
+                            ) : (
+                              <div className="w-2 h-2" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{n.title}</p>
+                            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{n.message}</p>
+                            <p className={`text-[11px] mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(n.createdAt)}</p>
+                            {invitationId && (
+                              <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  disabled={isBusy}
+                                  onClick={() => handleAcceptInvitation(n.id, invitationId)}
+                                  className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  <Check className="w-3 h-3" /> Accept
+                                </button>
+                                <button
+                                  disabled={isBusy}
+                                  onClick={() => handleRejectInvitation(n.id, invitationId)}
+                                  className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                                    theme === 'dark'
+                                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
+                                      : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                                  }`}
+                                >
+                                  <X className="w-3 h-3" /> Reject
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                      }) : (
+                        <div className={`flex flex-col items-center justify-center py-12 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                          <Bell className="w-8 h-8 mb-2 opacity-40" />
+                          <p className="text-sm">No notifications yet</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {notifOpen && <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />}
+              </div>
 
               {/* Profile */}
               <div className="relative ml-2">
                 <button
-                  onClick={() => setProfileOpen(!profileOpen)}
+                  onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors duration-200 ${
                     theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
                   }`}

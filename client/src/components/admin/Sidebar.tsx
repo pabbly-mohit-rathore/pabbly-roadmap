@@ -25,8 +25,8 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
   // Full admin menu
   const allMenuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { label: 'All Posts', icon: ({ className }: { className?: string }) => <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />, path: '/admin/feedback' },
     { label: 'Roadmap', icon: RoadmapIcon, path: '/admin/roadmap' },
+    { label: 'All Posts', icon: ({ className }: { className?: string }) => <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />, path: '/admin/feedback' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
   ];
 
@@ -45,7 +45,7 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
   }
 
   const isActive = (path: string) => {
-    const source = (location.state as any)?.source;
+    const source = (location.state as { source?: string } | null)?.source;
     const onPostPage = location.pathname.startsWith('/admin/posts');
 
     if (path === '/admin/feedback') {
@@ -62,7 +62,7 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
     }
     if (path === '/admin/settings') {
       if (onPostPage) return source === 'settings';
-      return location.pathname.startsWith('/admin/settings');
+      return location.pathname.startsWith('/admin/settings') || location.pathname.startsWith('/admin/boards');
     }
     return location.pathname.startsWith(path);
   };

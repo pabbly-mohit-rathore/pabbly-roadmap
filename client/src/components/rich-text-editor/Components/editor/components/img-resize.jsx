@@ -195,9 +195,8 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
 
   const handleStyle = {
     position: 'absolute',
-    paddingTop: '10.8px',
-    width: '10px',
-    height: '10px',
+    width: '12px',
+    height: '12px',
     background: '#4A90E2',
     border: '2px solid white',
     borderRadius: '50%',
@@ -205,6 +204,8 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
     opacity: selected ? 1 : 0,
     transition: 'opacity 0.2s',
     zIndex: 10,
+    padding: 0,
+    boxSizing: 'border-box',
   };
 
   const align = node.attrs.align || 'left';

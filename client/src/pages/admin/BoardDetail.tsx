@@ -5,6 +5,7 @@ import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
@@ -62,6 +63,7 @@ export default function AdminBoardDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [denseMode, setDenseMode] = useState(false);
@@ -174,12 +176,12 @@ export default function AdminBoardDetail() {
     }
   };
 
-  const handleDeletePost = async (postId: string) => {
-    if (!confirm('Are you sure you want to delete this post?')) return;
-
+  const handleDeletePost = async () => {
+    if (!deleteConfirm) return;
     try {
-      const response = await api.delete(`/posts/${postId}`);
+      const response = await api.delete(`/posts/${deleteConfirm.id}`);
       if (response.data.success) {
+        setDeleteConfirm(null);
         toast.success('Post deleted');
         fetchPosts();
       }
@@ -436,7 +438,7 @@ export default function AdminBoardDetail() {
                               <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
                             </button>
                             <div className={`mx-1 my-1 border-t border-dashed ${theme === 'dark' ? 'border-gray-500' : 'border-gray-200'}`} />
-                            <button onClick={() => { handleDeletePost(post.id); setOpenMenuId(null); }}
+                            <button onClick={() => { setDeleteConfirm({ id: post.id, title: post.title }); setOpenMenuId(null); }}
                               className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
                               <Trash2 className="w-[18px] h-[18px]" /> Delete
                             </button>
@@ -525,6 +527,14 @@ export default function AdminBoardDetail() {
           {rowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setRowsDropOpen(false)} />}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title="Do you really want to delete this post?"
+        message={`"${deleteConfirm?.title || ''}" will be permanently deleted. This action cannot be undone.`}
+        onConfirm={handleDeletePost}
+        onCancel={() => setDeleteConfirm(null)}
+      />
 
       {/* Create Post Modal */}
       {showCreateModal && (

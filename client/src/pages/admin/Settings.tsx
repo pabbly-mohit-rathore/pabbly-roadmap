@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { BarChart3, Tags as TagsIcon, Settings as SettingsIcon, Users, Plus, Camera, Grid3x3, Link2 } from 'lucide-react';
+import { BarChart3, Settings as SettingsIcon, Users, Plus, Camera, Grid3x3, Link2 } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
@@ -9,7 +9,6 @@ import AdminReporting from './Reporting';
 import AdminUsers from './Users';
 import AdminBoards from './Boards';
 import AdminInviteLinks from './InviteLinks';
-import AdminTags from './Tags';
 import AdminTeamMembers from './TeamMembers';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
@@ -19,7 +18,7 @@ const ALL_TABS = [
   { id: 'invite-links', label: 'Invite Links', icon: Link2, heading: 'Invite Links', description: 'Create and manage user invitation links.', btnLabel: 'Generate Link' },
   { id: 'activity-log', label: 'Activity Log', icon: BarChart3, heading: 'Activity Log', description: 'View activity logs, reports, and analytics.', btnLabel: '' },
   { id: 'users', label: 'Users', icon: Users, heading: 'Users', description: 'Manage registered users and their accounts.', btnLabel: '' },
-  { id: 'tags', label: 'Tags', icon: TagsIcon, heading: 'Tags', description: 'Create and manage tags for your posts.', btnLabel: 'Create Tag' },
+
   { id: 'team-members', label: 'Team Members', icon: Users, heading: 'Team Members', description: 'Manage team members and their access levels.', btnLabel: '' },
   { id: 'general', label: 'General', icon: SettingsIcon, heading: 'General', description: 'Manage your profile, appearance and account settings.', btnLabel: '' },
 ];
@@ -147,7 +146,7 @@ export default function AdminSettings() {
       {activeTab === 'invite-links' && !isTeamMember && <AdminInviteLinks triggerCreate={triggerAction} />}
       {activeTab === 'activity-log' && <AdminReporting />}
       {activeTab === 'users' && !isTeamMember && <AdminUsers />}
-      {activeTab === 'tags' && <AdminTags triggerCreate={triggerAction} />}
+
       {activeTab === 'team-members' && !isTeamMember && <AdminTeamMembers triggerCreate={triggerAction} />}
       {activeTab === 'general' && !isTeamMember && (
         <div>

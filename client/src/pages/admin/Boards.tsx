@@ -1,11 +1,12 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, X, Upload } from 'lucide-react';
+import { Plus, Trash2, X, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, Edit2, LayoutGrid } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import toast from 'react-hot-toast';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface Board {
   id: string;
@@ -13,9 +14,8 @@ interface Board {
   slug: string;
   description?: string;
   color: string;
-  icon?: string;
-  isPublic?: boolean;
   order: number;
+  createdAt?: string;
 }
 
 export default function AdminBoards({ triggerCreate }: { triggerCreate?: number }) {
@@ -26,40 +26,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<Board | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', color: '#6366f1', icon: '', isPublic: true });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const editFileInputRef = useRef<HTMLInputElement>(null);
-  const cardLogoInputRef = useRef<HTMLInputElement>(null);
-  const [cardLogoBoard, _setCardLogoBoard] = useState<Board | null>(null);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 500 * 1024) { toast.error('Image too large. Max size: 500KB'); return; }
-    const reader = new FileReader();
-    reader.onloadend = () => setFormData(prev => ({ ...prev, icon: reader.result as string }));
-    reader.readAsDataURL(file);
-  };
-
-  const handleCardLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !cardLogoBoard) return;
-    if (file.size > 500 * 1024) { toast.error('Image too large. Max size: 500KB'); return; }
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        await api.put(`/boards/${cardLogoBoard.id}`, {
-          name: cardLogoBoard.name,
-          description: cardLogoBoard.description,
-          color: cardLogoBoard.color,
-          icon: reader.result as string,
-        });
-        toast.success('Logo updated!');
-        fetchBoards();
-      } catch { toast.error('Failed to update logo'); }
-    };
-    reader.readAsDataURL(file);
-  };
+  const [formData, setFormData] = useState({ name: '', description: '', color: '#6366f1' });
 
   useEffect(() => {
     fetchBoards();
@@ -86,6 +53,12 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
   const [creatingBoard, setCreatingBoard] = useState(false);
   const [updatingBoard, setUpdatingBoard] = useState(false);
   const [deletingBoard, setDeletingBoard] = useState(false);
+  const [denseMode, setDenseMode] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsDropOpen, setRowsDropOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const handleCreateBoard = async () => {
     if (!formData.name.trim()) {
@@ -99,14 +72,12 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
         name: formData.name,
         description: formData.description,
         color: formData.color,
-        icon: formData.icon,
-        isPublic: formData.isPublic,
       });
 
       if (response.data.success) {
         toast.success('Board created successfully');
         setShowCreateModal(false);
-        setFormData({ name: '', description: '', color: '#6366f1', icon: '', isPublic: true });
+        setFormData({ name: '', description: '', color: '#6366f1' });
         fetchBoards();
       }
     } catch {
@@ -128,14 +99,12 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
         name: formData.name,
         description: formData.description,
         color: formData.color,
-        icon: formData.icon,
-        isPublic: formData.isPublic,
       });
 
       if (response.data.success) {
         setShowEditModal(false);
         setSelectedBoard(null);
-        setFormData({ name: '', description: '', color: '#6366f1', icon: '', isPublic: true });
+        setFormData({ name: '', description: '', color: '#6366f1' });
         fetchBoards();
       }
     } catch (error) {
@@ -146,18 +115,19 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
     }
   };
 
-  const handleDeleteBoard = async (boardId: string) => {
-    if (!confirm('Are you sure you want to delete this board? This action cannot be undone.')) return;
-
+  const handleDeleteBoard = async () => {
+    if (!deleteConfirm) return;
     setDeletingBoard(true);
     try {
-      const response = await api.delete(`/boards/${boardId}`);
+      const response = await api.delete(`/boards/${deleteConfirm.id}`);
       if (response.data.success) {
+        setDeleteConfirm(null);
         fetchBoards();
+        toast.success('Board deleted');
       }
     } catch (error) {
       console.error('Error deleting board:', error);
-      alert('Failed to delete board');
+      toast.error('Failed to delete board');
     } finally {
       setDeletingBoard(false);
     }
@@ -165,8 +135,14 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
 
   const openEditModal = (board: Board) => {
     setSelectedBoard(board);
-    setFormData({ name: board.name, description: board.description || '', color: board.color, icon: board.icon || '', isPublic: board.isPublic !== false });
+    setFormData({ name: board.name, description: board.description || '', color: board.color });
     setShowEditModal(true);
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   const colors = [
@@ -180,95 +156,170 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
     '#8b5cf6', // violet
   ];
 
+  const d = theme === 'dark';
+  const totalPages = Math.ceil(boards.length / rowsPerPage);
+  const paginatedBoards = boards.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+
   return (
     <div>
-      {/* Hidden input for card logo change */}
-      <input ref={cardLogoInputRef} type="file" accept="image/*" className="hidden" onChange={handleCardLogoChange} />
-
-      {/* Boards Grid */}
+      {/* Boards Table */}
       {loading ? (
         <LoadingBar />
       ) : (
-        <>
-          {boards.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-              {boards.map((board) => {
+        <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          {/* Title */}
+          <div style={{ padding: '24px 24px 16px 24px' }}>
+            <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>All Boards</h2>
+          </div>
+
+          <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
+                {['S.No', 'Board', 'Description', 'Created At', 'Actions'].map((h, i) => (
+                  <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                    style={{
+                      fontSize: '14px', color: d ? undefined : '#1C252E',
+                      textAlign: i === 4 ? 'right' as const : 'left' as const,
+                      width: i === 0 ? '80px' : i === 3 ? '200px' : i === 4 ? '100px' : undefined,
+                    }}>
+                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedBoards.length > 0 ? paginatedBoards.map((board, idx) => {
                 const boardColor = board.color || '#6366f1';
                 const initial = board.name?.charAt(0).toUpperCase();
-                const d = theme === 'dark';
                 return (
-                  <div
-                    key={board.id}
-                    className={`rounded-xl border overflow-hidden flex flex-col transition-all hover:shadow-md group cursor-pointer ${
-                      d ? 'bg-gray-800 border-gray-700 hover:border-gray-600' : 'bg-white border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => navigate(`/admin/boards/${board.id}`)}
-                  >
-                    {/* Icon area */}
-                    <div
-                      className="w-full flex items-center justify-center overflow-hidden relative"
-                      style={{ backgroundColor: boardColor + '15', height: '180px' }}
-                    >
-                      {board.icon ? (
-                        <img src={board.icon} alt={board.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-4xl font-bold transition-transform group-hover:scale-110" style={{ color: boardColor }}>
-                          {initial}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-5 flex flex-col flex-1">
-                      <h3 className={`font-semibold text-base mb-1.5 truncate ${d ? 'text-white' : 'text-gray-900'}`}>
-                        {board.name}
-                      </h3>
-                      <p className={`text-sm line-clamp-2 mb-5 flex-1 ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {board.description || 'No description provided.'}
-                      </p>
-
-                      {/* Buttons */}
-                      <div className="flex gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/boards/${board.id}`); }}
-                          className="flex-1 rounded-lg text-sm font-semibold bg-[#0C68E9] text-white hover:bg-[#0b5dd0] transition-colors"
-                          style={{ height: '40px' }}
-                        >
-                          Access
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEditModal(board); }}
-                          className={`flex-1 rounded-lg text-sm font-semibold border transition-colors ${
-                            d ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                          style={{ height: '40px' }}
-                        >
-                          Edit
-                        </button>
+                  <tr key={board.id}
+                    className={`border-b border-dashed transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}
+                    onClick={() => navigate(`/admin/boards/${board.id}`)}>
+                    {/* S.No */}
+                    <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ paddingLeft: '24px' }}>
+                      {page * rowsPerPage + idx + 1}
+                    </td>
+                    {/* Board */}
+                    <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden shrink-0"
+                          style={{ backgroundColor: boardColor + '15' }}>
+                          <span className="text-sm font-bold" style={{ color: boardColor }}>{initial}</span>
+                        </div>
+                        <span className={`text-sm font-semibold ${d ? 'text-white' : 'text-gray-900'}`}>{board.name}</span>
                       </div>
-                    </div>
-                  </div>
+                    </td>
+                    {/* Description */}
+                    <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <span className="line-clamp-1">{board.description || 'No description provided.'}</span>
+                    </td>
+                    {/* Created At */}
+                    <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {formatDate(board.createdAt)}
+                    </td>
+                    {/* Actions */}
+                    <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }}>
+                      <div className="relative inline-block">
+                        <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === board.id ? null : board.id); }}
+                          className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
+                          <MoreVertical className="w-4 h-4 text-gray-400" />
+                        </button>
+                        {openMenuId === board.id && (
+                          <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px' }}>
+                            <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
+                            <button onClick={(e) => { e.stopPropagation(); openEditModal(board); setOpenMenuId(null); }}
+                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
+                              <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
+                            </button>
+                            <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
+                            <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: board.id, name: board.name }); setOpenMenuId(null); }}
+                              disabled={deletingBoard}
+                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg disabled:opacity-50 ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
+                              <Trash2 className="w-[18px] h-[18px]" /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 );
-              })}
-            </div>
-          ) : (
-            <div className={`p-8 text-center rounded-lg border ${
-              theme === 'dark'
-                ? 'bg-gray-800 border-gray-700 text-gray-400'
-                : 'bg-gray-50 border-gray-200 text-gray-500'
-            }`}>
-              <p className="mb-4">No boards created yet</p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Create First Board
+              }) : (
+                <tr><td colSpan={5}>
+                  <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                      <LayoutGrid className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
+                    </div>
+                    <p className={`text-base font-semibold mb-1 ${d ? 'text-gray-300' : 'text-gray-600'}`}>No Boards Created</p>
+                    <p className={`text-sm mb-4 ${d ? 'text-gray-500' : 'text-gray-400'}`}>Create your first board to get started.</p>
+                    <button onClick={() => setShowCreateModal(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors text-sm font-medium">
+                      <Plus className="w-4 h-4" /> Create First Board
+                    </button>
+                  </div>
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between px-6 py-3">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setDenseMode(!denseMode)}
+                className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
               </button>
+              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
             </div>
-          )}
-        </>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                <div className="relative">
+                  <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
+                    className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
+                    {rowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${rowsDropOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {rowsDropOpen && (
+                    <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                      {[10, 25, 50, 100].map(n => (
+                        <button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
+                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
+                            rowsPerPage === n ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
+                            : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
+                          }`}>{n}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+                {boards.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, boards.length)}` : '0–0'} of {boards.length}
+              </span>
+              <div className="flex gap-1">
+                <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
+                  className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
+                  className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+          {rowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setRowsDropOpen(false)} />}
+        </div>
       )}
+
+      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title="Do you really want to delete this board?"
+        message={`"${deleteConfirm?.name || ''}" and all its posts will be permanently deleted. This action cannot be undone.`}
+        onConfirm={handleDeleteBoard}
+        onCancel={() => setDeleteConfirm(null)}
+        loading={deletingBoard}
+      />
 
       {/* Create Board Modal */}
       {showCreateModal && (
@@ -317,43 +368,9 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                 <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Short description for your board.</p>
               </div>
 
-              {/* Logo Upload */}
-              <div>
-                <input ref={fileInputRef} type="file" accept=".webp,.svg,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.gif,.avif,.apng,.png" className="hidden" onChange={handleImageUpload} />
-                {formData.icon ? (
-                  <div className={`flex items-center justify-between px-4 py-3 rounded-lg border ${
-                    theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'
-                  }`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img src={formData.icon} alt="logo" className="w-8 h-8 rounded object-contain" />
-                      <span className={`text-sm truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Board Logo</span>
-                    </div>
-                    <button onClick={() => setFormData({ ...formData, icon: '' })} className={`p-1 rounded-lg shrink-0 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
-                      <X className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                    </button>
-                  </div>
-                ) : (
-                  <div onClick={() => fileInputRef.current?.click()}
-                    className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
-                      theme === 'dark' ? 'border-gray-600 bg-gray-800 hover:border-gray-400' : 'border-gray-300 bg-gray-50 hover:border-gray-400'
-                    }`} style={{ padding: '28px 24px' }}>
-                    <Upload className={`w-8 h-8 mb-3 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
-                    <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                      Choose image files (PNG, JPG, etc.) or drag them here
-                    </p>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Allowed: .webp, .svg, .jpg, .jpeg, .jfif, .pjpeg, .pjp, .gif, .avif, .apng, .png
-                    </p>
-                    <p className={`text-xs font-medium mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Max file size: 500 KB
-                    </p>
-                  </div>
-                )}
-              </div>
-
               {/* Board Color */}
               <div>
-                <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Board Color</p>
+                <p className={`text-xs font-medium mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Board Color</p>
                 <div className="flex flex-wrap gap-4" style={{ marginLeft: '14px' }}>
                   {colors.map((color) => (
                     <button key={color} onClick={() => setFormData({ ...formData, color })}
@@ -363,25 +380,8 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                 </div>
               </div>
 
-              {/* Visibility */}
-              <div>
-                <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Visibility</p>
-                <div className="flex items-center gap-3" style={{ marginLeft: '14px' }}>
-                  <button onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
-                    className={`relative w-9 h-5 rounded-full transition-colors ${formData.isPublic ? 'bg-[#0c68e9]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
-                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${formData.isPublic ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-                  </button>
-                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {formData.isPublic ? 'Public' : 'Private'}
-                  </span>
-                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {formData.isPublic ? '— Visible to all users' : '— Only invited users'}
-                  </span>
-                </div>
-              </div>
-
               <div className="flex gap-3 justify-end pt-2">
-                <button onClick={() => { setShowCreateModal(false); setFormData({ name: '', description: '', color: '#6366f1', icon: '', isPublic: true }); }}
+                <button onClick={() => { setShowCreateModal(false); setFormData({ name: '', description: '', color: '#6366f1' }); }}
                   className={`px-3 py-1.5 text-sm font-medium border transition-colors ${theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                 <LoadingButton onClick={handleCreateBoard} loading={creatingBoard}
                   className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Create Board</LoadingButton>
@@ -437,41 +437,9 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                 <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Short description for your board.</p>
               </div>
 
-              {/* Logo Upload */}
-              <div>
-                <input ref={editFileInputRef} type="file" accept=".webp,.svg,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.gif,.avif,.apng,.png" className="hidden" onChange={handleImageUpload} />
-                {formData.icon ? (
-                  <div className={`flex items-center justify-between px-4 py-3 rounded-lg border ${
-                    theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'
-                  }`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img src={formData.icon} alt="logo" className="w-8 h-8 rounded object-contain" />
-                      <span className={`text-sm truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Board Logo</span>
-                    </div>
-                    <button onClick={() => setFormData({ ...formData, icon: '' })} className={`p-1 rounded-lg shrink-0 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
-                      <X className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                    </button>
-                  </div>
-                ) : (
-                  <div onClick={() => editFileInputRef.current?.click()}
-                    className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
-                      theme === 'dark' ? 'border-gray-600 bg-gray-800 hover:border-gray-400' : 'border-gray-300 bg-gray-50 hover:border-gray-400'
-                    }`} style={{ padding: '28px 24px' }}>
-                    <Upload className={`w-8 h-8 mb-3 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
-                    <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                      Choose image files (PNG, JPG, etc.) or drag them here
-                    </p>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Allowed: .webp, .svg, .jpg, .jpeg, .jfif, .pjpeg, .pjp, .gif, .avif, .apng, .png
-                    </p>
-                    <p className={`text-xs font-medium mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Max file size: 500 KB</p>
-                  </div>
-                )}
-              </div>
-
               {/* Board Color */}
               <div>
-                <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Board Color</p>
+                <p className={`text-xs font-medium mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Board Color</p>
                 <div className="grid grid-cols-4 gap-2">
                   {colors.map((color) => (
                     <button key={color} onClick={() => setFormData({ ...formData, color })}
@@ -481,26 +449,9 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                 </div>
               </div>
 
-              {/* Visibility */}
-              <div>
-                <p className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '14px' }}>Visibility</p>
-                <div className="flex items-center gap-3" style={{ marginLeft: '14px' }}>
-                  <button onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
-                    className={`relative w-9 h-5 rounded-full transition-colors ${formData.isPublic ? 'bg-[#0c68e9]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
-                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${formData.isPublic ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-                  </button>
-                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {formData.isPublic ? 'Public' : 'Private'}
-                  </span>
-                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {formData.isPublic ? '— Visible to all users' : '— Only invited users'}
-                  </span>
-                </div>
-              </div>
-
               {/* Buttons */}
               <div className="flex gap-3 justify-between pt-2">
-                <button onClick={() => { const id = selectedBoard.id; setShowEditModal(false); setSelectedBoard(null); handleDeleteBoard(id); }}
+                <button onClick={() => { const name = selectedBoard.name; const id = selectedBoard.id; setShowEditModal(false); setSelectedBoard(null); setDeleteConfirm({ id, name }); }}
                   disabled={deletingBoard}
                   className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium border transition-colors disabled:opacity-70 ${
                     theme === 'dark' ? 'border-red-800 text-red-400 hover:bg-red-900/20' : 'border-red-200 text-red-600 hover:bg-red-50'

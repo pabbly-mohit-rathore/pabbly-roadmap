@@ -3,13 +3,16 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExt from '@tiptap/extension-underline';
 import LinkExt from '@tiptap/extension-link';
-import ImageExt from '@tiptap/extension-image';
+import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading2,
   List, ListOrdered, Code, Link as LinkIcon,
-  Image as ImageIcon, Video, Upload, MousePointerClick
+  Image as ImageIcon, Video, Upload, MousePointerClick,
+  AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
+// @ts-expect-error -- JSX module without type declarations
+import { ResizableImage } from './rich-text-editor/Components/editor/components/img-resize';
 import useThemeStore from '../store/themeStore';
 import LoadingButton from './ui/LoadingButton';
 import { ButtonExtension, type ButtonAttributes } from './ButtonExtension';
@@ -62,13 +65,13 @@ export default function CommentEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [2] },
-        // @ts-ignore
         link: false,
         underline: false,
       }),
       UnderlineExt,
       LinkExt.configure({ openOnClick: false }),
-      ImageExt.configure({ HTMLAttributes: { class: 'max-w-full rounded-lg my-2' } }),
+      ResizableImage,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder }),
       ButtonExtension,
     ],
@@ -107,7 +110,7 @@ export default function CommentEditor({
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = () => {
-        editor.chain().focus().setImage({ src: reader.result as string }).run();
+        editor.chain().focus().insertContent({ type: 'image', attrs: { src: reader.result as string } }).run();
       };
       reader.readAsDataURL(file);
     }
@@ -152,7 +155,7 @@ export default function CommentEditor({
   if (!editor) return null;
 
   return (
-    <div ref={editorRef} className={`rounded-lg border overflow-hidden ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+    <div ref={editorRef} className={`rounded-lg border overflow-hidden transition-colors ${d ? 'bg-gray-800 border-gray-700 hover:border-gray-500 focus-within:border-gray-400' : 'bg-white border-gray-200 hover:border-gray-400 focus-within:border-gray-400'}`}>
       {/* Editor Content */}
       <EditorContent editor={editor} className={`${d ? 'text-white' : 'text-gray-900'} comment-editor-content`}
         style={maxEditorHeight ? { maxHeight: maxEditorHeight, overflowY: 'auto' } : undefined} />
@@ -172,11 +175,24 @@ export default function CommentEditor({
           <TB dark={d} icon={Video} title="Video" action={addVideo} />
           <TB dark={d} icon={Upload} title="Upload" action={addImage} />
           <TB dark={d} icon={MousePointerClick} title="Button" action={() => { setEditingButtonAttrs(undefined); setShowButtonModal(true); }} />
+          <div className={`w-px h-4 mx-1 ${d ? 'bg-gray-600' : 'bg-gray-200'}`} />
+          <TB dark={d} icon={AlignLeft} title="Align Left" action={() => {
+            if (editor.isActive('image')) { editor.chain().focus().updateAttributes('image', { align: 'left' }).run(); }
+            else { editor.chain().focus().setTextAlign('left').run(); }
+          }} active={editor.isActive('image') ? editor.getAttributes('image').align === 'left' : editor.isActive({ textAlign: 'left' })} />
+          <TB dark={d} icon={AlignCenter} title="Align Center" action={() => {
+            if (editor.isActive('image')) { editor.chain().focus().updateAttributes('image', { align: 'center' }).run(); }
+            else { editor.chain().focus().setTextAlign('center').run(); }
+          }} active={editor.isActive('image') ? editor.getAttributes('image').align === 'center' : editor.isActive({ textAlign: 'center' })} />
+          <TB dark={d} icon={AlignRight} title="Align Right" action={() => {
+            if (editor.isActive('image')) { editor.chain().focus().updateAttributes('image', { align: 'right' }).run(); }
+            else { editor.chain().focus().setTextAlign('right').run(); }
+          }} active={editor.isActive('image') ? editor.getAttributes('image').align === 'right' : editor.isActive({ textAlign: 'right' })} />
         </div>
 
         {!hideButton && (
           <LoadingButton onClick={handleSubmit} loading={submitting} type="button"
-            className="px-5 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition disabled:opacity-70">
+            className="px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition disabled:opacity-70">
             {buttonLabel}
           </LoadingButton>
         )}

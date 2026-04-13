@@ -11,8 +11,8 @@ export default function UserSidebar() {
   const theme = useThemeStore((state) => state.theme);
 
   const menuItems = [
-    { label: 'All Posts', icon: ({ className }: { className?: string }) => <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />, path: '/user/all-posts' },
     { label: 'Roadmap', icon: RoadmapIcon, path: '/user/roadmap' },
+    { label: 'All Posts', icon: ({ className }: { className?: string }) => <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />, path: '/user/all-posts' },
   ];
 
   const isActive = (path: string) => {

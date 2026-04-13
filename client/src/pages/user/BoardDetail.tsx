@@ -10,6 +10,7 @@ import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import toast from 'react-hot-toast';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface Post {
   id: string;
@@ -44,6 +45,7 @@ export default function UserBoardDetail() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState('Sign in to interact with posts');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [denseMode, setDenseMode] = useState(false);
@@ -116,11 +118,13 @@ export default function UserBoardDetail() {
     finally { setCreating(false); }
   };
 
-  const handleDeletePost = async (postId: string) => {
-    if (!confirm('Delete this post?')) return;
+  const handleDeletePost = async () => {
+    if (!deleteConfirm) return;
+    const postId = deleteConfirm.id;
     try {
       await api.delete(`/posts/${postId}`);
       setPosts(prev => prev.filter(p => p.id !== postId));
+      setDeleteConfirm(null);
       setOpenMenuId(null);
       toast.success('Post deleted');
     } catch { toast.error('Failed to delete'); }
@@ -267,7 +271,7 @@ export default function UserBoardDetail() {
                                     <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
                                   </button>
                                   <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
-                                  <button onClick={() => handleDeletePost(post.id)}
+                                  <button onClick={() => { setDeleteConfirm({ id: post.id, title: post.title }); setOpenMenuId(null); }}
                                     className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
                                     <Trash2 className="w-[18px] h-[18px]" /> Delete
                                   </button>
@@ -435,6 +439,14 @@ export default function UserBoardDetail() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title="Do you really want to delete this post?"
+        message={`"${deleteConfirm?.title || ''}" will be permanently deleted. This action cannot be undone.`}
+        onConfirm={handleDeletePost}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </UserLayout>
   );
 }

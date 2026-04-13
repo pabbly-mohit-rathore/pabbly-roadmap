@@ -23,10 +23,10 @@ body {
 .tiptap {
   outline: none;
   min-height: 400px;
-  padding: 1.5rem;
+  padding: 16.5px 14px;
 }
 .tiptap-preview { outline: none; }
-.comment-editor-full { min-height: 200px; max-height: 600px; overflow-y: auto; }
+.comment-editor-full { min-height: 80px; max-height: 300px; overflow-y: auto; }
 .comment-editor-compact { min-height: 80px; max-height: 300px; overflow-y: auto; }
 
 .tiptap p.is-editor-empty:first-child::before {
@@ -82,8 +82,15 @@ body {
 :is(.tiptap, .tiptap-preview) img {
   max-width: 100%;
   border-radius: 0.5rem;
-  display: block;
   margin: 0.5rem 0;
+}
+:is(.tiptap, .tiptap-preview) div[style*="text-align: center"] > img,
+:is(.tiptap, .tiptap-preview) div[style*="text-align: center"] > a > img {
+  display: inline-block;
+}
+:is(.tiptap, .tiptap-preview) div[style*="text-align: right"] > img,
+:is(.tiptap, .tiptap-preview) div[style*="text-align: right"] > a > img {
+  display: inline-block;
 }
 :is(.tiptap, .tiptap-preview) div[data-type="resizable-image"] {
   clear: both;
@@ -97,6 +104,12 @@ body {
 :is(.tiptap, .tiptap-preview) a {
   color: #2563eb;
   text-decoration: underline;
+}
+/* @mention tag in replies */
+.mention-tag {
+  color: #0c68e9;
+  font-weight: 600;
+  cursor: default;
 }
 
 /* Table Styles */

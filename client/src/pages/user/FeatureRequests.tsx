@@ -11,33 +11,42 @@ import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import CommentEditor from '../../components/CommentEditor';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface Post {
   id: string;
   title: string;
   slug: string;
   description?: string;
+  content?: string;
   status: string;
   type: string;
   voteCount: number;
   commentCount: number;
   isPinned: boolean;
   createdAt: string;
-  author: { id?: string; name: string };
-  board: { id: string; name: string };
+  author: { id?: string; name: string; avatar?: string };
+  board: { id: string; name: string; color?: string };
   hasVoted?: boolean;
 }
 
 interface Board { id: string; name: string; }
 
-const STATUS_COLORS: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-700',
-  under_review: 'bg-yellow-100 text-yellow-700',
-  planned: 'bg-purple-100 text-purple-700',
-  in_progress: 'bg-orange-100 text-orange-700',
-  live: 'bg-green-100 text-green-700',
-  closed: 'bg-gray-100 text-gray-700',
-  hold: 'bg-red-100 text-red-700',
+const STATUS_CONFIG: Record<string, { dot: string; bg: string; text: string }> = {
+  open: { dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-700' },
+  under_review: { dot: 'bg-yellow-500', bg: 'bg-yellow-50', text: 'text-yellow-700' },
+  planned: { dot: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-700' },
+  in_progress: { dot: 'bg-orange-500', bg: 'bg-orange-50', text: 'text-orange-700' },
+  live: { dot: 'bg-green-500', bg: 'bg-green-50', text: 'text-green-700' },
+  closed: { dot: 'bg-gray-500', bg: 'bg-gray-50', text: 'text-gray-700' },
+  hold: { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-700' },
+};
+
+const TYPE_COLOR: Record<string, { bg: string; text: string }> = {
+  feature: { bg: 'bg-indigo-50', text: 'text-indigo-700' },
+  bug: { bg: 'bg-red-50', text: 'text-red-700' },
+  improvement: { bg: 'bg-amber-50', text: 'text-amber-700' },
+  integration: { bg: 'bg-cyan-50', text: 'text-cyan-700' },
 };
 
 export default function UserFeatureRequests() {
@@ -59,10 +68,28 @@ export default function UserFeatureRequests() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [denseMode, setDenseMode] = useState(false);
   const [rowsDropOpen, setRowsDropOpen] = useState(false);
+  const rowsDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!rowsDropOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (rowsDropdownRef.current && !rowsDropdownRef.current.contains(e.target as Node)) {
+        setRowsDropOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [rowsDropOpen]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'trending' | 'newest' | 'most-voted'>('newest');
   const tabsRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
+
+  // Hover preview
+  const [hoverPost, setHoverPost] = useState<{ post: Post; x: number; y: number; rowTop: number } | null>(null);
+  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const el = tabsRef.current[typeFilter];
@@ -75,7 +102,7 @@ export default function UserFeatureRequests() {
 
   // Create modal
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', type: 'feature', boardId: '' });
+  const [formData, setFormData] = useState({ title: '', type: 'feature', boardId: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -85,7 +112,7 @@ export default function UserFeatureRequests() {
   const fetchData = async () => {
     try {
       const [postsRes, boardsRes] = await Promise.all([
-        api.get('/posts', { params: { limit: 50 } }),
+        api.get('/posts', { params: { limit: 'all' } }),
         api.get('/boards'),
       ]);
       if (postsRes.data.success) {
@@ -111,6 +138,9 @@ export default function UserFeatureRequests() {
     const errors: Record<string, string> = {};
     if (!formData.title.trim()) errors.title = 'Title is required';
     if (!formData.boardId) errors.boardId = 'Please select a board';
+    if (!formData.type) errors.type = 'Please select a type';
+    const contentText = (htmlContent || postContent || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (contentText.length < 10) errors.content = 'Content must be at least 10 characters';
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
     setFormErrors({});
     try {
@@ -119,7 +149,7 @@ export default function UserFeatureRequests() {
       const response = await api.post('/posts', { ...formData, content, isDraft: false });
       if (response.data.success) {
         setShowCreateModal(false);
-        setFormData({ title: '', description: '', type: 'feature', boardId: '' });
+        setFormData({ title: '', type: 'feature', boardId: '' });
         setPostContent('');
         toast.success('Post published!');
         fetchData();
@@ -128,14 +158,17 @@ export default function UserFeatureRequests() {
     finally { setCreating(false); }
   };
 
-  const handleDeletePost = async (postId: string) => {
-    if (!confirm('Delete this post?')) return;
+  const handleDeletePost = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
     try {
-      await api.delete(`/posts/${postId}`);
-      setPosts(prev => prev.filter(p => p.id !== postId));
+      await api.delete(`/posts/${deleteConfirm.id}`);
+      setPosts(prev => prev.filter(p => p.id !== deleteConfirm.id));
+      setDeleteConfirm(null);
       setOpenMenuId(null);
       toast.success('Post deleted');
     } catch { toast.error('Failed to delete'); }
+    finally { setDeleting(false); }
   };
 
   const filteredPosts = posts.filter(p => {
@@ -151,7 +184,7 @@ export default function UserFeatureRequests() {
   const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (sortBy === 'most-voted') return (b.voteCount ?? 0) - (a.voteCount ?? 0);
     if (sortBy === 'trending') return ((b.voteCount ?? 0) + (b.commentCount ?? 0)) - ((a.voteCount ?? 0) + (a.commentCount ?? 0));
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // newest
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   const totalPages = Math.ceil(sortedPosts.length / rowsPerPage);
@@ -161,7 +194,7 @@ export default function UserFeatureRequests() {
 
   return (
     <UserLayout>
-      <style>{`@keyframes slideUpCount { 0% { opacity: 0; transform: translateY(8px) scale(0.85); } 60% { opacity: 1; transform: translateY(-2px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } }`}</style>
+      <style>{`@keyframes slideUpCount { 0% { opacity: 0; transform: translateY(8px) scale(0.85); } 60% { opacity: 1; transform: translateY(-2px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } } @keyframes previewFadeIn { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }`}</style>
       <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -203,7 +236,7 @@ export default function UserFeatureRequests() {
               </button>
             )}
 
-            {/* Sort Buttons - right aligned */}
+            {/* Sort Buttons */}
             <div className="flex items-center gap-2 ml-auto">
               {([
                 { key: 'trending', label: 'Trending', icon: TrendingUp },
@@ -227,7 +260,6 @@ export default function UserFeatureRequests() {
         {/* Table */}
         {loading ? <LoadingBar /> : (
           <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            {/* Title */}
             <div style={{ padding: '24px 24px 16px 24px' }}>
               <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>All Posts</h2>
             </div>
@@ -268,7 +300,7 @@ export default function UserFeatureRequests() {
                       style={{
                         fontSize: '14px', color: d ? undefined : '#1C252E',
                         textAlign: i === 3 ? 'center' as const : i === 6 ? 'right' as const : 'left' as const,
-                        width: i === 0 ? '120px' : i === 2 ? '150px' : i === 3 ? '330px' : i === 4 ? '250px' : i === 5 ? '180px' : i === 6 ? '60px' : undefined,
+                        width: i === 0 ? '90px' : i === 2 ? '200px' : i === 3 ? '140px' : i === 4 ? '250px' : i === 5 ? '210px' : i === 6 ? '100px' : undefined,
                       }}>
                       <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 6 ? '24px' : '16px' }}>{h}</div>
                     </th>
@@ -278,11 +310,12 @@ export default function UserFeatureRequests() {
               <tbody>
                 {paginatedPosts.length > 0 ? paginatedPosts.map(post => {
                   const isOwner = user?.id === post.author?.id;
+                  const sc = STATUS_CONFIG[post.status] || STATUS_CONFIG.open;
                   return (
                     <tr key={post.id} onClick={() => navigate(`/user/posts/${post.slug}`)}
-                      className={`border-t transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-100 hover:bg-gray-50'}`}>
+                      className={`border-b border-dashed transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
                       {/* Upvote */}
-                      <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px', paddingRight: '12px', width: '100px' }}
+                      <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px', paddingRight: '12px', width: '90px' }}
                         onClick={(e) => { e.stopPropagation(); handleVote(post.id); }}>
                         <div className="inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden"
                           style={{
@@ -300,28 +333,51 @@ export default function UserFeatureRequests() {
                           </span>
                         </div>
                       </td>
-                      {/* Title */}
-                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} px-5 max-w-0 overflow-hidden`}>
+                      {/* Title + Content Preview */}
+                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} px-5 max-w-0 overflow-hidden`}
+                        onMouseEnter={(e) => {
+                          const td = e.currentTarget.getBoundingClientRect();
+                          if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+                          hoverTimeout.current = setTimeout(() => setHoverPost({ post, x: td.left, y: td.bottom + 4, rowTop: td.top }), 300);
+                        }}
+                        onMouseLeave={() => {
+                          if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+                          hoverTimeout.current = setTimeout(() => setHoverPost(null), 150);
+                        }}>
                         <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                        {post.description && <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>}
+                        {post.content && (
+                          <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ maxWidth: '85%' }}>{post.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}</p>
+                        )}
                       </td>
                       {/* Status */}
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
-                        <span className={`inline-block px-2.5 py-1 rounded-full text-[13px] font-semibold ${STATUS_COLORS[post.status] || 'bg-gray-100 text-gray-700'}`}>
+                        <span className={`inline-block px-2.5 py-1 rounded-full text-[13px] font-semibold ${sc.bg} ${sc.text}`}>
                           {post.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                         </span>
                       </td>
                       {/* Comments */}
-                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-center text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-center text-sm font-semibold text-emerald-600`}>
                         {post.commentCount ?? 0}
                       </td>
                       {/* Author */}
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
-                            {post.author?.name?.[0]?.toUpperCase() || '?'}
+                        <div className="flex items-center gap-2 group/author">
+                          {post.author?.avatar ? (
+                            <img src={post.author.avatar.startsWith('http') ? post.author.avatar : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${post.author.avatar}`} alt={post.author.name} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${d ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                              {post.author?.name?.[0]?.toUpperCase() || '?'}
+                            </div>
+                          )}
+                          <div className="relative">
+                            <span className={`text-sm truncate block ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ maxWidth: '100px' }}>{post.author?.name}</span>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/author:flex flex-col items-center z-50 pointer-events-none">
+                              <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                                {post.author?.name}
+                              </div>
+                              <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900 -mt-[1px]" />
+                            </div>
                           </div>
-                          <span className={`text-sm truncate ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ maxWidth: '100px' }}>{post.author?.name}</span>
                         </div>
                       </td>
                       {/* Created */}
@@ -346,7 +402,7 @@ export default function UserFeatureRequests() {
                                   <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
                                 </button>
                                 <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
-                                <button onClick={() => handleDeletePost(post.id)}
+                                <button onClick={() => { setDeleteConfirm({ id: post.id, title: post.title }); setOpenMenuId(null); }}
                                   className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
                                   <Trash2 className="w-[18px] h-[18px]" /> Delete
                                 </button>
@@ -383,13 +439,13 @@ export default function UserFeatureRequests() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
-                  <div className="relative">
+                  <div className="relative" ref={rowsDropdownRef}>
                     <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                       className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
                       {rowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${rowsDropOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {rowsDropOpen && (
-                      <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${
+                      <div className={`absolute bottom-full mb-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${
                         d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
                       }`}>
                         {[10, 25, 50, 100].map(n => (
@@ -424,65 +480,88 @@ export default function UserFeatureRequests() {
 
       {/* Close overlays */}
       {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
-      {rowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setRowsDropOpen(false)} />}
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title="Do you really want to delete this post?"
+        message={`"${deleteConfirm?.title || ''}" will be permanently deleted. This action cannot be undone.`}
+        onConfirm={handleDeletePost}
+        onCancel={() => setDeleteConfirm(null)}
+        loading={deleting}
+      />
 
       {/* Create Post Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px' }}>
-            {/* Sticky Header */}
             <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Create New Post</h2>
               <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            {/* Scrollable Content */}
             <div style={{ padding: '24px' }}>
               <div className="space-y-4">
                 {/* Title */}
                 <div>
-                  <input type="text" value={formData.title} placeholder="Write the post title here"
-                    onChange={(e) => { setFormData({ ...formData, title: e.target.value }); if (formErrors.title) setFormErrors(prev => { const n = { ...prev }; delete n.title; return n; }); }}
-                    className={`w-full text-lg font-semibold outline-none bg-transparent ${
-                      d ? 'text-white placeholder-gray-600' : 'text-gray-900 placeholder-gray-400'
-                    }`} />
-                  {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
-                </div>
-
-                {/* Description */}
-                <div>
-                  <input type="text" value={formData.description} placeholder="Short description (optional)"
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className={`w-full text-sm outline-none bg-transparent ${
-                      d ? 'text-gray-400 placeholder-gray-600' : 'text-gray-500 placeholder-gray-400'
-                    }`} />
+                  <div className="relative">
+                    <input type="text" value={formData.title} placeholder=" "
+                      onChange={(e) => { setFormData({ ...formData, title: e.target.value }); if (formErrors.title) setFormErrors(prev => { const n = { ...prev }; delete n.title; return n; }); }}
+                      style={{ padding: '16.5px 14px' }}
+                      className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                        d ? 'border-gray-700 bg-gray-800 text-white hover:border-gray-500 focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 hover:border-gray-400 focus:border-gray-400'
+                      }`} />
+                    <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                      top-1/2 -translate-y-1/2
+                      peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                      peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                      ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Title *</span>
+                    {!formData.title && (
+                      <span className={`absolute left-[14px] top-1/2 -translate-y-1/2 text-sm pointer-events-none opacity-0 peer-focus:opacity-100 transition-opacity ${
+                        d ? 'text-gray-600' : 'text-gray-400'
+                      }`}>Enter your post title</span>
+                    )}
+                  </div>
+                  <p className={`text-xs ${formErrors.title ? 'text-red-500' : (d ? 'text-gray-500' : 'text-gray-400')}`} style={{ margin: '8px 14px 0' }}>
+                    {formErrors.title || 'Enter the title for your post.'}
+                  </p>
                 </div>
 
                 {/* Rich Text Editor */}
-                <CommentEditor
-                  onSubmit={(html) => { setPostContent(html); handleCreatePost(html); }}
-                  placeholder="Write your post content here... Add images, links, and more."
-                  buttonLabel="Publish Post"
-                  submitting={creating}
-                  hideButton
-                  maxEditorHeight="450px"
-                  onContentChange={(html) => setPostContent(html)}
-                />
+                <div>
+                  <CommentEditor
+                    onSubmit={(html) => { setPostContent(html); handleCreatePost(html); }}
+                    placeholder="Write your post content here... Add images, links, and more."
+                    buttonLabel="Publish Post"
+                    submitting={creating}
+                    hideButton
+                    maxEditorHeight="450px"
+                    onContentChange={(html) => { setPostContent(html); if (formErrors.content) setFormErrors(prev => { const n = { ...prev }; delete n.content; return n; }); }}
+                  />
+                  <p className={`text-xs ${formErrors.content ? 'text-red-500' : (d ? 'text-gray-500' : 'text-gray-400')}`} style={{ margin: '8px 14px 0' }}>
+                    {formErrors.content || 'Minimum 10 characters required.'}
+                  </p>
+                </div>
 
-                {/* Board & Type - bottom, overflow visible */}
-                <div className="flex gap-4 relative z-[60]">
+                {/* Board & Type */}
+                <div className="flex gap-4 relative z-[60]" style={{ marginTop: '20px' }}>
                   <div className="flex-1">
                     <CustomDropdown label="Board *" value={formData.boardId}
                       options={[{ value: '', label: 'Select Board' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
                       onChange={(v) => { setFormData({ ...formData, boardId: v }); if (formErrors.boardId) setFormErrors(prev => { const n = { ...prev }; delete n.boardId; return n; }); }}
                       minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
-                    {formErrors.boardId && <p className="text-red-500 text-xs mt-1">{formErrors.boardId}</p>}
+                    <p className={`text-xs ${formErrors.boardId ? 'text-red-500' : (d ? 'text-gray-500' : 'text-gray-400')}`} style={{ margin: '8px 14px 0' }}>
+                      {formErrors.boardId || 'Select the board for your post.'}
+                    </p>
                   </div>
                   <div className="flex-1">
-                    <CustomDropdown label="Type" value={formData.type}
+                    <CustomDropdown label="Type *" value={formData.type}
                       options={[{ value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
-                      onChange={(v) => setFormData({ ...formData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                      onChange={(v) => { setFormData({ ...formData, type: v }); if (formErrors.type) setFormErrors(prev => { const n = { ...prev }; delete n.type; return n; }); }}
+                      minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                    <p className={`text-xs ${formErrors.type ? 'text-red-500' : (d ? 'text-gray-500' : 'text-gray-400')}`} style={{ margin: '8px 14px 0' }}>
+                      {formErrors.type || 'Select the type of post.'}
+                    </p>
                   </div>
                 </div>
 
@@ -498,6 +577,51 @@ export default function UserFeatureRequests() {
           </div>
         </div>
       )}
+
+      {/* Hover Preview Popup */}
+      {hoverPost && (() => {
+        const hp = hoverPost.post;
+        const hsc = STATUS_CONFIG[hp.status] || STATUS_CONFIG.open;
+        const popupHeight = 320;
+        const spaceBelow = window.innerHeight - hoverPost.y;
+        const showAbove = spaceBelow < popupHeight + 20;
+        return (
+          <div key={hp.id} className={`fixed rounded-xl border shadow-2xl ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+            style={{
+              left: hoverPost.x, top: showAbove ? undefined : hoverPost.y, bottom: showAbove ? window.innerHeight - hoverPost.rowTop + 4 : undefined,
+              width: '380px', maxHeight: `${popupHeight}px`, overflow: 'hidden', zIndex: 9999,
+              animation: 'previewFadeIn 0.2s ease-out',
+            }}
+            onMouseEnter={() => { if (hoverTimeout.current) clearTimeout(hoverTimeout.current); }}
+            onMouseLeave={() => { hoverTimeout.current = setTimeout(() => setHoverPost(null), 150); }}>
+            <div style={{ padding: '16px 20px' }}>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {hp.board && (
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: (hp.board.color || '#6366f1') + '15', color: hp.board.color || '#6366f1' }}>
+                    {hp.board.name}
+                  </span>
+                )}
+                {(() => { const tc = TYPE_COLOR[hp.type] || TYPE_COLOR.feature; return (
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${tc.bg} ${tc.text}`}>
+                    {hp.type.charAt(0).toUpperCase() + hp.type.slice(1)}
+                  </span>
+                ); })()}
+                <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${hsc.bg} ${hsc.text}`}>
+                  {hp.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                </span>
+              </div>
+              <p className={`text-sm font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{hp.title}</p>
+              {hp.content && (
+                <div className={`text-xs leading-relaxed overflow-hidden ${d ? 'text-gray-400' : 'text-gray-500'}`}
+                  style={{ display: '-webkit-box', WebkitLineClamp: 10, WebkitBoxOrient: 'vertical' as const }}>
+                  {hp.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Login Modal */}
       {showLoginModal && (

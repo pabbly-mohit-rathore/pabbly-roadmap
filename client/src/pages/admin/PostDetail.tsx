@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Pin, Trash2, Heart, Plus, X } from 'lucide-react';
+import { useParams, useLocation } from 'react-router-dom';
+import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply, Bell } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useVoteStore from '../../store/voteStore';
@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import CommentEditor from '../../components/CommentEditor';
 import LoadingBar from '../../components/ui/LoadingBar';
 import CustomDropdown from '../../components/ui/CustomDropdown';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import useSocket from '../../hooks/useSocket';
 
 interface Tag {
@@ -29,7 +30,7 @@ interface Post {
   commentCount: number;
   isPinned: boolean;
   createdAt: string;
-  author: { name: string };
+  author: { name: string; avatar?: string };
   board: { name: string; id: string };
   tags?: { tag: Tag }[];
 }
@@ -66,7 +67,6 @@ export default function AdminPostDetail() {
   const theme = useThemeStore((state) => state.theme);
   const { user: currentUser } = useAuthStore();
   const { votes, init, toggle } = useVoteStore();
-  const navigate = useNavigate();
   const { postId } = useParams<{ postId: string }>();
   const { state } = useLocation();
 
@@ -82,8 +82,20 @@ export default function AdminPostDetail() {
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
-  const [showTagDropdown, setShowTagDropdown] = useState(false);
-  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [activeTab, setActiveTab] = useState<'comments' | 'activities'>('comments');
+  const [commentMenuId, setCommentMenuId] = useState<string | null>(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [deleteCommentConfirm, setDeleteCommentConfirm] = useState<string | null>(null);
+  const [replyingToName, setReplyingToName] = useState<string | null>(null);
+  const [activities, setActivities] = useState<Array<{
+    id: string;
+    action: string;
+    description: string;
+    createdAt: string;
+    user: { id: string; name: string; avatar?: string };
+    post?: { id: string; title: string; slug: string };
+  }>>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
 
 
 
@@ -106,6 +118,25 @@ export default function AdminPostDetail() {
     if (postId && !post) fetchPost();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
+
+  // Fetch subscription status
+  useEffect(() => {
+    if (post?.id) {
+      api.get(`/subscriptions/${post.id}/status`).then(res => {
+        if (res.data.success) setIsSubscribed(res.data.data.isSubscribed);
+      }).catch(() => {});
+    }
+  }, [post?.id]);
+
+  const handleToggleSubscription = async () => {
+    if (!post) return;
+    setIsSubscribed(prev => !prev);
+    try {
+      await api.post(`/subscriptions/${post.id}`);
+    } catch {
+      setIsSubscribed(prev => !prev);
+    }
+  };
 
   const fetchPost = async () => {
     try {
@@ -136,6 +167,22 @@ export default function AdminPostDetail() {
       setLoading(false);
     }
   };
+
+  const fetchActivities = async () => {
+    if (!post?.id) return;
+    setActivitiesLoading(true);
+    try {
+      const response = await api.get('/activity-log', { params: { postId: post.id, limit: 100 } });
+      if (response.data.success) {
+        setActivities(response.data.data.activities || []);
+      }
+    } catch { console.error('Error fetching activities'); }
+    finally { setActivitiesLoading(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'activities' && post?.id && activities.length === 0) fetchActivities();
+  }, [activeTab, post?.id]);
 
   const fetchComments = () => fetchCommentsById(post?.id || postId);
 
@@ -169,65 +216,6 @@ export default function AdminPostDetail() {
     toggle(post.id);
     setAnimating(true);
     setTimeout(() => setAnimating(false), 400);
-  };
-
-  const handlePin = async () => {
-    const wasPinned = post?.isPinned;
-    // Optimistic update - instant UI change
-    setPost(prev => prev ? { ...prev, isPinned: !prev.isPinned } : null);
-    try {
-      await api.put(`/posts/${post?.id}/pin`);
-      toast.success(wasPinned ? 'Post unpinned' : 'Post pinned');
-    } catch {
-      // Revert on error
-      setPost(prev => prev ? { ...prev, isPinned: !!wasPinned } : null);
-      toast.error('Failed to pin post');
-    }
-  };
-
-  const fetchAvailableTags = async () => {
-    if (!post?.board?.id) return;
-    try {
-      const response = await api.get(`/tags?boardId=${post.board.id}`);
-      if (response.data.success) {
-        setAvailableTags(response.data.data.tags || response.data.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching tags:', error);
-    }
-  };
-
-  const handleAddTag = async (tagId: string) => {
-    try {
-      const response = await api.post('/tags/assign', { postId: post?.id, tagId });
-      if (response.data.success) {
-        // Refresh post to get updated tags
-        const postResponse = await api.get(`/posts/${postId}`);
-        if (postResponse.data.success) {
-          setPost(postResponse.data.data.post);
-        }
-        toast.success('Tag added');
-      }
-    } catch (error) {
-      console.error('Error adding tag:', error);
-      toast.error('Failed to add tag');
-    }
-    setShowTagDropdown(false);
-  };
-
-  const handleRemoveTag = async (tagId: string) => {
-    try {
-      const response = await api.post('/tags/remove', { postId: post?.id, tagId });
-      if (response.data.success) {
-        setPost((prev) =>
-          prev ? { ...prev, tags: prev.tags?.filter((t) => t.tag.id !== tagId) } : null
-        );
-        toast.success('Tag removed');
-      }
-    } catch (error) {
-      console.error('Error removing tag:', error);
-      toast.error('Failed to remove tag');
-    }
   };
 
   const handleChangeStatus = async (newStatus: string) => {
@@ -305,10 +293,11 @@ export default function AdminPostDetail() {
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Delete this comment?')) return;
-
+  const handleDeleteComment = async () => {
+    if (!deleteCommentConfirm) return;
+    const commentId = deleteCommentConfirm;
     try {
+      setDeleteCommentConfirm(null);
       const response = await api.delete(`/comments/${commentId}`);
       if (response.data.success) {
         setComments((prev) => prev
@@ -367,32 +356,15 @@ export default function AdminPostDetail() {
     }
   };
 
-  const handlePinComment = async (commentId: string) => {
-    // Optimistic update
-    const updatePin = (cmts: typeof comments): typeof comments =>
-      cmts.map(c => ({
-        ...c,
-        isPinned: c.id === commentId ? !c.isPinned : c.isPinned,
-        replies: c.replies ? updatePin(c.replies) : c.replies,
-      }));
-    setComments(prev => updatePin(prev));
-
-    try {
-      const response = await api.put(`/comments/${commentId}/pin`);
-      if (response.data.success) {
-        toast.success(response.data.message);
-      }
-    } catch {
-      fetchComments(); // Revert by refetching
-      toast.error('Failed to pin comment');
-    }
-  };
-
   const handleReply = async (parentId: string, htmlContent?: string) => {
-    const content = htmlContent || replyText;
+    let content = htmlContent || replyText;
     if (!content.trim() || content === '<p></p>') {
       toast.error('Reply cannot be empty');
       return;
+    }
+    // Prepend @mention if replying to someone
+    if (replyingToName) {
+      content = content.replace(/^<p>/, `<p><span class="mention-tag">@${replyingToName}</span> `);
     }
 
     try {
@@ -405,6 +377,7 @@ export default function AdminPostDetail() {
       if (response.data.success) {
         setReplyText('');
         setReplyingToId(null);
+        setReplyingToName(null);
         const newReply = response.data.data?.comment;
         if (newReply) {
           setComments(prev => prev.map(c =>
@@ -472,83 +445,77 @@ export default function AdminPostDetail() {
   return (
     <div className={`${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
       {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-3 gap-8 items-start">
-          {/* Main Content - Left */}
-          <div className="col-span-2">
+      <div className="mx-auto px-4 py-6" style={{ maxWidth: 'calc(100% - 207px)' }}>
+        <div className="grid grid-cols-[1fr_340px] gap-4 items-start">
+          {/* Main Content */}
+          <div>
             {loading ? (
               <LoadingBar />
             ) : (
               <>
                 {/* Post Card */}
-                <div className={`rounded-xl border p-6 mb-8 ${
+                <div className={`rounded-t-xl border border-b-0 p-6 ${
                   theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                 }`}>
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-4">
-                      <div
-                        onClick={handleVote}
-                        className="inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden flex-shrink-0"
-                        style={{
-                          padding: '8px 14px',
-                          fontSize: '13px',
-                          gap: '6px',
-                          backgroundColor: votes[post!.id]?.voted ? '#059669' : 'transparent',
-                          borderColor: votes[post!.id]?.voted ? '#059669' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
-                          color: votes[post!.id]?.voted ? '#ffffff' : (theme === 'dark' ? '#d1d5db' : '#374151'),
-                        }}
-                        onMouseEnter={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
-                        onMouseLeave={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = theme === 'dark' ? '#4b5563' : '#e5e7eb'; }}
-                      >
-                        <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
-                        <span style={{ animation: animating ? 'slideUpCount 0.35s cubic-bezier(0.34,1.56,0.64,1)' : 'none', display: 'block' }}>
-                          {votes[post!.id]?.count ?? 0}
-                        </span>
-                      </div>
-                      <div>
-                        <h1 className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {post?.title}
-                        </h1>
-                        {post?.description && (
-                          <p className={`text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {post.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={handlePin}
-                      className={`p-2 rounded-lg transition-colors flex-shrink-0 ${
-                        post?.isPinned
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : theme === 'dark'
-                          ? 'hover:bg-gray-800 text-gray-400'
-                          : 'hover:bg-gray-100 text-gray-600'
-                      }`}
-                      title={post?.isPinned ? 'Unpin post' : 'Pin post'}
+                  <div className="flex items-center justify-between">
+                    <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {post?.title}
+                    </h1>
+                    <div
+                      onClick={handleVote}
+                      className="inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden flex-shrink-0"
+                      style={{
+                        padding: '8px 14px',
+                        fontSize: '13px',
+                        gap: '6px',
+                        backgroundColor: votes[post!.id]?.voted ? '#059669' : 'transparent',
+                        borderColor: votes[post!.id]?.voted ? '#059669' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
+                        color: votes[post!.id]?.voted ? '#ffffff' : (theme === 'dark' ? '#d1d5db' : '#374151'),
+                      }}
+                      onMouseEnter={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
+                      onMouseLeave={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = theme === 'dark' ? '#4b5563' : '#e5e7eb'; }}
                     >
-                      <Pin className="w-5 h-5" />
-                    </button>
+                      <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
+                      <span style={{ animation: animating ? 'slideUpCount 0.35s cubic-bezier(0.34,1.56,0.64,1)' : 'none', display: 'block' }}>
+                        {votes[post!.id]?.count ?? 0}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Rich Content */}
                   {post?.content && (
-                    <div className={`border-t pt-5 mt-2 overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                    <div className={`mt-4 overflow-hidden`}>
                       <div className={`tiptap-preview max-w-none ${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}
                         dangerouslySetInnerHTML={{ __html: post.content }} />
                     </div>
                   )}
 
-                  {/* Comments Section */}
-                  <div className={`border-t pt-6 mt-6 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                  <h2
-                    className={`text-xl font-bold mb-4 ${
-                      theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    }`}
-                  >
-                    Comments ({post?.commentCount || 0})
-                  </h2>
+                </div>
+                {/* Post Card ends above */}
 
+                {/* Comments & Activities Container */}
+                <div className={`rounded-b-xl border ${theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-[#fafafa] border-gray-200'}`}>
+                  <div className={`flex items-center gap-6 px-6 border-b ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+                    <button onClick={() => setActiveTab('comments')}
+                      className={`flex items-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                        activeTab === 'comments'
+                          ? `${theme === 'dark' ? 'text-white border-white' : 'text-gray-900 border-gray-900'}`
+                          : `border-transparent ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+                      }`}>
+                      <MessageCircle className="w-4 h-4" /> Comments{post?.commentCount ? ` (${post.commentCount})` : ''}
+                    </button>
+                    <button onClick={() => setActiveTab('activities')}
+                      className={`flex items-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                        activeTab === 'activities'
+                          ? `${theme === 'dark' ? 'text-white border-white' : 'text-gray-900 border-gray-900'}`
+                          : `border-transparent ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+                      }`}>
+                      <Activity className="w-4 h-4" /> Activities
+                    </button>
+                  </div>
+
+                  {activeTab === 'comments' ? (
+                  <div className="px-6 pt-6 pb-6">
                   {/* Add Comment */}
                   <div className="mb-6">
                     <CommentEditor
@@ -560,186 +527,263 @@ export default function AdminPostDetail() {
                   {/* Comments List */}
                   <div className="space-y-4">
                     {comments.length > 0 ? (
-                      comments.map((comment) => (
-                        <div key={comment.id} className={`p-5 rounded-xl border ${comment.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border-red-800' : 'bg-red-50 border-red-200') : (theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200')}`}>
+                      comments.map((comment) => {
+                        const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+                        const avatarUrl = comment.author.avatar ? (comment.author.avatar.startsWith('http') ? comment.author.avatar : `${API_BASE}${comment.author.avatar}`) : null;
+                        return (
+                        <div key={comment.id} className={`rounded-xl p-4 ${comment.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border border-red-800' : 'bg-red-50 border border-red-200') : (theme === 'dark' ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200 shadow-sm')}`}>
                           <div className="flex gap-3">
-                            {/* Avatar */}
-                            <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700 text-white text-sm font-bold">
-                              {comment.author.name.charAt(0).toUpperCase()}
-                            </div>
+                            {avatarUrl ? (
+                              <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-emerald-600 text-white'}`}>
+                                {comment.author.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
                             <div className="flex-1 min-w-0">
-                              {/* Name · Time */}
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                   <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{comment.author.name}</span>
-                                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>· {getTimeAgo(comment.createdAt)}</span>
+                                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(comment.createdAt)}</span>
                                   {comment.isSpam && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800">Spam</span>}
-                                  {comment.isPinned && <span className="text-xs">📌</span>}
                                 </div>
                                 {!comment.isSpam && (
-                                  <button onClick={() => handleDeleteComment(comment.id)} className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-                                    <Trash2 className="w-4 h-4 text-red-500" />
-                                  </button>
+                                  <div className="relative">
+                                    <button onClick={() => setCommentMenuId(commentMenuId === comment.id ? null : comment.id)}
+                                      className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
+                                      <MoreHorizontal className="w-4 h-4" />
+                                    </button>
+                                    {commentMenuId === comment.id && (
+                                      <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-lg z-50 p-1 ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '130px' }}>
+                                        <button onClick={() => { setEditingCommentId(comment.id); setCommentMenuId(null); }}
+                                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button>
+                                        <button onClick={() => { setDeleteCommentConfirm(comment.id); setCommentMenuId(null); }}
+                                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button>
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-
-                              {/* Comment Content */}
                               {editingCommentId === comment.id ? (
                                 <div className="mt-2">
-                                  <CommentEditor
-                                    onSubmit={(html) => handleEditComment(comment.id, html)}
-                                    placeholder="Edit comment..."
-                                    buttonLabel="Save"
-                                    submitting={editingComment}
-                                    initialContent={comment.content}
-                                  />
+                                  <CommentEditor onSubmit={(html) => handleEditComment(comment.id, html)} placeholder="Edit comment..." buttonLabel="Save" submitting={editingComment} initialContent={comment.content} />
                                   <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>Cancel</button>
                                 </div>
                               ) : (
-                                <div className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                <div className={`mt-1 text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                                   <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: comment.content }} />
                                 </div>
                               )}
+                              {!comment.isSpam && (
+                                <div className="flex items-center gap-4 mt-2">
+                                  <button onClick={() => handleLikeComment(comment.id)}
+                                    className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${likedCommentIds.has(comment.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
+                                    <Heart className="w-3.5 h-3.5" fill={likedCommentIds.has(comment.id) ? 'currentColor' : 'none'} /> {comment.likeCount || ''}
+                                  </button>
+                                  <button onClick={() => { setReplyingToId(replyingToId === comment.id ? null : comment.id); setReplyingToName(replyingToId === comment.id ? null : comment.author.name); }}
+                                    className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${replyingToId === comment.id ? 'text-blue-600' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+                                    <Reply className="w-3.5 h-3.5" /> Reply
+                                  </button>
+                                </div>
+                              )}
+                              {comment.isSpam && <button onClick={() => handleMarkNotSpam(comment.id)} className="text-xs text-blue-600 hover:underline mt-2">Mark not spam</button>}
+                              {comment.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">Official Response</p>}
 
-                              {/* Comment Actions */}
-                              <div className="flex flex-wrap gap-3 text-xs mt-2">
-                                {comment.isSpam ? (
-                                  <button onClick={() => handleMarkNotSpam(comment.id)} className="text-blue-600 hover:underline">Mark not spam</button>
-                                ) : (
-                                  <>
-                                    <button onClick={() => handleLikeComment(comment.id)} className={`flex items-center gap-1 ${likedCommentIds.has(comment.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
-                                      <Heart className="w-3.5 h-3.5" fill={likedCommentIds.has(comment.id) ? 'currentColor' : 'none'} /> {comment.likeCount}
-                                    </button>
-                                    <button onClick={() => { setEditingCommentId(comment.id); setEditText(comment.content.replace(/<[^>]*>/g, '')); }} className={theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Edit</button>
-                                    <button onClick={() => handlePinComment(comment.id)} className={comment.isPinned ? 'text-yellow-500' : theme === 'dark' ? 'text-gray-400 hover:text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}>{comment.isPinned ? '📌 Unpin' : '📌 Pin'}</button>
-                                    <button onClick={() => setReplyingToId(replyingToId === comment.id ? null : comment.id)} className={replyingToId === comment.id ? 'text-blue-600' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Reply</button>
-                                  </>
-                                )}
-                              </div>
-
-                              {comment.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">✓ Official Response</p>}
-
-                              {/* Reply Form */}
                               {replyingToId === comment.id && (
-                                <div className="mt-4 pt-4 border-t border-gray-200">
-                                  <CommentEditor
-                                    onSubmit={(html) => handleReply(comment.id, html)}
-                                    placeholder="Write a reply..."
-                                    buttonLabel="Reply"
-                                    submitting={submittingReply}
-                                  />
+                                <div className="mt-3">
+                                  <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Replying to <span className="text-[#0c68e9] font-semibold">@{comment.author.name}</span></p>
+                                  <CommentEditor onSubmit={(html) => handleReply(comment.id, html)} placeholder={`Reply to @${comment.author.name}...`} buttonLabel="Reply" submitting={submittingReply} compact />
                                 </div>
                               )}
 
                               {/* Replies */}
                               {comment.replies && comment.replies.length > 0 && (
-                                <div className="mt-4 space-y-4 pl-2 border-l-2 border-gray-200">
-                                  {comment.replies.map((reply) => (
-                                    <div key={reply.id} className={`pl-4 py-2 ${reply.isSpam ? (theme === 'dark' ? 'bg-red-900/10' : 'bg-red-50') : ''}`}>
+                                <div className="mt-3 space-y-3">
+                                  {comment.replies.map((reply) => {
+                                    const rAvatarUrl = reply.author.avatar ? (reply.author.avatar.startsWith('http') ? reply.author.avatar : `${API_BASE}${reply.author.avatar}`) : null;
+                                    return (
+                                    <div key={reply.id} className={`pl-4 py-3 border-l-[3px] ${reply.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border-l-red-500' : 'bg-red-50 border-l-red-400') : (theme === 'dark' ? 'border-l-emerald-600' : 'border-l-emerald-500')}`}>
                                       <div className="flex gap-3">
-                                        <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700 text-white text-xs font-bold">
-                                          {reply.author.name.charAt(0).toUpperCase()}
-                                        </div>
+                                        {rAvatarUrl ? (
+                                          <img src={rAvatarUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                                        ) : (
+                                          <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-emerald-600 text-white'}`}>
+                                            {reply.author.name.charAt(0).toUpperCase()}
+                                          </div>
+                                        )}
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                               <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{reply.author.name}</span>
-                                              <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>· {getTimeAgo(reply.createdAt)}</span>
-                                              {reply.isSpam && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800">Spam</span>}
-                                              {reply.isPinned && <span className="text-xs">📌</span>}
+                                              <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(reply.createdAt)}</span>
                                             </div>
                                             {!reply.isSpam && (
-                                              <button onClick={() => handleDeleteComment(reply.id)} className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-200'}`}>
-                                                <Trash2 className="w-3 h-3 text-red-500" />
-                                              </button>
+                                              <div className="relative">
+                                                <button onClick={() => setCommentMenuId(commentMenuId === reply.id ? null : reply.id)}
+                                                  className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
+                                                  <MoreHorizontal className="w-3.5 h-3.5" />
+                                                </button>
+                                                {commentMenuId === reply.id && (
+                                                  <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-lg z-50 p-1 ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '130px' }}>
+                                                    <button onClick={() => { setEditingCommentId(reply.id); setCommentMenuId(null); }}
+                                                      className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button>
+                                                    <button onClick={() => { setDeleteCommentConfirm(reply.id); setCommentMenuId(null); }}
+                                                      className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button>
+                                                  </div>
+                                                )}
+                                              </div>
                                             )}
                                           </div>
                                           {editingCommentId === reply.id ? (
                                             <div className="mt-2">
-                                              <CommentEditor
-                                                onSubmit={(html) => handleEditComment(reply.id, html)}
-                                                placeholder="Edit reply..."
-                                                buttonLabel="Save"
-                                                submitting={editingComment}
-                                                initialContent={reply.content}
-                                                compact
-                                              />
-                                              <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>Cancel</button>
+                                              <CommentEditor onSubmit={(html) => handleEditComment(reply.id, html)} placeholder="Edit reply..." buttonLabel="Save" submitting={editingComment} initialContent={reply.content} compact />
+                                              <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Cancel</button>
                                             </div>
                                           ) : (
-                                            <div className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                            <div className={`mt-1 text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                                               <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: reply.content }} />
                                             </div>
                                           )}
-                                          <div className="flex flex-wrap gap-2 text-xs mt-2">
-                                            {reply.isSpam ? (
-                                              <button onClick={() => handleMarkNotSpam(reply.id)} className="text-blue-600 hover:underline">Mark not spam</button>
-                                            ) : (
-                                              <>
-                                                <button onClick={() => handleLikeComment(reply.id)} className={`flex items-center gap-1 ${likedCommentIds.has(reply.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
-                                                  <Heart className="w-3 h-3" fill={likedCommentIds.has(reply.id) ? 'currentColor' : 'none'} /> {reply.likeCount}
-                                                </button>
-                                                <button onClick={() => { setEditingCommentId(reply.id); setEditText(reply.content.replace(/<[^>]*>/g, '')); }} className={theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Edit</button>
-                                                <button onClick={() => setReplyingToId(replyingToId === reply.id ? null : reply.id)} className={replyingToId === reply.id ? 'text-blue-600' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}>Reply</button>
-                                              </>
-                                            )}
-                                          </div>
-                                          {reply.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">✓ Official Response</p>}
+                                          {!reply.isSpam && (
+                                            <div className="flex items-center gap-4 mt-2">
+                                              <button onClick={() => handleLikeComment(reply.id)}
+                                                className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${likedCommentIds.has(reply.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
+                                                <Heart className="w-3 h-3" fill={likedCommentIds.has(reply.id) ? 'currentColor' : 'none'} /> {reply.likeCount || ''}
+                                              </button>
+                                              <button onClick={() => { setReplyingToId(replyingToId === reply.id ? null : reply.id); setReplyingToName(replyingToId === reply.id ? null : reply.author.name); }}
+                                                className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${replyingToId === reply.id ? 'text-blue-600' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+                                                <Reply className="w-3 h-3" /> Reply
+                                              </button>
+                                            </div>
+                                          )}
+                                          {reply.isSpam && <button onClick={() => handleMarkNotSpam(reply.id)} className="text-xs text-blue-600 hover:underline mt-2">Mark not spam</button>}
+                                          {reply.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">Official Response</p>}
                                           {replyingToId === reply.id && (
-                                            <div className="mt-3 pt-3 border-t border-gray-200">
-                                              <CommentEditor
-                                                onSubmit={(html) => handleReply(comment.id, html)}
-                                                placeholder="Write a reply..."
-                                                buttonLabel="Reply"
-                                                submitting={submittingReply}
-                                              />
+                                            <div className="mt-3">
+                                              <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Replying to <span className="text-[#0c68e9] font-semibold">@{reply.author.name}</span></p>
+                                              <CommentEditor onSubmit={(html) => handleReply(comment.id, html)} placeholder={`Reply to @${reply.author.name}...`} buttonLabel="Reply" submitting={submittingReply} compact />
                                             </div>
                                           )}
                                         </div>
                                       </div>
                                     </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
                           </div>
                         </div>
-                      ))
+                        );
+                      })
                     ) : (
-                      <p
-                        className={`text-center py-8 ${
-                          theme === 'dark'
-                            ? 'text-gray-500'
-                            : 'text-gray-400'
-                        }`}
-                      >
-                        No comments yet
-                      </p>
+                      <div className={`text-center py-12 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                        <p className="text-sm">No comments yet. Be the first to comment</p>
+                      </div>
                     )}
                   </div>
-                </div>
+                  {commentMenuId && <div className="fixed inset-0 z-40" onClick={() => setCommentMenuId(null)} />}
+                  </div>
+                  ) : (
+                  /* Activities Tab */
+                  <div className="px-6 pt-6 pb-6">
+                    {activitiesLoading ? (
+                      <div className="flex justify-center py-12">
+                        <div className="w-6 h-6 border-2 border-gray-200 border-t-[#0c68e9] rounded-full animate-spin" />
+                      </div>
+                    ) : activities.length > 0 ? (
+                      <div className="space-y-0">
+                        {(() => {
+                          let lastDate = '';
+                          return activities.map((act) => {
+                            const dateStr = new Date(act.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            const showDate = dateStr !== lastDate;
+                            lastDate = dateStr;
+
+                            const iconMap: Record<string, { icon: string; color: string }> = {
+                              created: { icon: '◉', color: 'text-green-500' },
+                              commented: { icon: '○', color: theme === 'dark' ? 'text-gray-500' : 'text-gray-400' },
+                              voted: { icon: '▲', color: 'text-blue-500' },
+                              updated: { icon: '◎', color: 'text-amber-500' },
+                              status_changed: { icon: '◉', color: 'text-purple-500' },
+                              merged: { icon: '⇄', color: 'text-indigo-500' },
+                              deleted: { icon: '✕', color: 'text-red-500' },
+                            };
+                            const ic = iconMap[act.action] || { icon: '○', color: theme === 'dark' ? 'text-gray-500' : 'text-gray-400' };
+                            const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+
+                            return (
+                              <div key={act.id}>
+                                {showDate && (
+                                  <p className={`text-xs font-semibold pt-4 pb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{dateStr}</p>
+                                )}
+                                <div className="flex items-start gap-3 py-2.5">
+                                  <span className={`text-sm mt-0.5 ${ic.color}`}>{ic.icon}</span>
+                                  {act.user.avatar ? (
+                                    <img src={act.user.avatar.startsWith('http') ? act.user.avatar : `${API_BASE}${act.user.avatar}`}
+                                      alt="" className="w-6 h-6 rounded-full object-cover shrink-0 mt-0.5" />
+                                  ) : (
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                                      {act.user.name?.[0]?.toUpperCase() || '?'}
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                      <span className="font-semibold">{act.user.name}</span>
+                                      {' '}<span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>{act.description}</span>
+                                    </p>
+                                    <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>{getTimeAgo(act.createdAt)}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    ) : (
+                      <p className={`text-center py-12 text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No activities yet</p>
+                    )}
+                  </div>
+                  )}
                 </div>
               </>
             )}
           </div>
 
           {/* Sidebar - Right */}
-          <div>
+          <div className="sticky top-10 space-y-4">
+            {/* Subscribe Card */}
+            <div className={`rounded-xl border p-5 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
+              <h3 className={`text-sm font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Subscribe to post</h3>
+              <p className={`text-xs mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Get notified when status changes or new comments</p>
+              <button onClick={handleToggleSubscription}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  isSubscribed
+                    ? (theme === 'dark' ? 'border border-emerald-600 text-emerald-400 hover:bg-emerald-900/20 bg-transparent' : 'border border-emerald-600 text-emerald-600 hover:bg-emerald-50 bg-transparent')
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                }`}>
+                <Bell className="w-4 h-4" />
+                {isSubscribed ? 'Unsubscribe' : 'Get notified'}
+              </button>
+            </div>
+
+            {/* Post Details Card */}
             <div
-              className={`rounded-xl border sticky top-24 ${
+              className={`rounded-xl border ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700'
                   : 'bg-white border-gray-200 shadow-sm'
               }`}
             >
-              {/* Header */}
-              <div className={`px-5 py-4 border-b ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-100 bg-gray-50/80'}`}>
-                <h3 className={`text-xs font-bold tracking-wider uppercase ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Post Details
-                </h3>
-              </div>
-
               <div className="p-5 space-y-5">
+                {/* Created */}
+                <div className={`flex items-center justify-between pb-3 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Post Created</p>
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {post?.createdAt ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                  </p>
+                </div>
+
                 {/* Type & Status Chips */}
                 <div className="flex flex-wrap gap-2">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(post?.type || '')}`}>
@@ -762,125 +806,24 @@ export default function AdminPostDetail() {
                 </div>
 
                 {/* Author */}
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                    {post?.author.name?.[0]?.toUpperCase()}
-                  </div>
+                <div className={`flex items-center gap-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                  {(() => {
+                    const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+                    const av = post?.author.avatar;
+                    const url = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
+                    return url ? (
+                      <img src={url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                        {post?.author.name?.[0]?.toUpperCase()}
+                      </div>
+                    );
+                  })()}
                   <div>
                     <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Author</p>
                     <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.author.name}</p>
                   </div>
                 </div>
-
-                {/* Created */}
-                <div className={`flex items-center justify-between py-3 border-t border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Created</p>
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {post?.createdAt ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
-                  </p>
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <p
-                    className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${
-                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                    }`}
-                >
-                  TAGS
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {post?.tags && post.tags.length > 0 && post.tags.map((postTag) => (
-                    <span
-                      key={postTag.tag.id}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold group"
-                      style={{
-                        backgroundColor: postTag.tag.color + '20',
-                        color: postTag.tag.color,
-                        border: `1px solid ${postTag.tag.color}`,
-                      }}
-                    >
-                      {postTag.tag.name}
-                      <button
-                        onClick={() => handleRemoveTag(postTag.tag.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/10 rounded-full p-0.5"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                {/* Add tag button */}
-                <div className="relative mt-2">
-                  <button
-                    onClick={() => {
-                      if (showTagDropdown) {
-                        setShowTagDropdown(false);
-                      } else {
-                        fetchAvailableTags();
-                        setShowTagDropdown(true);
-                      }
-                    }}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
-                      theme === 'dark'
-                        ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-300'
-                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                    }`}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add tag
-                  </button>
-                  {showTagDropdown && (
-                    <div
-                      className={`absolute left-0 top-full mt-1 w-48 rounded-lg border shadow-lg z-20 py-1 ${
-                        theme === 'dark'
-                          ? 'bg-gray-800 border-gray-700'
-                          : 'bg-white border-gray-200'
-                      }`}
-                    >
-                      {availableTags.length > 0 ? (
-                        (() => {
-                          const assignedIds = new Set(post?.tags?.map((t) => t.tag.id) || []);
-                          const unassigned = availableTags.filter((t) => !assignedIds.has(t.id));
-                          if (unassigned.length === 0) {
-                            return (
-                              <p className={`px-3 py-2 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                All tags assigned
-                              </p>
-                            );
-                          }
-                          return unassigned.map((tag) => (
-                            <button
-                              key={tag.id}
-                              onClick={() => handleAddTag(tag.id)}
-                              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
-                                theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
-                              }`}
-                            >
-                              <span
-                                className="w-3 h-3 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: tag.color }}
-                              />
-                              <span className={theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}>
-                                {tag.name}
-                              </span>
-                            </button>
-                          ));
-                        })()
-                      ) : (
-                        <button
-                          onClick={() => { setShowTagDropdown(false); navigate('/admin/board-management'); }}
-                          className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                            theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-50'
-                          }`}
-                        >
-                          No tags created — Go to Tags
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
 
                 {/* Status Selector */}
                 <div>
@@ -905,6 +848,14 @@ export default function AdminPostDetail() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteCommentConfirm}
+        title="Do you really want to delete this comment?"
+        message="This comment will be permanently deleted. This action cannot be undone."
+        onConfirm={handleDeleteComment}
+        onCancel={() => setDeleteCommentConfirm(null)}
+      />
     </div>
   );
 }
