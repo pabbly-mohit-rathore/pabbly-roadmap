@@ -50,6 +50,9 @@ model User {
   changelogLikes       ChangelogLike[]     // Changelog entries liked by user
   createdBoards        Board[]             // Boards jo isne banaye
 
+  receivedInvitations  TeamInvitation[] @relation("ReceivedInvitations")
+  sentInvitations      TeamInvitation[] @relation("SentInvitations")
+
   @@map("users")  // Database mein table ka naam "users" hoga
 }
 
@@ -87,6 +90,7 @@ model Board {
   activities       Activity[]
   quickResponses   QuickResponse[]   // Response templates for this board
   changelogBoards  ChangelogBoard[]  // Changelog entries visible to this board
+  teamInvitations  TeamInvitation[]  // Pending team-member invitations
 
   @@map("boards")
 }
@@ -117,6 +121,29 @@ model BoardMember {
 
   @@unique([userId, boardId])  // Ek user ek board ka sirf ek baar manager ho sakta hai
   @@map("board_members")
+}
+
+// ============================================================
+// MODEL 3B: TeamInvitation
+// Pending team-member requests. Created when admin grants access;
+// on accept the row is deleted and a BoardMember record is created.
+// On reject, the row is deleted and the admin is notified.
+// ============================================================
+
+model TeamInvitation {
+  id          String   @id @default(uuid())
+  userId      String
+  boardId     String
+  accessLevel String   @default("manager") // "admin" or "manager"
+  invitedById String
+  createdAt   DateTime @default(now())
+
+  user      User  @relation("ReceivedInvitations", fields: [userId], references: [id], onDelete: Cascade)
+  board     Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  invitedBy User  @relation("SentInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@unique([userId, boardId])
+  @@map("team_invitations")
 }
 
 // ============================================================
@@ -428,6 +455,7 @@ model Notification {
   title     String
   message   String
   postId    String?
+  data      String?          @db.Text // JSON payload — e.g. { invitationId, accessLevel, boardId, boardName }
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
 
@@ -443,6 +471,9 @@ enum NotificationType {
   new_comment
   official_reply
   team_access_granted
+  team_access_request
+  team_access_accepted
+  team_access_rejected
 }
 
 // ============================================================

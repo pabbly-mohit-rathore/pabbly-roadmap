@@ -21,6 +21,9 @@ const getActivityLogRules = [
   query('boardId')
     .optional()
     .isUUID().withMessage('Board ID must be a valid UUID.'),
+  query('postId')
+    .optional()
+    .isUUID().withMessage('Post ID must be a valid UUID.'),
   query('userId')
     .optional()
     .isUUID().withMessage('User ID must be a valid UUID.'),

@@ -13,6 +13,7 @@
 // ============================================================
 
 const prisma = require('../config/database');
+const notifySubscribers = require('../utils/notifySubscribers');
 
 // ============================================================
 // 1. GET ALL POSTS
@@ -32,8 +33,8 @@ const getPosts = async (req, res, next) => {
       limit = 10
     } = req.query;
 
-    const skip = (page - 1) * limit;
-    const take = Math.min(parseInt(limit), 50);
+    const skip = limit === 'all' ? 0 : (page - 1) * limit;
+    const take = limit === 'all' ? undefined : parseInt(limit);
 
     const where = { isDraft: false };
 
@@ -117,13 +118,14 @@ const getPosts = async (req, res, next) => {
         title: true,
         slug: true,
         description: true,
+        content: true,
         status: true,
         type: true,
         voteCount: true,
         commentCount: true,
         isPinned: true,
         author: { select: { id: true, name: true, avatar: true } },
-        board: { select: { id: true, name: true, slug: true } },
+        board: { select: { id: true, name: true, slug: true, color: true } },
         tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
         createdAt: true,
         ...(req.user ? { votes: { where: { userId: req.user.userId }, select: { userId: true } } } : {}),
@@ -254,7 +256,7 @@ const createPost = async (req, res, next) => {
       },
       include: {
         author: { select: { id: true, name: true, avatar: true } },
-        board: { select: { id: true, name: true, slug: true } },
+        board: { select: { id: true, name: true, slug: true, color: true } },
         tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
       },
     });
@@ -268,6 +270,9 @@ const createPost = async (req, res, next) => {
         boardId,
       },
     });
+
+    // Auto-subscribe author to their own post
+    await prisma.subscription.create({ data: { userId, postId: post.id } });
 
     res.status(201).json({
       success: true,
@@ -350,12 +355,19 @@ const deletePost = async (req, res, next) => {
     }
 
     const isAuthor = post.authorId === userId;
-    const isBoardManager = role === 'admin' || !!(await prisma.boardMember.findUnique({
-      where: { userId_boardId: { userId, boardId: post.boardId } },
-    }));
+    const boardMember = role === 'admin'
+      ? null
+      : await prisma.boardMember.findUnique({
+          where: { userId_boardId: { userId, boardId: post.boardId } },
+        });
+    const canDeleteAsManager = !!boardMember && boardMember.canDeletePost;
+    const hasDeletePermission = role === 'admin' || isAuthor || canDeleteAsManager;
 
-    if (!isAuthor && !isBoardManager) {
-      return res.status(403).json({ success: false, message: 'You do not have permission to delete this post.' });
+    if (!hasDeletePermission) {
+      const message = boardMember && !boardMember.canDeletePost
+        ? 'Your access level does not allow deleting posts.'
+        : 'You do not have permission to delete this post.';
+      return res.status(403).json({ success: false, message });
     }
 
     await prisma.post.delete({ where: { id } });
@@ -421,6 +433,13 @@ const changePostStatus = async (req, res, next) => {
         postId: id,
         boardId: post.boardId,
       },
+    });
+
+    await notifySubscribers(id, {
+      type: 'status_changed',
+      title: 'Status updated',
+      message: `Post "${post.title}" status changed to ${status.replace(/_/g, ' ')}`,
+      excludeUserIds: [userId],
     });
 
     res.json({
@@ -600,7 +619,7 @@ const publishPost = async (req, res, next) => {
       data: { isDraft: false },
       include: {
         author: { select: { id: true, name: true, avatar: true } },
-        board: { select: { id: true, name: true, slug: true } },
+        board: { select: { id: true, name: true, slug: true, color: true } },
       },
     });
 

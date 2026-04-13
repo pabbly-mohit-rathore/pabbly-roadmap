@@ -24,7 +24,7 @@ const prisma = require('../config/database');
 // ============================================================
 const getActivityLog = async (req, res, next) => {
   try {
-    const { boardId, userId, action, limit = 30, offset = 0 } = req.query;
+    const { boardId, userId, action, postId, limit = 30, offset = 0 } = req.query;
     const { userId: currentUserId, role } = req.user;
 
     // Build where clause based on permissions
@@ -82,6 +82,11 @@ const getActivityLog = async (req, res, next) => {
     // Filter by userId if provided
     if (userId) {
       where.userId = userId;
+    }
+
+    // Filter by postId if provided
+    if (postId) {
+      where.postId = postId;
     }
 
     // Filter by action if provided

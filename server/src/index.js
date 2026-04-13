@@ -149,6 +149,14 @@ app.use('/api', reportingRoutes);
 // Team Member routes — /api/team-members/*, etc.
 app.use('/api', teamMemberRoutes);
 
+// Subscription routes
+const subscriptionRoutes = require('./routes/subscription.routes');
+app.use('/api/subscriptions', subscriptionRoutes);
+
+// Notification routes
+const notificationRoutes = require('./routes/notification.routes');
+app.use('/api/notifications', notificationRoutes);
+
 // ──────────────────────────────────────
 // ERROR HANDLER (sabse last mein lagta hai)
 // Koi bhi error aaye toh ye pakad leta hai

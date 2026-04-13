@@ -11,6 +11,7 @@
 // ============================================================
 
 const prisma = require('../config/database');
+const notifySubscribers = require('../utils/notifySubscribers');
 
 // ============================================================
 // 1. GET ALL COMMENTS FOR A POST
@@ -210,18 +211,20 @@ const addComment = async (req, res, next) => {
       },
     });
 
-    // Notification to post author (agar commenter != author)
-    if (userId !== post.authorId) {
-      await prisma.notification.create({
-        data: {
-          userId: post.authorId,
-          type: 'new_comment',
-          title: 'New comment on your post',
-          message: `${comment.author.name} commented on your post`,
-          postId,
-        },
-      });
-    }
+    // Notify all subscribers (excludes commenter + post author gets direct notification)
+    await notifySubscribers(postId, {
+      type: 'new_comment',
+      title: 'New comment',
+      message: `${comment.author.name} commented on "${post.title}"`,
+      excludeUserIds: [userId],
+    });
+
+    // Auto-subscribe commenter to the post
+    await prisma.subscription.upsert({
+      where: { userId_postId: { userId, postId } },
+      create: { userId, postId },
+      update: {},
+    });
 
     // Real-time broadcast — sabko turant dikhega
     const io = req.app.get('io');
