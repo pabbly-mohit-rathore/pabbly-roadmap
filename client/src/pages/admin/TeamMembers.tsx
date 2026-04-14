@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, X, Users, Share2, FolderInput, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Search, X, Users, Share2, FolderInput, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
@@ -82,7 +82,12 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   });
 
   useEffect(() => { fetchAll(); }, []);
-  useEffect(() => { if (triggerCreate && triggerCreate > 0) setShowAddModal(true); }, [triggerCreate]);
+  useEffect(() => {
+    if (triggerCreate && triggerCreate > 0) {
+      setFormData(prev => ({ ...prev, boardId: boards.length > 0 ? boards[0].id : '' }));
+      setShowAddModal(true);
+    }
+  }, [triggerCreate]);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -159,10 +164,15 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
     }
   };
 
+  const [accessFilter, setAccessFilter] = useState('all');
+
   const filteredMembers = members.filter(m => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return m.user.email.toLowerCase().includes(q) || m.user.name.toLowerCase().includes(q);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!m.user.email.toLowerCase().includes(q) && !m.user.name.toLowerCase().includes(q)) return false;
+    }
+    if (accessFilter !== 'all' && m.accessLevel !== accessFilter) return false;
+    return true;
   });
 
   const tmTotalPages = Math.ceil(filteredMembers.length / tmRowsPerPage);
@@ -187,8 +197,8 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
     return <LoadingBar />;
   }
 
-  const TM_HEADERS = ['S.No', 'Team Member Email', 'Board Shared', 'Permission Type', 'Actions'];
-  const SW_HEADERS = ['S.No', 'Shared On', 'Board Name', 'Permission Type', 'Actions'];
+  const TM_HEADERS = ['S.No', 'Team Member Email', 'Permission Type', 'Actions'];
+  const SW_HEADERS = ['S.No', 'Shared On', 'Permission Type', 'Actions'];
 
   return (
     <div className="space-y-6">
@@ -240,14 +250,10 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
               onChange={(e) => { setSearchQuery(e.target.value); setTmPage(0); }}
               className={`bg-transparent text-sm outline-none w-full ${d ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`} />
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-[#0C68E9] text-white rounded-lg hover:bg-[#0b5dd0] transition shrink-0"
-            style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}
-          >
-            <Plus className="w-5 h-5" />
-            Add Team Member
-          </button>
+
+          <CustomDropdown label="Access Type" value={accessFilter}
+            options={[{ value: 'all', label: 'All Access' }, { value: 'admin', label: 'Admin Access' }, { value: 'manager', label: 'Manager Access' }]}
+            onChange={(v) => { setAccessFilter(v); setTmPage(0); }} />
         </div>
       </div>
 
@@ -264,8 +270,8 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                   style={{
                     fontSize: '14px', color: d ? undefined : '#1C252E',
-                    textAlign: i === 4 ? 'right' as const : 'left' as const,
-                    width: i === 0 ? '80px' : i === 4 ? '70px' : undefined,
+                    textAlign: i === 3 ? 'right' as const : 'left' as const,
+                    width: i === 0 ? '80px' : i === 3 ? '70px' : undefined,
                   }}>
                   <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
                 </th>
@@ -282,12 +288,6 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                   <div>
                     <p className={`text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{member.user.name}</p>
                     <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>{member.user.email}</p>
-                  </div>
-                </td>
-                <td className={`px-4 ${tmDenseMode ? 'py-1.5' : 'py-4'}`}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: member.board.color }} />
-                    <span className={`text-sm ${d ? 'text-gray-300' : 'text-gray-700'}`}>{member.board.name}</span>
                   </div>
                 </td>
                 <td className={`px-4 ${tmDenseMode ? 'py-1.5' : 'py-4'}`}>
@@ -328,7 +328,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={5}>
+              <tr><td colSpan={4}>
                 <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
                     <Users className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
@@ -406,8 +406,8 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                   style={{
                     fontSize: '14px', color: d ? undefined : '#1C252E',
-                    textAlign: i === 4 ? 'right' as const : 'left' as const,
-                    width: i === 0 ? '80px' : i === 4 ? '160px' : undefined,
+                    textAlign: i === 3 ? 'right' as const : 'left' as const,
+                    width: i === 0 ? '80px' : i === 3 ? '160px' : undefined,
                   }}>
                   <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
                 </th>
@@ -422,12 +422,6 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 </td>
                 <td className={`px-4 ${swDenseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-300' : 'text-gray-600'}`}>
                   {new Date(item.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                </td>
-                <td className={`px-4 ${swDenseMode ? 'py-1.5' : 'py-4'}`}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.board.color }} />
-                    <span className={`text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{item.board.name}</span>
-                  </div>
                 </td>
                 <td className={`px-4 ${swDenseMode ? 'py-1.5' : 'py-4'}`}>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -456,7 +450,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={5}>
+              <tr><td colSpan={4}>
                 <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
                     <FolderInput className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
@@ -522,66 +516,46 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
 
       {/* Add Team Member Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full max-w-md ${d ? 'bg-gray-800' : 'bg-white'}`}>
-            <div className={`flex items-center justify-between p-6 border-b ${d ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
+            <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Add Team Member</h2>
-              <button onClick={() => setShowAddModal(false)} className={`p-1 rounded-lg ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+              <button onClick={() => setShowAddModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            <div className="p-6 space-y-5">
+            <div className="space-y-5" style={{ padding: '24px' }}>
+              {/* Email */}
               <div>
-                <label className={`block text-sm font-medium mb-1.5 ${d ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Pabbly Account Email Address
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="sample@example.com"
-                  className={`w-full px-4 py-2.5 rounded-lg border text-sm ${
-                    d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-                  }`}
-                />
-                <p className={`text-xs mt-1.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Ensure that the email address is already registered.
-                </p>
+                <div className="relative">
+                  <input type="email" value={formData.email} placeholder=" "
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    style={{ padding: '16.5px 14px' }}
+                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                    }`} />
+                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                    top-1/2 -translate-y-1/2
+                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Email Address *</span>
+                </div>
+                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Ensure that the email address is already registered.</p>
               </div>
 
-              <div>
-                <CustomDropdown
-                  label="Board"
-                  value={formData.boardId}
-                  options={[{ value: '', label: 'Select Board' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
-                  onChange={(v) => setFormData({ ...formData, boardId: v })}
-                  minWidth="100%"
-                  bgClass={d ? 'bg-gray-800' : 'bg-white'}
-                />
-                <p className={`text-xs mt-1.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Select the board to be shared.
-                </p>
-              </div>
-
-              <div>
-                <CustomDropdown
-                  label="Access Level"
-                  value={formData.accessLevel}
-                  options={[{ value: 'admin', label: 'Admin Access (full access)' }, { value: 'manager', label: 'Manager Access (limited access)' }]}
+              {/* Access Level */}
+              <div className="relative z-[60]">
+                <CustomDropdown label="Access Level *" value={formData.accessLevel}
+                  options={[{ value: 'admin', label: 'Admin Access' }, { value: 'manager', label: 'Manager Access' }]}
                   onChange={(v) => setFormData({ ...formData, accessLevel: v as 'admin' | 'manager' })}
-                  minWidth="100%"
-                  bgClass={d ? 'bg-gray-800' : 'bg-white'}
-                />
-                <p className={`text-xs mt-1.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Select the team member role: Admin Access (full access) or Manager Access (limited access).
-                </p>
+                  minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Admin (full) or Manager (limited).</p>
               </div>
 
-              <div className={`p-4 rounded-lg ${d ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+              {/* Points to Remember */}
+              <div className={`p-4 rounded-lg ${d ? 'bg-gray-800' : 'bg-gray-50'}`}>
                 <h3 className={`text-sm font-bold mb-2 ${d ? 'text-gray-200' : 'text-gray-800'}`}>Points To Remember</h3>
                 <ul className={`text-xs space-y-1.5 list-disc pl-4 ${d ? 'text-gray-400' : 'text-gray-600'}`}>
-                  <li>You can share multiple boards with team members.</li>
                   <li>'Admin Access' role has full access to all features for the shared board.</li>
                   <li>'Manager Access' can create and edit but cannot delete.</li>
                   <li>Team members will not have access to general settings or team member management.</li>
@@ -589,21 +563,10 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
               </div>
 
               <div className="flex gap-3 justify-end pt-2">
-                <LoadingButton
-                  loading={adding}
-                  onClick={handleAddMember}
-                  className="px-6 py-2.5 bg-[#0c68e9] text-white text-sm font-medium rounded-lg hover:bg-[#0b5dd0] transition-colors"
-                >
-                  Add
-                </LoadingButton>
-                <button
-                  onClick={() => { setShowAddModal(false); setFormData({ email: '', boardId: '', accessLevel: 'manager' }); }}
-                  className={`px-6 py-2.5 rounded-lg border text-sm font-medium ${
-                    d ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Cancel
-                </button>
+                <button onClick={() => { setShowAddModal(false); setFormData({ email: '', boardId: '', accessLevel: 'manager' }); }}
+                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
+                <LoadingButton onClick={handleAddMember} loading={adding}
+                  className="px-3 py-1.5 bg-[#009966] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Add Member</LoadingButton>
               </div>
             </div>
           </div>
@@ -612,48 +575,48 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
 
       {/* Update Access Modal */}
       {showUpdateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full max-w-sm ${d ? 'bg-gray-800' : 'bg-white'}`}>
-            <div className={`flex items-center justify-between p-6 border-b ${d ? 'border-gray-700' : 'border-gray-200'}`}>
-              <h2 className={`text-lg font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Update Access</h2>
-              <button onClick={() => setShowUpdateModal(null)} className={`p-1 rounded-lg ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
+            <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
+              <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Update Access</h2>
+              <button onClick={() => setShowUpdateModal(null)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <p className={`text-sm mb-1 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Team Member</p>
-                <p className={`text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{showUpdateModal.user.name}</p>
-                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>{showUpdateModal.user.email}</p>
-              </div>
-              <div>
-                <p className={`text-sm mb-1 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Board</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: showUpdateModal.board.color }} />
-                  <span className={`text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{showUpdateModal.board.name}</span>
+            <div className="space-y-5" style={{ padding: '24px' }}>
+              {/* Member Info (read-only) */}
+              <div className={`w-full rounded-lg border flex items-center ${d ? 'border-gray-700 bg-gray-800/60' : 'border-gray-300 bg-gray-50'}`} style={{ padding: '16.5px 14px' }}>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[11px] font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>Team Member</p>
+                  <p className={`text-sm font-medium truncate ${d ? 'text-white' : 'text-gray-900'}`}>{showUpdateModal.user.name} — {showUpdateModal.user.email}</p>
                 </div>
               </div>
-              <div>
-                <CustomDropdown
-                  label="Access Level"
-                  value={updateAccessLevel}
+
+              {/* Board Info (read-only) */}
+              <div className={`w-full rounded-lg border flex items-center ${d ? 'border-gray-700 bg-gray-800/60' : 'border-gray-300 bg-gray-50'}`} style={{ padding: '16.5px 14px' }}>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[11px] font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>Board</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: showUpdateModal.board.color }} />
+                    <p className={`text-sm font-medium truncate ${d ? 'text-white' : 'text-gray-900'}`}>{showUpdateModal.board.name}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Access Level */}
+              <div className="relative z-[60]">
+                <CustomDropdown label="Access Level *" value={updateAccessLevel}
                   options={[{ value: 'admin', label: 'Admin Access (full access)' }, { value: 'manager', label: 'Manager Access (limited access)' }]}
                   onChange={(v) => setUpdateAccessLevel(v as 'admin' | 'manager')}
-                  minWidth="100%"
-                  bgClass={d ? 'bg-gray-800' : 'bg-white'}
-                />
+                  minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Change the access level for this team member.</p>
               </div>
+
               <div className="flex gap-3 justify-end pt-2">
-                <LoadingButton loading={updatingAccess} onClick={handleUpdateAccess}
-                  className="px-5 py-2 bg-[#0c68e9] text-white text-sm font-medium rounded-lg hover:bg-[#0b5dd0] transition-colors">
-                  Update
-                </LoadingButton>
                 <button onClick={() => setShowUpdateModal(null)}
-                  className={`px-5 py-2 rounded-lg border text-sm font-medium ${
-                    d ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}>
-                  Cancel
-                </button>
+                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
+                <LoadingButton onClick={handleUpdateAccess} loading={updatingAccess}
+                  className="px-3 py-1.5 bg-[#009966] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update Access</LoadingButton>
               </div>
             </div>
           </div>

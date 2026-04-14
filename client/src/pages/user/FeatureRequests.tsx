@@ -12,6 +12,7 @@ import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import CommentEditor from '../../components/CommentEditor';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface Post {
   id: string;
@@ -31,7 +32,7 @@ interface Post {
   hasCommented?: boolean;
 }
 
-interface Board { id: string; name: string; }
+interface Board { id: string; name: string; description?: string; }
 
 const STATUS_CONFIG: Record<string, { dot: string; bg: string; text: string }> = {
   open: { dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-700' },
@@ -48,6 +49,16 @@ const TYPE_COLOR: Record<string, { bg: string; text: string }> = {
   bug: { bg: 'bg-red-50', text: 'text-red-700' },
   improvement: { bg: 'bg-amber-50', text: 'text-amber-700' },
   integration: { bg: 'bg-cyan-50', text: 'text-cyan-700' },
+};
+
+const stripImages = (html: string): string => {
+  return html
+    .replace(/<img\b[\s\S]*?(?:>|$)/gi, '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/data:image\/\S+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 export default function UserFeatureRequests() {
@@ -284,11 +295,15 @@ export default function UserFeatureRequests() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className={`text-2xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>All Posts</h1>
-            <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{posts.length} posts</p>
+            <h1 className={`text-2xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>
+              {boardFilter !== 'all' ? boards.find(b => b.id === boardFilter)?.name || 'All Board Posts' : 'All Board Posts'}
+            </h1>
+            <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+              {boardFilter !== 'all' ? (boards.find(b => b.id === boardFilter)?.description || `${posts.length} posts`) : 'Have something to say? Join the conversation.'}
+            </p>
           </div>
           <button onClick={() => { if (!isAuthenticated) { setShowLoginModal(true); return; } setShowCreateModal(true); setFormErrors({}); }}
-            className="flex items-center gap-2 bg-[#0C68E9] text-white rounded-lg hover:bg-[#0b5dd0] transition"
+            className="flex items-center gap-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition"
             style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
             <Plus className="w-5 h-5" /> Create Post
           </button>
@@ -357,7 +372,9 @@ export default function UserFeatureRequests() {
         {loading ? <LoadingBar /> : (
           <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             <div style={{ padding: '24px 24px 16px 24px' }}>
-              <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>All Posts</h2>
+              <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>
+                {boardFilter !== 'all' ? (boards.find(b => b.id === boardFilter)?.name || 'All Posts') : 'All Posts'}
+              </h2>
             </div>
             <div className={`border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} />
             {/* Type Tabs */}
@@ -441,9 +458,10 @@ export default function UserFeatureRequests() {
                           hoverTimeout.current = setTimeout(() => setHoverPost(null), 150);
                         }}>
                         <p className={`text-[15px] font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                        {(post.description || post.content) && (
-                          <p className={`text-[13px] truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description || post.content!.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()}</p>
-                        )}
+                        {(() => {
+                          const text = stripImages(post.content || post.description || '');
+                          return text ? <p className={`text-[13px] truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{text}</p> : null;
+                        })()}
                       </td>
                       {/* Status */}
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
@@ -453,9 +471,11 @@ export default function UserFeatureRequests() {
                       </td>
                       {/* Board */}
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} max-w-0`}>
-                        <span className={`block text-sm font-medium truncate ${d ? 'text-gray-300' : 'text-gray-700'}`} title={post.board?.name || ''}>
-                          {post.board?.name || '—'}
-                        </span>
+                        <Tooltip title={post.board?.name ? `Board Name : ${post.board.name}` : ''}>
+                          <span className={`block text-sm font-medium truncate ${d ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {post.board?.name || '—'}
+                          </span>
+                        </Tooltip>
                       </td>
                       {/* Type */}
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
@@ -583,14 +603,14 @@ export default function UserFeatureRequests() {
       {/* Create Post Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px' }}>
+          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px', maxHeight: 'calc(100vh - 32px)' }}>
             <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Create New Post</h2>
               <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div style={{ padding: '24px' }}>
+            <div className="overflow-y-auto" style={{ padding: '24px' }}>
               <div className="space-y-4">
                 {/* Title */}
                 <div>
@@ -660,7 +680,7 @@ export default function UserFeatureRequests() {
                   <button onClick={() => { setShowCreateModal(false); setFormErrors({}); }}
                     className={`px-5 py-2.5 text-sm font-medium rounded-lg border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancel</button>
                   <LoadingButton onClick={() => handleCreatePost()} loading={creating}
-                    className="px-5 py-2.5 bg-[#0C68E9] text-white text-sm font-semibold rounded-lg hover:bg-[#0b5dd0] transition-colors disabled:opacity-70">Publish Post</LoadingButton>
+                    className="px-5 py-2.5 bg-[#059669] text-white text-sm font-semibold rounded-lg hover:bg-[#047857] transition-colors disabled:opacity-70">Publish Post</LoadingButton>
                 </div>
               </div>
             </div>
@@ -671,14 +691,14 @@ export default function UserFeatureRequests() {
       {/* Edit Post Modal */}
       {showEditModal && editingPost && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px' }}>
+          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px', maxHeight: 'calc(100vh - 32px)' }}>
             <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Edit Post</h2>
               <button onClick={() => { setShowEditModal(false); setEditingPost(null); setEditContent(''); }} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div style={{ padding: '24px' }}>
+            <div className="overflow-y-auto" style={{ padding: '24px' }}>
               <div className="space-y-4">
                 {/* Title */}
                 <div>
@@ -780,12 +800,14 @@ export default function UserFeatureRequests() {
                 </span>
               </div>
               <p className={`text-sm font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{hp.title}</p>
-              {hp.content && (
+              {hp.content && (() => {
+                const text = stripImages(hp.content);
+                return text ? (
                 <div className={`text-xs leading-relaxed overflow-hidden ${d ? 'text-gray-400' : 'text-gray-500'}`}
                   style={{ display: '-webkit-box', WebkitLineClamp: 10, WebkitBoxOrient: 'vertical' as const }}>
-                  {hp.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}
-                </div>
-              )}
+                  {text}
+                </div>) : null;
+              })()}
             </div>
           </div>
         );

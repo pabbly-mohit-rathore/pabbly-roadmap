@@ -94,13 +94,13 @@ export default function Navbar() {
             <div className="flex items-center gap-1">
               {/* Toggle between Admin/User view */}
               {showViewToggle && (
-                <div className={`flex rounded-lg border overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div className="flex items-center gap-2">
                   <Link
                     to="/user/all-posts"
-                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border transition-colors duration-200 ${
                       !location.pathname.startsWith('/admin')
-                        ? 'bg-emerald-600 text-white'
-                        : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50'
+                        ? 'border-[#059669] text-[#059669]'
+                        : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-gray-500' : 'border-gray-200 text-gray-600 hover:border-gray-400'
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -108,10 +108,10 @@ export default function Navbar() {
                   </Link>
                   <Link
                     to="/admin/dashboard"
-                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border transition-colors duration-200 ${
                       location.pathname.startsWith('/admin')
-                        ? 'bg-emerald-600 text-white'
-                        : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50'
+                        ? 'border-[#059669] text-[#059669]'
+                        : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-gray-500' : 'border-gray-200 text-gray-600 hover:border-gray-400'
                     }`}
                   >
                     <Layout className="w-3.5 h-3.5" />
