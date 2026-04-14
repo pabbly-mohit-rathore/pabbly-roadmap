@@ -396,9 +396,9 @@ export default function UserFeatureRequests() {
                       style={{
                         fontSize: '14px', color: d ? undefined : '#1C252E',
                         textAlign: i === 3 ? 'center' as const : i === 6 ? 'right' as const : 'left' as const,
-                        width: i === 0 ? '90px' : i === 2 ? '200px' : i === 3 ? '140px' : i === 4 ? '250px' : i === 5 ? '210px' : i === 6 ? '100px' : undefined,
+                        width: i === 0 ? '90px' : i === 2 ? '140px' : i === 3 ? '280px' : i === 4 ? '250px' : i === 5 ? '150px' : i === 6 ? '100px' : undefined,
                       }}>
-                      <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 6 ? '24px' : '16px' }}>{h}</div>
+                      <div style={{ paddingLeft: i === 0 ? '12px' : '16px', paddingRight: i === 6 ? '24px' : '16px' }}>{h}</div>
                     </th>
                   ))}
                 </tr>
@@ -411,7 +411,7 @@ export default function UserFeatureRequests() {
                     <tr key={post.id} onClick={() => navigate(`/user/posts/${post.slug}`)}
                       className={`border-b border-dashed transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
                       {/* Upvote */}
-                      <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px', paddingRight: '12px', width: '90px' }}
+                      <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '12px', paddingRight: '12px', width: '90px' }}
                         onClick={(e) => { e.stopPropagation(); handleVote(post.id); }}>
                         <div className="inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden"
                           style={{
