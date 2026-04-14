@@ -29,6 +29,7 @@ const {
   togglePinPost,
   mergePosts,
   publishPost,
+  exportPostsCSV,
 } = require('../controllers/post.controller');
 
 // ──────────────────────────────────────
@@ -103,6 +104,10 @@ router.get('/', optionalAuth, getPosts);
 
 // POST /posts — Create new post (authenticated)
 router.post('/', authenticate, createPostRules, validate, createPost);
+
+// GET /posts/export — Streaming CSV export (optional auth).
+// MUST be registered before /:slug so "export" isn't captured as a slug.
+router.get('/export', optionalAuth, exportPostsCSV);
 
 // GET /posts/:slug — Get post detail (optional auth for vote status)
 router.get('/:slug', optionalAuth, slugParamRules, validate, getPostBySlug);

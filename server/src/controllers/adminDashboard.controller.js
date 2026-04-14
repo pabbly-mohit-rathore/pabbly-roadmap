@@ -8,6 +8,7 @@
 //   - Get board members overview
 // ============================================================
 
+const { Prisma } = require('@prisma/client');
 const prisma = require('../config/database');
 
 // ============================================================
@@ -103,13 +104,19 @@ const getTopVotedPosts = async (req, res, next) => {
     }
 
     const topPosts = await prisma.post.findMany({
-      where: { board: { createdById: userId } },
+      // Match the same visibility filter as /posts list (admin's own boards,
+      // excluding drafts) so Dashboard's Top Posts always stays in sync with All Posts.
+      where: {
+        isDraft: false,
+        board: { createdById: userId },
+      },
       select: {
         id: true,
         title: true,
         slug: true,
         description: true,
         status: true,
+        type: true,
         voteCount: true,
         createdAt: true,
         _count: {
@@ -130,8 +137,22 @@ const getTopVotedPosts = async (req, res, next) => {
       take: parseInt(limit) || 10,
     });
 
+    // Fetch truncated content previews via raw SQL so Dashboard row matches
+    // All Posts' subtitle behavior without pulling multi-MB base64 images.
+    let contentMap = {};
+    if (topPosts.length > 0) {
+      const ids = topPosts.map(p => p.id);
+      const rows = await prisma.$queryRaw`
+        SELECT id, LEFT(content, 500) AS content_preview
+        FROM "posts"
+        WHERE id IN (${Prisma.join(ids)})
+      `;
+      contentMap = Object.fromEntries(rows.map(r => [r.id, r.content_preview || '']));
+    }
+
     const postsWithVoteStatus = topPosts.map(post => ({
       ...post,
+      content: contentMap[post.id] || '',
       hasVoted: post.votes.length > 0,
       votes: undefined,
     }));

@@ -657,6 +657,142 @@ const publishPost = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// EXPORT POSTS AS CSV (streaming, cursor-paginated)
+// Scales to large datasets because posts are streamed to the
+// response in batches — no single giant in-memory array, no
+// multi-MB Prisma payloads.
+// ============================================================
+const exportPostsCSV = async (req, res, next) => {
+  try {
+    const { boardId, status, type, postIds } = req.query;
+
+    // Same board-access gates as getPosts so users only export what they can see.
+    const where = { isDraft: false };
+    if (req.user && req.user.role === 'admin') {
+      const adminBoards = await prisma.board.findMany({
+        where: { createdById: req.user.userId },
+        select: { id: true },
+      });
+      const adminBoardIds = adminBoards.map(b => b.id);
+      where.boardId = boardId ? (adminBoardIds.includes(boardId) ? boardId : 'none') : { in: adminBoardIds };
+    } else if (req.user) {
+      const userAccess = await prisma.userBoardAccess.findMany({
+        where: { userId: req.user.userId },
+        select: { boardId: true },
+      });
+      const userBoardIds = userAccess.map(a => a.boardId);
+      const publicBoards = await prisma.board.findMany({ where: { isPublic: true }, select: { id: true } });
+      const publicBoardIds = publicBoards.map(b => b.id);
+      const accessible = [...new Set([...userBoardIds, ...publicBoardIds])];
+      where.boardId = boardId ? (accessible.includes(boardId) ? boardId : 'none') : { in: accessible };
+    } else {
+      const publicBoards = await prisma.board.findMany({ where: { isPublic: true }, select: { id: true } });
+      const ids = publicBoards.map(b => b.id);
+      where.boardId = boardId ? (ids.includes(boardId) ? boardId : 'none') : { in: ids };
+    }
+
+    if (status) where.status = { in: status.split(',') };
+    if (type) where.type = type;
+    if (postIds) {
+      const idList = postIds.split(',').filter(Boolean);
+      if (idList.length > 0) where.id = { in: idList };
+    }
+
+    const date = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="posts_export_${date}.csv"`);
+    res.setHeader('Cache-Control', 'no-store');
+
+    // UTF-8 BOM so Excel opens the file with correct encoding.
+    res.write('\uFEFF');
+    const headers = ['Title', 'Status', 'Type', 'Board', 'Author', 'Votes', 'Comments', 'Created', 'Content'];
+    res.write(headers.join(',') + '\r\n');
+
+    const esc = (val) => {
+      const str = String(val == null ? '' : val);
+      return '"' + str.replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"';
+    };
+
+    const stripContent = (html) => {
+      if (!html) return '';
+      return html
+        .replace(/<img[^>]*>/gi, '[image]')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    // Cursor-paginate through the result set so we never hold everything
+    // in memory at once. 500 posts per batch is a good balance.
+    const BATCH_SIZE = 500;
+    let cursor = undefined;
+    let batchCount = 0;
+
+    while (true) {
+      // Step 1: grab metadata for the next batch (no content — cheap).
+      const batch = await prisma.post.findMany({
+        where,
+        take: BATCH_SIZE,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        orderBy: { id: 'asc' },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          type: true,
+          voteCount: true,
+          commentCount: true,
+          createdAt: true,
+          author: { select: { name: true } },
+          board: { select: { name: true } },
+        },
+      });
+      if (batch.length === 0) break;
+
+      // Step 2: pull truncated content for just this batch via raw SQL.
+      // LEFT(...) caps the size so posts with embedded base64 images
+      // don't explode the batch payload.
+      const batchIds = batch.map(p => p.id);
+      const contentRows = await prisma.$queryRaw`
+        SELECT id, LEFT(content, 2000) AS content
+        FROM "posts"
+        WHERE id IN (${Prisma.join(batchIds)})
+      `;
+      const contentMap = Object.fromEntries(contentRows.map(r => [r.id, r.content || '']));
+
+      for (const p of batch) {
+        const row = [
+          esc(p.title || ''),
+          esc(p.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())),
+          esc(p.type.charAt(0).toUpperCase() + p.type.slice(1)),
+          esc(p.board?.name || ''),
+          esc(p.author?.name || ''),
+          p.voteCount ?? 0,
+          p.commentCount ?? 0,
+          esc(new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
+          esc(stripContent(contentMap[p.id])),
+        ].join(',');
+        res.write(row + '\r\n');
+      }
+
+      batchCount++;
+      if (batch.length < BATCH_SIZE) break;
+      cursor = batch[batch.length - 1].id;
+      // Safety cap — 200 batches * 500 = 100,000 posts max per request.
+      if (batchCount >= 200) break;
+    }
+
+    res.end();
+  } catch (error) {
+    // If we've already started writing the CSV body, we can't send JSON —
+    // just abort the stream so the client sees a truncated download.
+    if (res.headersSent) { try { res.end(); } catch {} return; }
+    next(error);
+  }
+};
+
 module.exports = {
   getPosts,
   getPostBySlug,
@@ -668,4 +804,5 @@ module.exports = {
   togglePinPost,
   mergePosts,
   publishPost,
+  exportPostsCSV,
 };
