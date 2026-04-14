@@ -12,6 +12,7 @@
 //   - Merge duplicate posts (admin/manager)
 // ============================================================
 
+const { Prisma } = require('@prisma/client');
 const prisma = require('../config/database');
 const notifySubscribers = require('../utils/notifySubscribers');
 
@@ -118,7 +119,6 @@ const getPosts = async (req, res, next) => {
         title: true,
         slug: true,
         description: true,
-        content: true,
         status: true,
         type: true,
         voteCount: true,
@@ -128,14 +128,32 @@ const getPosts = async (req, res, next) => {
         board: { select: { id: true, name: true, slug: true, color: true } },
         tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
         createdAt: true,
-        ...(req.user ? { votes: { where: { userId: req.user.userId }, select: { userId: true } } } : {}),
+        ...(req.user ? {
+          votes: { where: { userId: req.user.userId }, select: { userId: true }, take: 1 },
+          comments: { where: { authorId: req.user.userId }, select: { id: true }, take: 1 },
+        } : {}),
       },
     });
+    // Fetch truncated content previews via raw SQL so we get a short snippet
+    // without pulling multi-MB base64 images out of the database.
+    let contentMap = {};
+    if (posts.length > 0) {
+      const ids = posts.map(p => p.id);
+      const rows = await prisma.$queryRaw`
+        SELECT id, LEFT(content, 500) AS content_preview
+        FROM "posts"
+        WHERE id IN (${Prisma.join(ids)})
+      `;
+      contentMap = Object.fromEntries(rows.map(r => [r.id, r.content_preview || '']));
+    }
 
     const postsWithVoteStatus = posts.map(post => ({
       ...post,
+      content: contentMap[post.id] || '',
       hasVoted: req.user ? (post.votes?.length > 0) : false,
+      hasCommented: req.user ? (post.comments?.length > 0) : false,
       votes: undefined,
+      comments: undefined,
     }));
 
     res.json({
