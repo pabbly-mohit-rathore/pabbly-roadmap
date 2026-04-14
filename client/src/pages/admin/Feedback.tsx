@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, X, Edit2, Trash2, Search, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, FileText, Clock, Eye, Zap, Rocket, XCircle, PauseCircle, MessageSquare, Bug, Puzzle, Inbox, ArrowUpRight, TrendingUp, CheckCircle2, Download } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
+import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
@@ -25,9 +26,11 @@ interface Post {
   priority: string;
   priorityScore: number;
   createdAt: string;
-  author: { name: string; avatar?: string };
+  author: { id?: string; name: string; avatar?: string };
   board?: { name: string; color?: string };
   tags?: Array<{ id: string; name: string; color: string }>;
+  hasVoted?: boolean;
+  hasCommented?: boolean;
 }
 
 interface Board {
@@ -73,6 +76,7 @@ const EMPTY_TYPE_CONFIG: Record<string, { icon: React.ElementType; title: string
 export default function AdminFeedback() {
   const theme = useThemeStore((state) => state.theme);
   const { init, toggle, votes } = useVoteStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [animatingPosts, setAnimatingPosts] = useState<Set<string>>(new Set());
   const [posts, setPosts] = useState<Post[]>([]);
@@ -83,6 +87,7 @@ export default function AdminFeedback() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [boardFilter, setBoardFilter] = useState('all');
+  const [activityFilter, setActivityFilter] = useState<'all' | 'my-posts' | 'my-voted' | 'my-commented'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -109,7 +114,8 @@ export default function AdminFeedback() {
   const [hoverPost, setHoverPost] = useState<{ post: Post; x: number; y: number; rowTop: number } | null>(null);
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
-  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'csv'>('csv');
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -123,12 +129,34 @@ export default function AdminFeedback() {
   });
 
   const isInitialLoad = useRef(true);
+  // Prefetched full content cache, so edit opens instantly.
+  const contentCacheRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
     Promise.all([fetchBoards(), fetchPosts(isInitialLoad.current)]);
     isInitialLoad.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, boardFilter]);
+
+  // Prefetch full content in the background after posts load so Edit is instant.
+  useEffect(() => {
+    if (posts.length === 0) return;
+    const toFetch = posts.filter(p => !(p.id in contentCacheRef.current));
+    if (toFetch.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      for (const p of toFetch) {
+        if (cancelled) return;
+        try {
+          const res = await api.get(`/posts/by-id/${p.id}`);
+          if (res.data.success) {
+            contentCacheRef.current[p.id] = res.data.data.post.content || '';
+          }
+        } catch { /* ignore — will fall back to on-demand fetch */ }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [posts]);
 
   useEffect(() => {
     const el = tabsRef.current[typeFilter];
@@ -171,18 +199,22 @@ export default function AdminFeedback() {
         setPosts(fetchedPosts);
         fetchedPosts.forEach((p: Post & { hasVoted?: boolean }) => init(p.id, p.voteCount ?? 0, p.hasVoted ?? false));
       }
-    } catch {
-      console.error('Error fetching posts');
+    } catch (err) {
+      console.error('Error fetching posts', err);
     } finally {
       setLoading(false);
       setTableLoading(false);
     }
   };
 
-  const filteredPosts = posts.filter((post) =>
-    post.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-    (typeFilter === 'all' || post.type === typeFilter)
-  );
+  const filteredPosts = posts.filter((post) => {
+    if (!post.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (typeFilter !== 'all' && post.type !== typeFilter) return false;
+    if (activityFilter === 'my-posts' && post.author?.id !== user?.id) return false;
+    if (activityFilter === 'my-voted' && !post.hasVoted) return false;
+    if (activityFilter === 'my-commented' && !post.hasCommented) return false;
+    return true;
+  });
 
   const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (sortBy === 'most-voted') return (b.voteCount ?? 0) - (a.voteCount ?? 0);
@@ -227,16 +259,20 @@ export default function AdminFeedback() {
 
   const handleUpdatePost = async () => {
     if (!selectedPost) return;
+    if (!formData.title.trim()) { toast.error('Title is required'); return; }
+    const contentText = (postContent || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (contentText.length < 10) { toast.error('Content must be at least 10 characters'); return; }
     setUpdating(true);
     try {
       const response = await api.put(`/posts/${selectedPost.id}`, {
         title: formData.title,
         type: formData.type,
-        priority: formData.priority,
+        content: postContent,
       });
       if (response.data.success) {
         setShowEditModal(false);
         setSelectedPost(null);
+        setPostContent('');
         fetchPosts();
         toast.success('Post updated');
       }
@@ -268,10 +304,25 @@ export default function AdminFeedback() {
     setTimeout(() => setAnimatingPosts(prev => { const next = new Set(prev); next.delete(postId); return next; }), 400);
   };
 
-  const openEditModal = (post: Post) => {
+  const openEditModal = async (post: Post) => {
     setSelectedPost(post);
     setFormData({ title: post.title, type: post.type, boardId: '', priority: post.priority });
+    // Prefer cached content (prefetched after list load) for instant edit.
+    const cached = contentCacheRef.current[post.id];
+    setPostContent(cached ?? '');
     setShowEditModal(true);
+    if (cached !== undefined) return;
+    // Fallback: fetch on demand if prefetch hasn't reached this post yet.
+    try {
+      const res = await api.get(`/posts/by-id/${post.id}`);
+      if (res.data.success) {
+        const content = res.data.data.post.content || '';
+        contentCacheRef.current[post.id] = content;
+        setPostContent(content);
+      }
+    } catch {
+      toast.error('Failed to load post content');
+    }
   };
 
   const toggleSelectPost = (postId: string) => {
@@ -314,7 +365,7 @@ export default function AdminFeedback() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success(`Exported ${postsToExport.length} posts`);
-    setShowExportMenu(false);
+    setShowExportDialog(false);
     setSelectedPosts(new Set());
   };
 
@@ -323,10 +374,11 @@ export default function AdminFeedback() {
     setStatusFilter('all');
     setTypeFilter('all');
     setBoardFilter('all');
+    setActivityFilter('all');
     setPage(0);
   };
 
-  const hasFilters = statusFilter !== 'all' || typeFilter !== 'all' || boardFilter !== 'all';
+  const hasFilters = statusFilter !== 'all' || typeFilter !== 'all' || boardFilter !== 'all' || activityFilter !== 'all';
 
   const d = theme === 'dark';
 
@@ -340,7 +392,7 @@ export default function AdminFeedback() {
           <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{sortedPosts.length} posts</p>
         </div>
         <button onClick={() => { setShowCreateModal(true); setFormErrors({}); }}
-          className="flex items-center gap-2 bg-[#0C68E9] text-white rounded-lg hover:bg-[#0b5dd0] transition" style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+          className="flex items-center gap-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition" style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
           <Plus className="w-5 h-5" /> Create Post
         </button>
       </div>
@@ -365,8 +417,17 @@ export default function AdminFeedback() {
             options={[{ value: 'all', label: 'All Boards' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
             onChange={(v) => { setBoardFilter(v); setPage(0); }} />
 
+          <CustomDropdown label="Show" value={activityFilter}
+            options={[
+              { value: 'all', label: 'All Posts' },
+              { value: 'my-posts', label: 'My Posts' },
+              { value: 'my-voted', label: 'My Voted Posts' },
+              { value: 'my-commented', label: 'My Commented Posts' },
+            ]}
+            onChange={(v) => { setActivityFilter(v as typeof activityFilter); setPage(0); }} />
+
           {hasFilters && (
-            <button onClick={clearFilters} className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors" style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+            <button onClick={clearFilters} className="flex items-center gap-2 font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors" style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
               <X className="w-5 h-5" /> Clear Filters
             </button>
           )}
@@ -409,38 +470,12 @@ export default function AdminFeedback() {
             <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>
               {statusFilter === 'all' ? 'All Posts' : `${statusFilter.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Posts`}
             </h2>
-            <div className="relative">
-              <button onClick={() => {
-                if (selectedPosts.size > 0) {
-                  exportPostsCSV(sortedPosts.filter(p => selectedPosts.has(p.id)));
-                } else {
-                  setShowExportMenu(!showExportMenu);
-                }
-              }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                  d ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}>
-                <Download className="w-4 h-4" /> Export{selectedPosts.size > 0 ? ` (${selectedPosts.size})` : ''}
-              </button>
-              {showExportMenu && selectedPosts.size === 0 && (
-                <div className={`absolute right-0 top-full mt-2 rounded-xl border shadow-lg z-50 p-1.5 ${d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '240px' }}>
-                  {boardFilter !== 'all' ? (() => {
-                    const activeBoard = boards.find(b => b.id === boardFilter);
-                    return (
-                      <button onClick={() => exportPostsCSV(sortedPosts)}
-                        className={`w-full px-3 py-2 text-left text-[14px] font-medium rounded-lg transition-colors ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
-                        Export "{activeBoard?.name}" ({sortedPosts.length} posts)
-                      </button>
-                    );
-                  })() : (
-                    <button onClick={() => exportPostsCSV(sortedPosts)}
-                      className={`w-full px-3 py-2 text-left text-[14px] font-medium rounded-lg transition-colors ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
-                      Export All Posts ({sortedPosts.length})
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+            <button onClick={() => setShowExportDialog(true)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                d ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}>
+              <Download className="w-4 h-4" /> Export{selectedPosts.size > 0 ? ` (${selectedPosts.size})` : ''}
+            </button>
           </div>
           {/* Title Divider */}
           <div className={`border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} />
@@ -593,8 +628,8 @@ export default function AdminFeedback() {
                           hoverTimeout.current = setTimeout(() => setHoverPost(null), 150);
                         }}>
                         <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                        {post.content && (
-                          <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ maxWidth: '85%' }}>{post.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}</p>
+                        {(post.description || post.content) && (
+                          <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ maxWidth: '85%' }}>{post.description || post.content!.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()}</p>
                         )}
                       </td>
 
@@ -754,7 +789,71 @@ export default function AdminFeedback() {
 
       {/* Close menu/dropdown on click outside */}
       {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
-      {showExportMenu && <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />}
+
+      {/* Export Dialog */}
+      {showExportDialog && (() => {
+        const hasSelection = selectedPosts.size > 0;
+        const postsForExport = hasSelection ? sortedPosts.filter(p => selectedPosts.has(p.id)) : sortedPosts;
+        const activeBoard = boardFilter !== 'all' ? boards.find(b => b.id === boardFilter) : null;
+        const scopeTitle = activeBoard
+          ? (hasSelection ? `${activeBoard.name} — Selected Posts` : `${activeBoard.name} — All Posts`)
+          : (hasSelection ? 'All Boards — Selected Posts' : 'All Boards — All Posts');
+        const scopeSubtitle = activeBoard
+          ? (hasSelection
+              ? `${postsForExport.length} post${postsForExport.length === 1 ? '' : 's'} selected from "${activeBoard.name}"`
+              : `${postsForExport.length} post${postsForExport.length === 1 ? '' : 's'} in "${activeBoard.name}"`)
+          : (hasSelection
+              ? `${postsForExport.length} post${postsForExport.length === 1 ? '' : 's'} selected across all boards`
+              : `${postsForExport.length} post${postsForExport.length === 1 ? '' : 's'} across all boards`);
+        return (
+          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100] p-4" onClick={() => setShowExportDialog(false)}>
+            <div onClick={(e) => e.stopPropagation()} className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '520px' }}>
+              {/* Header */}
+              <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
+                <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Export Posts</h2>
+                <button onClick={() => setShowExportDialog(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '20px 24px' }}>
+                {/* Export Format */}
+                <p className={`text-sm font-semibold mb-4 ${d ? 'text-gray-200' : 'text-gray-900'}`}>Export Format</p>
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                  <input type="radio" name="export-format" checked={exportFormat === 'csv'} onChange={() => setExportFormat('csv')} className="w-4 h-4 accent-blue-600 cursor-pointer" />
+                  <span className={`text-sm ${d ? 'text-gray-100' : 'text-gray-900'}`}>CSV Spreadsheet</span>
+                </label>
+
+                {/* Scope Info Card */}
+                <div className={`mt-5 p-4 rounded-lg ${d ? 'bg-emerald-900/25' : 'bg-emerald-50'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${d ? 'bg-emerald-800/40' : 'bg-emerald-100'}`}>
+                      <Download className={`w-4 h-4 ${d ? 'text-emerald-300' : 'text-emerald-700'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-semibold ${d ? 'text-emerald-200' : 'text-emerald-900'}`}>{scopeTitle}</p>
+                      <p className={`text-xs mt-1 ${d ? 'text-emerald-300/80' : 'text-emerald-700'}`}>{scopeSubtitle}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className={`flex justify-end gap-2 border-t ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '16px 24px' }}>
+                <button onClick={() => setShowExportDialog(false)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+                  Cancel
+                </button>
+                <button onClick={() => exportPostsCSV(postsForExport)} disabled={postsForExport.length === 0}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#0c68e9] text-white hover:bg-[#0b5dd0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                  <Download className="w-4 h-4" /> Export
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
@@ -768,7 +867,7 @@ export default function AdminFeedback() {
 
       {/* Create Post Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px' }}>
             {/* Sticky Header */}
             <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
@@ -859,49 +958,78 @@ export default function AdminFeedback() {
 
       {/* Edit Post Modal */}
       {showEditModal && selectedPost && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
-            <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px' }}>
+            {/* Sticky Header */}
+            <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Edit Post</h2>
-              <button onClick={() => { setShowEditModal(false); setSelectedPost(null); }} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
+              <button onClick={() => { setShowEditModal(false); setSelectedPost(null); setPostContent(''); }} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-5" style={{ padding: '24px' }}>
-              <div>
-                <div className="relative">
-                  <input type="text" value={formData.title} placeholder=" "
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    style={{ padding: '16.5px 14px' }}
-                    className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
-                      d ? 'border-gray-700 bg-gray-800 text-white hover:border-gray-500 focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 hover:border-gray-400 focus:border-gray-400'
-                    }`} />
-                  <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
-                    top-1/2 -translate-y-1/2
-                    peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
-                    peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
-                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Title</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            {/* Body */}
+            <div style={{ padding: '24px' }}>
+              <div className="space-y-4">
+                {/* Title */}
                 <div>
-                  <CustomDropdown label="Type" value={formData.type}
-                    options={[{ value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
-                    onChange={(v) => setFormData({ ...formData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} />
-                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Select the type of post.</p>
+                  <div className="relative">
+                    <input type="text" value={formData.title} placeholder=" "
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      style={{ padding: '16.5px 14px' }}
+                      className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                        d ? 'border-gray-700 bg-gray-800 text-white hover:border-gray-500 focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 hover:border-gray-400 focus:border-gray-400'
+                      }`} />
+                    <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                      top-1/2 -translate-y-1/2
+                      peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                      peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                      ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Title *</span>
+                  </div>
+                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Enter the title for your post.</p>
                 </div>
+
+                {/* Rich Text Editor */}
                 <div>
-                  <CustomDropdown label="Priority" value={formData.priority}
-                    options={[{ value: 'none', label: 'None' }, { value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' }]}
-                    onChange={(v) => setFormData({ ...formData, priority: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} />
-                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Set the priority level.</p>
+                  <CommentEditor
+                    key={selectedPost.id}
+                    initialContent={postContent}
+                    onSubmit={() => handleUpdatePost()}
+                    placeholder="Write your post content here..."
+                    buttonLabel="Save"
+                    submitting={updating}
+                    hideButton
+                    maxEditorHeight="450px"
+                    onContentChange={(html) => setPostContent(html)}
+                  />
+                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Minimum 10 characters required.</p>
                 </div>
-              </div>
-              <div className="flex gap-3 justify-end pt-2">
-                <button onClick={() => { setShowEditModal(false); setSelectedPost(null); }}
-                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
-                <LoadingButton loading={updating} onClick={handleUpdatePost}
-                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Save</LoadingButton>
+
+                {/* Board (read-only) & Type */}
+                <div className="flex gap-4 relative z-[60]" style={{ marginTop: '20px' }}>
+                  <div className="flex-1">
+                    <div className={`w-full rounded-lg border flex items-center ${d ? 'border-gray-700 bg-gray-800/60' : 'border-gray-300 bg-gray-50'}`} style={{ padding: '16.5px 14px', height: '56px' }}>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[11px] font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>Board</p>
+                        <p className={`text-sm font-medium truncate ${d ? 'text-gray-300' : 'text-gray-700'}`}>{selectedPost.board?.name || '—'}</p>
+                      </div>
+                    </div>
+                    <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Board cannot be changed after creation.</p>
+                  </div>
+                  <div className="flex-1">
+                    <CustomDropdown label="Type *" value={formData.type}
+                      options={[{ value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
+                      onChange={(v) => setFormData({ ...formData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                    <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Select the type of post.</p>
+                  </div>
+                </div>
+
+                {/* Cancel + Save */}
+                <div className="flex gap-3 justify-end pt-2">
+                  <button onClick={() => { setShowEditModal(false); setSelectedPost(null); setPostContent(''); }}
+                    className={`px-5 py-2.5 text-sm font-medium rounded-lg border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancel</button>
+                  <LoadingButton loading={updating} onClick={handleUpdatePost}
+                    className="px-5 py-2.5 bg-[#0C68E9] text-white text-sm font-semibold rounded-lg hover:bg-[#0b5dd0] transition-colors disabled:opacity-70">Save Changes</LoadingButton>
+                </div>
               </div>
             </div>
           </div>

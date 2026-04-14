@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { SquareCheckBig, Shield, User } from 'lucide-react';
+import { SquareCheckBig } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
@@ -11,21 +11,24 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loginAs, setLoginAs] = useState<'admin' | 'user'>('user');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
-  // Check if user came via invite link
-  const hasInviteAccess = !!localStorage.getItem('invite_token');
+  const redirectAfterLogin = (user: { role: string }) => {
+    if (user.role === 'admin') {
+      navigate('/admin/dashboard');
+      return;
+    }
+    const redirectUrl = localStorage.getItem('loginRedirect');
+    if (redirectUrl) localStorage.removeItem('loginRedirect');
+    navigate(redirectUrl || '/user/all-posts');
+  };
 
   const handleGoogleSuccess = async (accessToken: string) => {
     setLoading(true);
     try {
-      const res = await api.post('/auth/google', {
-        accessToken,
-        role: loginAs,
-      });
+      const res = await api.post('/auth/google', { accessToken, role: 'user' });
       const { user, accessToken: jwtToken, refreshToken } = res.data.data;
       login(user, jwtToken, refreshToken);
       toast.success('Login successful!');
@@ -37,15 +40,7 @@ export default function LoginPage() {
       }
       Object.keys(localStorage).filter(key => key.startsWith('invite_')).forEach(key => localStorage.removeItem(key));
 
-      if (loginAs === 'admin' && user.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else if (loginAs === 'admin' && user.role !== 'admin') {
-        toast.error('This account does not have admin access.');
-      } else {
-        const redirectUrl = localStorage.getItem('loginRedirect');
-        if (redirectUrl) localStorage.removeItem('loginRedirect');
-        navigate(redirectUrl || '/user/all-posts');
-      }
+      redirectAfterLogin(user);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       toast.error(error.response?.data?.message || 'Google login failed.');
@@ -63,37 +58,20 @@ export default function LoginPage() {
       const res = await api.post('/auth/login', { email, password });
       const { user, accessToken, refreshToken } = res.data.data;
 
-      // Token aur user save karo (localStorage + Zustand)
       login(user, accessToken, refreshToken);
-
       toast.success('Login successful!');
 
-      // Redeem any pending invite token
       const pendingInvite = localStorage.getItem('invite_token');
       if (pendingInvite) {
         try { await api.post('/invite-links/redeem', { token: pendingInvite }); } catch { /* silent */ }
         localStorage.removeItem('invite_token');
       }
 
-      // Clear old invite data
       Object.keys(localStorage)
         .filter(key => key.startsWith('invite_'))
         .forEach(key => localStorage.removeItem(key));
 
-      const redirectUrl = localStorage.getItem('loginRedirect');
-
-      if (loginAs === 'admin' && user.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else if (loginAs === 'admin' && user.role !== 'admin') {
-        toast.error('This account does not have admin access.');
-        return;
-      } else {
-        const finalUrl = redirectUrl || '/user/all-posts';
-        if (redirectUrl) {
-          localStorage.removeItem('loginRedirect');
-        }
-        navigate(finalUrl);
-      }
+      redirectAfterLogin(user);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       const message = error.response?.data?.message || 'Login failed.';
@@ -121,36 +99,6 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 text-center mb-6">
             Sign in to continue to Pabbly Roadmap
           </p>
-
-          {/* Role Selector - hide when user came via invite link */}
-          {!hasInviteAccess && (
-            <div className="flex bg-gray-100 rounded-2xl p-1 mb-6">
-              <button
-                type="button"
-                onClick={() => setLoginAs('user')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  loginAs === 'user'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <User className="w-4 h-4" />
-                Login as User
-              </button>
-              <button
-                type="button"
-                onClick={() => setLoginAs('admin')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  loginAs === 'admin'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Shield className="w-4 h-4" />
-                Login as Admin
-              </button>
-            </div>
-          )}
 
           {/* Google Button + Divider — only when GOOGLE_CLIENT_ID is set */}
           {GOOGLE_CLIENT_ID && (

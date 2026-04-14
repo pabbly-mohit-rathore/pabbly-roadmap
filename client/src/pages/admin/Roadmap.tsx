@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, ArrowUpRight, MessageSquare } from 'lucide-react';
+import { Search, X, ArrowUpRight } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
@@ -18,6 +18,7 @@ interface Post {
   author: { name: string };
   board: { name: string };
   description?: string;
+  content?: string;
   tags?: { tag: { id: string; name: string; color: string } }[];
   _count: {
     votes: number;
@@ -32,12 +33,6 @@ interface RoadmapData {
 interface Board {
   id: string;
   name: string;
-}
-
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
 }
 
 const STATUS_ORDER = ['under_review', 'planned', 'in_progress', 'live', 'hold'];
@@ -58,13 +53,11 @@ export default function AdminRoadmap() {
   const [loading, setLoading] = useState(true);
   const [selectedBoard, setSelectedBoard] = useState('');
   const [boards, setBoards] = useState<Board[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
   const [draggedPost, setDraggedPost] = useState<Post | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [filterTag, setFilterTag] = useState('');
   const [columnSearches, setColumnSearches] = useState<Record<string, string>>({});
 
   const initialized = useRef(false);
@@ -104,16 +97,12 @@ export default function AdminRoadmap() {
       setLoading(true);
       const params: any = {};
       if (boardId) params.boardId = boardId;
-      const [roadmapRes, tagsRes] = await Promise.all([
-        api.get('/roadmap', { params }),
-        boardId ? api.get('/tags', { params: { boardId } }) : Promise.resolve({ data: { success: true, data: { tags: [] } } }),
-      ]);
+      const roadmapRes = await api.get('/roadmap', { params });
       if (roadmapRes.data.success) {
         const rm = roadmapRes.data.data.roadmap;
         setRoadmap(rm);
         Object.values(rm).flat().forEach((p: any) => initVote(p.id, p.voteCount ?? p._count?.votes ?? 0, p.hasVoted ?? false));
       }
-      if (tagsRes.data.success) setTags(tagsRes.data.data.tags || []);
     } catch (error) {
       console.error('Error fetching roadmap:', error);
     } finally {
@@ -167,11 +156,10 @@ export default function AdminRoadmap() {
   const clearFilters = () => {
     setSearchQuery('');
     setFilterType('');
-    setFilterTag('');
     setColumnSearches({});
   };
 
-  const hasActiveFilters = searchQuery || filterType || filterTag;
+  const hasActiveFilters = searchQuery || filterType;
 
   // Filter posts for a given status
   const getFilteredPosts = (status: string): Post[] => {
@@ -186,11 +174,6 @@ export default function AdminRoadmap() {
     // Type filter
     if (filterType) {
       posts = posts.filter(p => p.type === filterType);
-    }
-
-    // Tag filter
-    if (filterTag) {
-      posts = posts.filter(p => p.tags?.some(t => t.tag.id === filterTag));
     }
 
     // Column-level search
@@ -264,17 +247,6 @@ export default function AdminRoadmap() {
               { value: 'integration', label: 'Integration' },
             ]}
             onChange={(v) => setFilterType(v)}
-          />
-
-          {/* Tag Filter */}
-          <CustomDropdown
-            label="Tag"
-            value={filterTag}
-            options={[
-              { value: '', label: 'All Tags' },
-              ...tags.map((t) => ({ value: t.id, label: t.name })),
-            ]}
-            onChange={(v) => setFilterTag(v)}
           />
 
           {/* Clear Filters */}
@@ -381,7 +353,7 @@ export default function AdminRoadmap() {
                           }`}
                         >
                           {/* Top: Vote + Title/Description */}
-                          <div className="flex gap-3">
+                          <div className="flex items-start gap-3">
                             <div onClick={(e) => { e.stopPropagation(); toggleVote(post.id); }}
                               className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold shrink-0 cursor-pointer transition-all ${
                                 votes[post.id]?.voted
@@ -391,33 +363,50 @@ export default function AdminRoadmap() {
                               <ArrowUpRight className="w-3.5 h-3.5 rotate-[-45deg]" />
                               <span>{votes[post.id]?.count ?? post._count?.votes ?? 0}</span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-semibold line-clamp-2 leading-snug ${
-                                theme === 'dark' ? 'text-white' : 'text-gray-900'
-                              }`}>{post.title}</p>
-                              {post.description && (
-                                <p className={`text-xs line-clamp-1 mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Divider */}
-                          <div className={`border-t border-dashed my-3 ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`} />
-
-                          {/* Footer: Date left, Author + Comments right */}
-                          <div className="flex items-center justify-between">
-                            <span className={`text-xs font-semibold ${config.textColor}`}>
-                              {new Date(post.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
-                            </span>
-                            <div className="flex items-center gap-2.5">
-                              <div className={`flex items-center gap-1 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                <MessageSquare className="w-3.5 h-3.5" />
-                                <span>{post._count?.comments || 0}</span>
+                            {(() => {
+                              const subtitle = (post.description && post.description.trim())
+                                || (post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '');
+                              return (
+                            <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: '62px' }}>
+                              <div className={!subtitle ? 'flex-1 flex items-center' : ''}>
+                                <div className="w-full">
+                                  <p className={`text-sm font-semibold line-clamp-2 leading-snug ${
+                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                  }`}>{post.title}</p>
+                                  {subtitle && (
+                                    <p className={`text-xs line-clamp-1 mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
+                                  )}
+                                </div>
                               </div>
-                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[9px] font-bold">
-                                {post.author?.name?.charAt(0)?.toUpperCase() || '?'}
+                              {/* Board + Type chips */}
+                              <div className="flex items-center gap-1.5 flex-wrap mt-auto pt-2">
+                                {post.board?.name && (
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                    theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {post.board.name}
+                                  </span>
+                                )}
+                                {(() => {
+                                  const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+                                    feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
+                                    bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
+                                    improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
+                                    integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
+                                  };
+                                  const ts = typeStyles[post.type] || typeStyles.feature;
+                                  return (
+                                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                      theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`
+                                    }`}>
+                                      {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             </div>
+                            );
+                            })()}
                           </div>
                         </div>
                       ))

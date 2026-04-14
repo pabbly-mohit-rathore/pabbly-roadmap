@@ -15,6 +15,9 @@ interface Post {
   commentCount: number;
   createdAt: string;
   author: { name: string };
+  description?: string;
+  content?: string;
+  board?: { name: string };
 }
 
 interface Board {
@@ -236,58 +239,53 @@ export default function RoadmapPage() {
                     theme === 'dark' ? 'bg-gray-850' : 'bg-[#f5f5f5]'
                   }`}>
                     {filteredPosts.length > 0 ? (
-                      filteredPosts.map((post) => (
+                      filteredPosts.map((post) => {
+                        const subtitle = (post.description && post.description.trim())
+                          || (post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '');
+                        const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+                          feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
+                          bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
+                          improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
+                          integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
+                        };
+                        const ts = typeStyles[post.type] || typeStyles.feature;
+                        return (
                         <div
                           key={post.id}
                           onClick={() => handlePostClick(post)}
-                          className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                          className={`p-3.5 rounded-lg border cursor-pointer transition-all hover:shadow-md flex flex-col ${
                             theme === 'dark'
                               ? 'bg-gray-750 border-gray-600 hover:border-gray-500'
                               : 'bg-white border-gray-200 hover:border-gray-300'
                           }`}
+                          style={{ minHeight: '90px' }}
                         >
-                          {/* ID Badge */}
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                              {post.slug?.substring(0, 12).toUpperCase() || post.id.substring(0, 8)}
-                            </span>
-                          </div>
-
-                          {/* Title */}
-                          <p className={`text-sm font-medium mb-4 line-clamp-2 leading-snug ${
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                          }`}>
-                            {post.title}
-                          </p>
-
-                          {/* Separator */}
-                          <div className={`border-t mb-3 ${
-                            theme === 'dark' ? 'border-gray-600' : 'border-gray-100'
-                          }`} />
-
-                          {/* Footer */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-orange-500">
-                              {new Date(post.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
-                            </span>
-
-                            <div className="flex items-center gap-2">
-                              <div className={`flex gap-2 text-[10px] mr-1 ${
-                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                          <div className={!subtitle ? 'flex-1 flex items-center' : ''}>
+                            <div className="w-full">
+                              <p className={`text-sm font-semibold line-clamp-2 leading-snug ${
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
                               }`}>
-                                <span>👍{post.voteCount || 0}</span>
-                                <span>💬{post.commentCount || 0}</span>
-                              </div>
-
-                              {/* Author Avatar */}
-                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[10px] font-bold">
-                                {post.author?.name?.charAt(0)?.toUpperCase() || '?'}
-                              </div>
+                                {post.title}
+                              </p>
+                              {subtitle && (
+                                <p className={`text-xs line-clamp-1 mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
+                              )}
                             </div>
                           </div>
+                          {/* Board + Type chips */}
+                          <div className="flex items-center gap-1.5 flex-wrap mt-auto pt-2">
+                            {post.board?.name && (
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                                {post.board.name}
+                              </span>
+                            )}
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                              {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
+                            </span>
+                          </div>
                         </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className={`text-center py-12 text-xs ${
                         theme === 'dark' ? 'text-gray-500' : 'text-gray-400'

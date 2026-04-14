@@ -1,4 +1,5 @@
-import { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExt from '@tiptap/extension-underline';
@@ -18,7 +19,7 @@ import LoadingButton from './ui/LoadingButton';
 import { ButtonExtension, type ButtonAttributes } from './ButtonExtension';
 import ButtonConfigModal from './ButtonConfigModal';
 
-function TB({ icon: Icon, action, active, title, dark }: { icon: any; action: () => void; active?: boolean; title: string; dark?: boolean }) {
+function TB({ icon: Icon, action, active, title, dark }: { icon: React.ComponentType<{ className?: string }>; action: () => void; active?: boolean; title: string; dark?: boolean }) {
   return (
     <button onClick={action} title={title} type="button"
       className={`p-1 rounded transition ${
@@ -86,6 +87,18 @@ export default function CommentEditor({
     },
   });
 
+  // Sync `initialContent` into the editor after mount. Needed for edit flows
+  // where content is fetched async and arrives after the editor is mounted.
+  const lastSyncedContent = useRef<string | undefined>(initialContent);
+  useEffect(() => {
+    if (!editor) return;
+    if (initialContent === undefined) return;
+    if (initialContent === lastSyncedContent.current) return;
+    if (editor.getHTML() === initialContent) return;
+    editor.commands.setContent(initialContent, { emitUpdate: false });
+    lastSyncedContent.current = initialContent;
+  }, [initialContent, editor]);
+
   const handleSubmit = () => {
     if (!editor) return;
     const html = editor.getHTML();
@@ -101,18 +114,70 @@ export default function CommentEditor({
 
   const addImage = () => fileInputRef.current?.click();
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Resize + re-encode an image client-side so we never ship huge base64 blobs
+  // to the backend. Keeps DB rows small and stays within Vercel's 4.5 MB payload limit.
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_DIM = 1600;
+          let { width, height } = img;
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject(new Error('Canvas not supported')); return; }
+          ctx.drawImage(img, 0, 0, width, height);
+          const outputMime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          const dataUrl = canvas.toDataURL(outputMime, 0.85);
+          resolve(dataUrl);
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editor) return;
-    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return;
-    if (file.size > 10 * 1024 * 1024) return;
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    if (!isImage && !isVideo) {
+      toast.error('Only image or video files are allowed.');
+      e.target.value = '';
+      return;
+    }
+    // Images get compressed client-side so we can accept larger originals.
+    // Videos stay limited because we don't compress them.
+    const maxSizeMB = isImage ? 25 : 10;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      toast.error(`${isImage ? 'Image' : 'Video'} file size is too large (${sizeMB} MB). Max allowed is ${maxSizeMB} MB.`);
+      e.target.value = '';
+      return;
+    }
 
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        editor.chain().focus().insertContent({ type: 'image', attrs: { src: reader.result as string } }).run();
-      };
-      reader.readAsDataURL(file);
+    if (isImage) {
+      try {
+        const compressedDataUrl = await compressImage(file);
+        editor.chain().focus().insertContent({ type: 'image', attrs: { src: compressedDataUrl } }).run();
+      } catch {
+        toast.error('Failed to process image. Please try a different file.');
+      }
     }
     e.target.value = '';
   };

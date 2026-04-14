@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, ArrowUpRight, MessageSquare } from 'lucide-react';
+import { Search, X, ArrowUpRight } from 'lucide-react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
@@ -13,17 +13,18 @@ interface Post {
   title: string;
   slug: string;
   description?: string;
+  content?: string;
   status: string;
   type: string;
   voteCount: number;
   commentCount: number;
   createdAt: string;
   author: { name: string };
+  board?: { name: string };
   _count?: { votes: number; comments: number };
 }
 
 interface Board { id: string; name: string; }
-interface Tag { id: string; name: string; color: string; }
 
 const STATUS_ORDER = ['under_review', 'planned', 'in_progress', 'live', 'hold'];
 
@@ -44,11 +45,9 @@ export default function UserRoadmapPage() {
   const [roadmap, setRoadmap] = useState<Record<string, Post[]>>({});
   const [loading, setLoading] = useState(true);
   const [boards, setBoards] = useState<Board[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
   const [selectedBoard, setSelectedBoard] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [filterTag, setFilterTag] = useState('');
   const [columnSearches, setColumnSearches] = useState<Record<string, string>>({});
   const initialized = useRef(false);
 
@@ -79,22 +78,18 @@ export default function UserRoadmapPage() {
       setLoading(true);
       const params: any = {};
       if (boardId) params.boardId = boardId;
-      const [roadmapRes, tagsRes] = await Promise.all([
-        api.get('/roadmap', { params }),
-        boardId ? api.get('/tags', { params: { boardId } }) : Promise.resolve({ data: { success: true, data: { tags: [] } } }),
-      ]);
+      const roadmapRes = await api.get('/roadmap', { params });
       if (roadmapRes.data.success) {
         const rm = roadmapRes.data.data.roadmap;
         setRoadmap(rm);
         Object.values(rm).flat().forEach((p: any) => initVote(p.id, p.voteCount ?? p._count?.votes ?? 0, p.hasVoted ?? false));
       }
-      if (tagsRes.data.success) setTags(tagsRes.data.data.tags || []);
-    } catch { console.error('Error fetching roadmap'); }
+    } catch (err) { console.error('Error fetching roadmap', err); }
     finally { setLoading(false); }
   };
 
-  const clearFilters = () => { setSearchQuery(''); setFilterType(''); setFilterTag(''); setColumnSearches({}); };
-  const hasActiveFilters = searchQuery || filterType || filterTag;
+  const clearFilters = () => { setSearchQuery(''); setFilterType(''); setColumnSearches({}); };
+  const hasActiveFilters = searchQuery || filterType;
 
   const getFilteredPosts = (status: string): Post[] => {
     let filtered = roadmap[status] || [];
@@ -103,7 +98,6 @@ export default function UserRoadmapPage() {
       filtered = filtered.filter(p => p.title.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q));
     }
     if (filterType) filtered = filtered.filter(p => p.type === filterType);
-    if (filterTag) filtered = filtered.filter((p: any) => p.tags?.some((t: any) => t.tag?.id === filterTag));
     const colSearch = columnSearches[status];
     if (colSearch) {
       const q = colSearch.toLowerCase();
@@ -144,15 +138,9 @@ export default function UserRoadmapPage() {
                 options={[{ value: '', label: 'All Types' }, { value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
                 onChange={(v) => setFilterType(v)} />
 
-              {tags.length > 0 && (
-                <CustomDropdown label="Tag" value={filterTag}
-                  options={[{ value: '', label: 'All Tags' }, ...tags.map(t => ({ value: t.id, label: t.name }))]}
-                  onChange={(v) => setFilterTag(v)} />
-              )}
-
               {hasActiveFilters && (
                 <button onClick={clearFilters}
-                  className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors"
+                  className="flex items-center gap-2 font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
                   style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
                   <X className="w-5 h-5" /> Clear Filters
                 </button>
@@ -204,12 +192,22 @@ export default function UserRoadmapPage() {
 
                     {/* Cards */}
                     <div className={`flex-1 px-3 pb-3 pt-3 space-y-2.5 overflow-y-auto ${d ? 'bg-gray-850' : 'bg-[#f5f5f5]'}`}>
-                      {posts.length > 0 ? posts.map((post) => (
+                      {posts.length > 0 ? posts.map((post) => {
+                        const subtitle = (post.description && post.description.trim())
+                          || (post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '');
+                        const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+                          feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
+                          bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
+                          improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
+                          integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
+                        };
+                        const ts = typeStyles[post.type] || typeStyles.feature;
+                        return (
                         <div key={post.id} onClick={() => navigate(`/user/posts/${post.slug}`, { state: { from: '/user/roadmap', source: 'roadmap' } })}
                           className={`p-3.5 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
                             d ? 'bg-gray-750 border-gray-600 hover:border-gray-500' : 'bg-white border-gray-200 hover:border-gray-300'
                           }`}>
-                          <div className="flex gap-3">
+                          <div className="flex items-start gap-3">
                             <div onClick={(e) => { e.stopPropagation(); toggleVote(post.id); }}
                               className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold shrink-0 cursor-pointer transition-all ${
                                 votes[post.id]?.voted
@@ -219,30 +217,31 @@ export default function UserRoadmapPage() {
                               <ArrowUpRight className="w-3.5 h-3.5 rotate-[-45deg]" />
                               <span>{votes[post.id]?.count ?? post._count?.votes ?? post.voteCount ?? 0}</span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-semibold line-clamp-2 leading-snug ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                              {post.description && (
-                                <p className={`text-xs line-clamp-1 mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className={`border-t border-dashed my-3 ${d ? 'border-gray-600' : 'border-gray-200'}`} />
-                          <div className="flex items-center justify-between">
-                            <span className={`text-xs font-semibold ${config.textColor}`}>
-                              {new Date(post.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
-                            </span>
-                            <div className="flex items-center gap-2.5">
-                              <div className={`flex items-center gap-1 text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                                <MessageSquare className="w-3.5 h-3.5" />
-                                <span>{post._count?.comments || post.commentCount || 0}</span>
+                            <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: '62px' }}>
+                              <div className={!subtitle ? 'flex-1 flex items-center' : ''}>
+                                <div className="w-full">
+                                  <p className={`text-sm font-semibold line-clamp-2 leading-snug ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
+                                  {subtitle && (
+                                    <p className={`text-xs line-clamp-1 mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
+                                  )}
+                                </div>
                               </div>
-                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-[9px] font-bold">
-                                {post.author?.name?.charAt(0)?.toUpperCase() || '?'}
+                              {/* Board + Type chips */}
+                              <div className="flex items-center gap-1.5 flex-wrap mt-auto pt-2">
+                                {post.board?.name && (
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${d ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                                    {post.board.name}
+                                  </span>
+                                )}
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${d ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                                  {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
+                                </span>
                               </div>
                             </div>
                           </div>
                         </div>
-                      )) : (
+                        );
+                      }) : (
                         <div className={`text-center py-12 text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>
                           <div className={`w-10 h-10 mx-auto mb-2 rounded-lg flex items-center justify-center ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
                             <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

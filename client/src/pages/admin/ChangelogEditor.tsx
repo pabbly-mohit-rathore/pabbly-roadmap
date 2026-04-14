@@ -713,7 +713,7 @@ export default function ChangelogEditor() {
 
       {/* Schedule Modal */}
       {showScheduleModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className={`max-w-sm w-full mx-4 p-6 rounded-xl ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
             <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Schedule Publish</h3>
             <input type="datetime-local" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)}

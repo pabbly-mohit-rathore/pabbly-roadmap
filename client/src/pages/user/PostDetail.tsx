@@ -494,7 +494,7 @@ export default function UserPostDetail() {
                             const avatarUrl = comment.author.avatar ? (comment.author.avatar.startsWith('http') ? comment.author.avatar : `${API_BASE}${comment.author.avatar}`) : null;
                             const isOwn = currentUser?.id === comment.author.id;
                             return (
-                            <div key={comment.id} className={`rounded-xl p-4 ${comment.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border border-red-800' : 'bg-red-50 border border-red-200') : (theme === 'dark' ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200 shadow-sm')}`}>
+                            <div key={comment.id} className={`rounded-xl p-4 ${comment.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border border-red-800' : 'bg-red-50 border border-red-200') : (theme === 'dark' ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.06)]')}`}>
                               <div className="flex gap-3">
                                 {avatarUrl ? (
                                   <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
@@ -805,7 +805,7 @@ export default function UserPostDetail() {
 
         {/* Login Required Modal */}
         {showLoginModal && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
             <div className={`max-w-md w-full rounded-2xl ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
               <div className="text-center py-12 px-6">
                 <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center mx-auto mb-6">

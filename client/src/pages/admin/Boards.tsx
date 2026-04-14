@@ -323,7 +323,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
 
       {/* Create Board Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
             <div className={`flex items-center justify-between border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
               <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Create New Board</h2>
@@ -393,7 +393,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
 
       {/* Edit Board Modal */}
       {showEditModal && selectedBoard && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full max-h-[90vh] overflow-y-auto ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
             <div className={`flex items-center justify-between border-b sticky top-0 z-10 ${theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`} style={{ padding: '24px' }}>
               <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Edit Board</h2>

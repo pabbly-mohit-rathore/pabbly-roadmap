@@ -28,6 +28,7 @@ interface Post {
   author: { id?: string; name: string; avatar?: string };
   board: { id: string; name: string; color?: string };
   hasVoted?: boolean;
+  hasCommented?: boolean;
 }
 
 interface Board { id: string; name: string; }
@@ -63,6 +64,7 @@ export default function UserFeatureRequests() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [boardFilter, setBoardFilter] = useState('all');
+  const [activityFilter, setActivityFilter] = useState<'all' | 'my-posts' | 'my-voted' | 'my-commented'>('all');
   const [animatingPosts, setAnimatingPosts] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -91,6 +93,16 @@ export default function UserFeatureRequests() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Edit modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editFormData, setEditFormData] = useState({ title: '', type: 'feature' });
+  const [editContent, setEditContent] = useState('');
+  const [updating, setUpdating] = useState(false);
+  // Prefetched full content for the user's own posts, so Edit opens instantly.
+  const contentCacheRef = useRef<Record<string, string>>({});
+  const [, forceCacheBump] = useState(0);
+
   useEffect(() => {
     const el = tabsRef.current[typeFilter];
     if (el?.parentElement) {
@@ -109,6 +121,31 @@ export default function UserFeatureRequests() {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Prefetch full content for the user's own posts in the background.
+  // Fires after the list loads so edit opens instantly from cache.
+  useEffect(() => {
+    if (!user?.id || posts.length === 0) return;
+    const ownPosts = posts
+      .filter(p => p.author?.id === user.id)
+      .filter(p => !(p.id in contentCacheRef.current));
+    if (ownPosts.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      // Sequential to avoid hammering the server on pages with many posts.
+      for (const p of ownPosts) {
+        if (cancelled) return;
+        try {
+          const res = await api.get(`/posts/by-id/${p.id}`);
+          if (res.data.success) {
+            contentCacheRef.current[p.id] = res.data.data.post.content || '';
+            forceCacheBump(n => n + 1);
+          }
+        } catch { /* ignore — will fall back to on-demand fetch */ }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [posts, user?.id]);
+
   const fetchData = async () => {
     try {
       const [postsRes, boardsRes] = await Promise.all([
@@ -121,7 +158,7 @@ export default function UserFeatureRequests() {
         fetchedPosts.forEach((p: Post & { hasVoted?: boolean }) => init(p.id, p.voteCount ?? 0, p.hasVoted ?? false));
       }
       if (boardsRes.data.success) setBoards(boardsRes.data.data.boards);
-    } catch { console.error('Error fetching data'); }
+    } catch (err) { console.error('Error fetching data', err); }
     finally { setLoading(false); }
   };
 
@@ -171,15 +208,63 @@ export default function UserFeatureRequests() {
     finally { setDeleting(false); }
   };
 
+  const openEditModal = async (post: Post) => {
+    if (user?.id !== post.author?.id) { toast.error('You can only edit your own posts.'); return; }
+    setEditingPost(post);
+    setEditFormData({ title: post.title, type: post.type });
+    // Prefer cached content (prefetched after list load) for instant edit.
+    const cached = contentCacheRef.current[post.id];
+    setEditContent(cached ?? '');
+    setShowEditModal(true);
+    if (cached !== undefined) return;
+    // Fallback: fetch on demand if the background prefetch hasn't reached this post yet.
+    try {
+      const res = await api.get(`/posts/by-id/${post.id}`);
+      if (res.data.success) {
+        const content = res.data.data.post.content || '';
+        contentCacheRef.current[post.id] = content;
+        setEditContent(content);
+      }
+    } catch {
+      toast.error('Failed to load post content');
+    }
+  };
+
+  const handleUpdatePost = async () => {
+    if (!editingPost) return;
+    if (!editFormData.title.trim()) { toast.error('Title is required'); return; }
+    const contentText = (editContent || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (contentText.length < 10) { toast.error('Content must be at least 10 characters'); return; }
+    setUpdating(true);
+    try {
+      const res = await api.put(`/posts/${editingPost.id}`, {
+        title: editFormData.title,
+        type: editFormData.type,
+        content: editContent,
+      });
+      if (res.data.success) {
+        setShowEditModal(false);
+        setEditingPost(null);
+        setEditContent('');
+        toast.success('Post updated');
+        fetchData();
+      }
+    } catch { toast.error('Failed to update post'); }
+    finally { setUpdating(false); }
+  };
+
   const filteredPosts = posts.filter(p => {
     if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (statusFilter !== 'all' && p.status !== statusFilter) return false;
     if (typeFilter !== 'all' && p.type !== typeFilter) return false;
     if (boardFilter !== 'all' && p.board?.id !== boardFilter) return false;
+    if (activityFilter === 'my-posts' && p.author?.id !== user?.id) return false;
+    if (activityFilter === 'my-voted' && !p.hasVoted) return false;
+    if (activityFilter === 'my-commented' && !p.hasCommented) return false;
     return true;
   });
 
-  const hasFilters = statusFilter !== 'all' || typeFilter !== 'all' || boardFilter !== 'all';
+  const hasFilters = statusFilter !== 'all' || typeFilter !== 'all' || boardFilter !== 'all' || activityFilter !== 'all';
 
   const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (sortBy === 'most-voted') return (b.voteCount ?? 0) - (a.voteCount ?? 0);
@@ -190,7 +275,7 @@ export default function UserFeatureRequests() {
   const totalPages = Math.ceil(sortedPosts.length / rowsPerPage);
   const paginatedPosts = sortedPosts.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
-  const clearFilters = () => { setSearchQuery(''); setStatusFilter('all'); setTypeFilter('all'); setBoardFilter('all'); setPage(0); };
+  const clearFilters = () => { setSearchQuery(''); setStatusFilter('all'); setTypeFilter('all'); setBoardFilter('all'); setActivityFilter('all'); setPage(0); };
 
   return (
     <UserLayout>
@@ -228,6 +313,17 @@ export default function UserFeatureRequests() {
             <CustomDropdown label="Board" value={boardFilter}
               options={[{ value: 'all', label: 'All Boards' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
               onChange={(v) => { setBoardFilter(v); setPage(0); }} />
+
+            {isAuthenticated && (
+              <CustomDropdown label="Show" value={activityFilter}
+                options={[
+                  { value: 'all', label: 'All Posts' },
+                  { value: 'my-posts', label: 'My Posts' },
+                  { value: 'my-voted', label: 'My Voted Posts' },
+                  { value: 'my-commented', label: 'My Commented Posts' },
+                ]}
+                onChange={(v) => { setActivityFilter(v as typeof activityFilter); setPage(0); }} />
+            )}
 
             {hasFilters && (
               <button onClick={clearFilters} className="flex items-center gap-2 font-medium text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
@@ -397,7 +493,7 @@ export default function UserFeatureRequests() {
                                 d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'
                               }`} style={{ minWidth: '160px' }}>
                                 <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
-                                <button onClick={() => { navigate(`/user/posts/${post.slug}`); setOpenMenuId(null); }}
+                                <button onClick={() => { openEditModal(post); setOpenMenuId(null); }}
                                   className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
                                   <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
                                 </button>
@@ -492,7 +588,7 @@ export default function UserFeatureRequests() {
 
       {/* Create Post Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px' }}>
             <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Create New Post</h2>
@@ -578,6 +674,84 @@ export default function UserFeatureRequests() {
         </div>
       )}
 
+      {/* Edit Post Modal */}
+      {showEditModal && editingPost && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px' }}>
+            <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
+              <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Edit Post</h2>
+              <button onClick={() => { setShowEditModal(false); setEditingPost(null); setEditContent(''); }} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <div className="space-y-4">
+                {/* Title */}
+                <div>
+                  <div className="relative">
+                    <input type="text" value={editFormData.title} placeholder=" "
+                      onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                      style={{ padding: '16.5px 14px' }}
+                      className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
+                        d ? 'border-gray-700 bg-gray-800 text-white hover:border-gray-500 focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 hover:border-gray-400 focus:border-gray-400'
+                      }`} />
+                    <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
+                      top-1/2 -translate-y-1/2
+                      peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
+                      peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
+                      ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Title *</span>
+                  </div>
+                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Enter the title for your post.</p>
+                </div>
+
+                {/* Rich Text Editor */}
+                <div>
+                  <CommentEditor
+                    key={editingPost.id}
+                    initialContent={editContent}
+                    onSubmit={() => handleUpdatePost()}
+                    placeholder="Write your post content here..."
+                    buttonLabel="Save"
+                    submitting={updating}
+                    hideButton
+                    maxEditorHeight="450px"
+                    onContentChange={(html) => setEditContent(html)}
+                  />
+                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Minimum 10 characters required.</p>
+                </div>
+
+                {/* Board (read-only) & Type */}
+                <div className="flex gap-4 relative z-[60]" style={{ marginTop: '20px' }}>
+                  <div className="flex-1">
+                    <div className={`w-full rounded-lg border flex items-center ${d ? 'border-gray-700 bg-gray-800/60' : 'border-gray-300 bg-gray-50'}`} style={{ padding: '16.5px 14px', height: '56px' }}>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[11px] font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>Board</p>
+                        <p className={`text-sm font-medium truncate ${d ? 'text-gray-300' : 'text-gray-700'}`}>{editingPost.board?.name || '—'}</p>
+                      </div>
+                    </div>
+                    <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Board cannot be changed after creation.</p>
+                  </div>
+                  <div className="flex-1">
+                    <CustomDropdown label="Type *" value={editFormData.type}
+                      options={[{ value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
+                      onChange={(v) => setEditFormData({ ...editFormData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                    <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Select the type of post.</p>
+                  </div>
+                </div>
+
+                {/* Cancel + Save */}
+                <div className="flex gap-3 justify-end pt-2">
+                  <button onClick={() => { setShowEditModal(false); setEditingPost(null); setEditContent(''); }}
+                    className={`px-5 py-2.5 text-sm font-medium rounded-lg border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancel</button>
+                  <LoadingButton loading={updating} onClick={handleUpdatePost}
+                    className="px-5 py-2.5 bg-[#0C68E9] text-white text-sm font-semibold rounded-lg hover:bg-[#0b5dd0] transition-colors disabled:opacity-70">Save Changes</LoadingButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hover Preview Popup */}
       {hoverPost && (() => {
         const hp = hoverPost.post;
@@ -625,7 +799,7 @@ export default function UserFeatureRequests() {
 
       {/* Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className={`max-w-md w-full rounded-2xl ${d ? 'bg-gray-900' : 'bg-white'}`}>
             <div className="text-center py-12 px-6">
               <h2 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>Sign in</h2>
