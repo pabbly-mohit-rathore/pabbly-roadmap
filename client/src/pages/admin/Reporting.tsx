@@ -369,23 +369,50 @@ export default function AdminReporting() {
         </div>
 
         {/* Stale Posts */}
-        <div className={`p-5 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h2 className={`font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Stale Posts</h2>
-          <p className={`text-xs mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>No activity for 7+ days</p>
+        <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className="px-5 pt-5 pb-3">
+            <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Stale Posts</h2>
+            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>No activity for 7+ days</p>
+          </div>
           {stalePosts.length > 0 ? (
-            <div className="space-y-3">
-              {stalePosts.map((post) => (
-                <div key={post.id} className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{post.board.name}</p>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize shrink-0 ml-2 ${getStatusColor(post.status)}`}>
-                    {post.status.replace(/_/g, ' ')}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+              <thead>
+                <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'}>
+                  {['Upvote', 'Title', 'Board', 'Status'].map((h, i) => (
+                    <th key={h} className={`py-2.5 text-xs font-semibold ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}
+                      style={{ textAlign: 'left', paddingLeft: i === 0 ? '16px' : '12px', paddingRight: i === 3 ? '16px' : '12px' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {stalePosts.slice(0, 10).map((post) => {
+                  const sc: Record<string, string> = { open: 'text-blue-600', under_review: 'text-yellow-600', planned: 'text-purple-600', in_progress: 'text-orange-500', live: 'text-green-600', closed: 'text-gray-500', hold: 'text-red-500' };
+                  return (
+                    <tr key={post.id} onClick={() => navigate(`/admin/posts/${post.slug}`, { state: { from: '/admin/settings', source: 'settings' } })}
+                      className={`border-t border-dashed cursor-pointer transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
+                      <td className="py-3" style={{ paddingLeft: '16px', width: '70px' }}>
+                        <div className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold bg-transparent ${theme === 'dark' ? 'border-gray-600 text-gray-400' : 'border-gray-200 text-gray-500'}`}
+                          style={{ padding: '8px 14px', fontSize: '11px', gap: '6px' }}>
+                          <ArrowUpRight className="w-3 h-3 rotate-[-45deg]" />
+                          <span>{post.voteCount ?? 0}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 max-w-0 overflow-hidden">
+                        <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
+                      </td>
+                      <td className={`py-3 px-3 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ width: '110px' }}>
+                        <span className="truncate block">{post.board.name}</span>
+                      </td>
+                      <td className="py-3 px-3" style={{ width: '110px', paddingRight: '16px' }}>
+                        <span className={`text-xs font-semibold ${sc[post.status] || 'text-gray-500'}`}>
+                          {post.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           ) : (
             <p className={`text-sm text-center py-12 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>None of your posts are stale.</p>
           )}

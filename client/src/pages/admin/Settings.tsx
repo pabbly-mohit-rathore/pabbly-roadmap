@@ -1,18 +1,15 @@
 import { useState, useMemo } from 'react';
-import { BarChart3, Users, Plus, Grid3x3 } from 'lucide-react';
+import { BarChart3, Users, Plus } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
 import AdminReporting from './Reporting';
 import AdminUsers from './Users';
-import AdminBoards from './Boards';
 import AdminTeamMembers from './TeamMembers';
 
 const ALL_TABS = [
-  { id: 'boards', label: 'Boards', icon: Grid3x3, heading: 'Boards', description: 'Create and manage your product boards.', btnLabel: 'Create Board' },
   { id: 'activity-log', label: 'Activity Log', icon: BarChart3, heading: 'Activity Log', description: 'View activity logs, reports, and analytics.', btnLabel: '' },
   { id: 'users', label: 'Users', icon: Users, heading: 'Users', description: 'Manage registered users and their accounts.', btnLabel: '' },
-
   { id: 'team-members', label: 'Team Members', icon: Users, heading: 'Team Members', description: 'Manage team members and their access levels.', btnLabel: '' },
 ];
 
@@ -30,7 +27,7 @@ export default function AdminSettings() {
     return ALL_TABS;
   }, [isTeamMember]);
 
-  const [activeTab, setActiveTab] = useState('boards');
+  const [activeTab, setActiveTab] = useState('activity-log');
   const [triggerAction, setTriggerAction] = useState(0);
   const currentTab = ALL_TABS.find(t => t.id === activeTab)!;
 
@@ -74,7 +71,6 @@ export default function AdminSettings() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'boards' && !isTeamMember && <AdminBoards triggerCreate={triggerAction} />}
       {activeTab === 'activity-log' && <AdminReporting />}
       {activeTab === 'users' && !isTeamMember && <AdminUsers />}
 
