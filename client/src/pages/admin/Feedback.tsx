@@ -118,6 +118,9 @@ export default function AdminFeedback() {
   const [exportFormat, setExportFormat] = useState<'csv'>('csv');
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Bulk delete — when user selects multiple rows via checkbox and clicks the Delete button
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -298,6 +301,28 @@ export default function AdminFeedback() {
     }
   };
 
+  // Bulk delete all checkbox-selected posts. Fires DELETE requests in parallel
+  // and reports success/failure counts. On success, the selection clears.
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedPosts);
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
+    try {
+      const results = await Promise.allSettled(ids.map((id) => api.delete(`/posts/${id}`)));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      const succeeded = results.length - failed;
+      if (succeeded > 0) toast.success(`${succeeded} post${succeeded === 1 ? '' : 's'} deleted`);
+      if (failed > 0) toast.error(`${failed} post${failed === 1 ? '' : 's'} failed to delete`);
+      setBulkDeleteConfirm(false);
+      setSelectedPosts(new Set());
+      fetchPosts();
+    } catch {
+      toast.error('Failed to delete selected posts');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const handleVote = (postId: string) => {
     toggle(postId);
     setAnimatingPosts(prev => { const next = new Set(prev); next.add(postId); return next; });
@@ -338,35 +363,44 @@ export default function AdminFeedback() {
     else setSelectedPosts(new Set(sortedPosts.map(p => p.id)));
   };
 
-  const exportPostsCSV = (postsToExport: Post[]) => {
+  const [exporting, setExporting] = useState(false);
+  // Kicks off a streaming CSV download from the backend. Works for arbitrarily
+  // large datasets because the server writes rows in batches and the browser
+  // downloads the response as a single file.
+  const exportPostsCSV = async (postsToExport: Post[]) => {
     if (postsToExport.length === 0) { toast.error('No posts to export'); return; }
-    const esc = (val: string) => `"${val.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
-    const headers = ['Title', 'Status', 'Type', 'Board', 'Author', 'Votes', 'Comments', 'Created', 'Content'];
-    const rows = postsToExport.map(p => [
-      esc(p.title || ''),
-      esc(p.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())),
-      esc(p.type.charAt(0).toUpperCase() + p.type.slice(1)),
-      esc(p.board?.name || ''),
-      esc(p.author.name || ''),
-      p.voteCount ?? 0,
-      p.commentCount ?? 0,
-      esc(new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
-      esc((p.content || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()),
-    ].join(','));
-    const BOM = '\uFEFF';
-    const csv = BOM + [headers.join(','), ...rows].join('\r\n');
-    const blob = new Blob([csv], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `posts_export_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${postsToExport.length} posts`);
-    setShowExportDialog(false);
-    setSelectedPosts(new Set());
+    setExporting(true);
+    const toastId = toast.loading(`Exporting ${postsToExport.length} post${postsToExport.length === 1 ? '' : 's'}…`);
+    try {
+      const params: Record<string, string> = {};
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (typeFilter !== 'all') params.type = typeFilter;
+      if (boardFilter !== 'all') params.boardId = boardFilter;
+      // If user selected specific posts, only those are exported regardless of filters.
+      if (selectedPosts.size > 0) params.postIds = Array.from(selectedPosts).join(',');
+
+      const res = await api.get('/posts/export', {
+        params,
+        responseType: 'blob',
+        timeout: 0, // no timeout — large exports can take a while
+      });
+      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `posts_export_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${postsToExport.length} post${postsToExport.length === 1 ? '' : 's'}`, { id: toastId });
+      setShowExportDialog(false);
+      setSelectedPosts(new Set());
+    } catch {
+      toast.error('Failed to export posts', { id: toastId });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const clearFilters = () => {
@@ -440,10 +474,10 @@ export default function AdminFeedback() {
               { key: 'most-voted', label: 'Most Voted', icon: CheckCircle2 },
             ] as const).map(({ key, label, icon: SortIcon }) => (
               <button key={key} onClick={() => { setSortBy(key); setPage(0); }}
-                className={`flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium border transition-colors ${
                   sortBy === key
-                    ? 'bg-[#059669] text-white'
-                    : d ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                    ? 'border-[#059669] text-[#059669] bg-transparent'
+                    : d ? 'border-transparent text-gray-400 hover:bg-gray-700 hover:text-white' : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                 }`} style={{ height: '36px' }}>
                 <SortIcon className="w-3.5 h-3.5" />
                 {label}
@@ -451,13 +485,6 @@ export default function AdminFeedback() {
             ))}
           </div>
         </div>
-      </div>
-
-      {/* Info bar */}
-      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg mb-4 text-xs ${
-        d ? 'bg-blue-900/20 text-blue-300 border border-blue-800' : 'bg-blue-50 text-blue-600 border border-blue-200'
-      }`}>
-        Sorted by created date within each status. Pinned posts appear first.
       </div>
 
       {/* Table */}
@@ -470,12 +497,22 @@ export default function AdminFeedback() {
             <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>
               {statusFilter === 'all' ? 'All Posts' : `${statusFilter.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Posts`}
             </h2>
-            <button onClick={() => setShowExportDialog(true)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                d ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}>
-              <Download className="w-4 h-4" /> Export{selectedPosts.size > 0 ? ` (${selectedPosts.size})` : ''}
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowExportDialog(true)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  d ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}>
+                <Download className="w-4 h-4" /> Export{selectedPosts.size > 0 ? ` (${selectedPosts.size})` : ''}
+              </button>
+              {selectedPosts.size > 0 && (
+                <button onClick={() => setBulkDeleteConfirm(true)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    d ? 'border-red-500/60 text-red-400 hover:bg-red-500/10' : 'border-red-300 text-red-600 hover:bg-red-50'
+                  }`}>
+                  <Trash2 className="w-4 h-4" /> Delete ({selectedPosts.size})
+                </button>
+              )}
+            </div>
           </div>
           {/* Title Divider */}
           <div className={`border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} />
@@ -494,7 +531,7 @@ export default function AdminFeedback() {
                 <button key={tab.key}
                   ref={(el) => { tabsRef.current[tab.key] = el; }}
                   onClick={() => { setTypeFilter(tab.key); setPage(0); }}
-                  className={`flex items-center gap-1.5 pb-3 text-sm font-semibold transition-colors ${
+                  className={`flex items-center gap-1.5 pb-3 text-sm font-semibold transition-colors cursor-pointer ${
                     isActive
                       ? (d ? 'text-white' : 'text-gray-900')
                       : (d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')
@@ -517,7 +554,16 @@ export default function AdminFeedback() {
             />
           </div>
 
-          <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+          <div className="relative">
+          {/* Selection overlay — shows "N selected" without shifting column widths.
+              Starts after the checkbox column (44px) so the select-all checkbox stays clickable. */}
+          {selectedPosts.size > 0 && (
+            <div className={`absolute top-0 right-0 z-10 flex items-center ${d ? 'bg-gray-700/50' : 'bg-gray-50'}`}
+              style={{ left: '44px', height: '56.5px', paddingLeft: '16px' }}>
+              <span className={`text-sm font-semibold ${d ? 'text-blue-300' : 'text-blue-600'}`}>{selectedPosts.size} selected</span>
+            </div>
+          )}
+          <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
                 <th style={{ width: '44px', paddingLeft: '16px' }}>
@@ -536,33 +582,27 @@ export default function AdminFeedback() {
                     </div>
                   </div>
                 </th>
-                {selectedPosts.size > 0 ? (
-                  <th colSpan={7} style={{ paddingLeft: '12px', textAlign: 'left' }}>
-                    <span className={`text-sm font-semibold ${d ? 'text-blue-300' : 'text-blue-600'}`}>{selectedPosts.size} selected</span>
+                {['Upvote', 'Title', 'Status', 'Board', 'Type', 'Actions'].map((h, i) => (
+                  <th key={h}
+                    className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                    style={{
+                      fontSize: '14px',
+                      color: d ? undefined : '#1C252E',
+                      textAlign: i === 5 ? 'right' as const : 'left' as const,
+                      width: i === 0 ? '90px' : i === 1 ? '500px' : i === 2 ? '170px' : i === 3 ? '180px' : i === 4 ? '120px' : i === 5 ? '80px' : undefined,
+                    }}>
+                    <div style={{
+                      paddingLeft: i === 0 ? '12px' : '16px',
+                      paddingRight: i === 5 ? '24px' : '16px',
+                    }}>{h}</div>
                   </th>
-                ) : (
-                  ['Upvote', 'Title', 'Status', 'Comments', 'Author', 'Created', 'Actions'].map((h, i) => (
-                    <th key={h}
-                      className={`font-semibold ${d ? 'text-gray-400' : ''}`}
-                      style={{
-                        fontSize: '14px',
-                        color: d ? undefined : '#1C252E',
-                        textAlign: i === 3 ? 'center' as const : i === 6 ? 'right' as const : 'left' as const,
-                        width: i === 0 ? '90px' : i === 2 ? '140px' : i === 3 ? '280px' : i === 4 ? '250px' : i === 5 ? '150px' : i === 6 ? '100px' : undefined,
-                      }}>
-                      <div style={{
-                        paddingLeft: i === 0 ? '12px' : '16px',
-                        paddingRight: i === 6 ? '24px' : '16px',
-                      }}>{h}</div>
-                    </th>
-                  ))
-                )}
+                ))}
               </tr>
             </thead>
             <tbody>
               {tableLoading ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={7}>
                     <div className={`flex items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
                       <div className="w-8 h-8 border-[3px] border-gray-200 border-t-[#0c68e9] rounded-full animate-spin" />
                     </div>
@@ -599,9 +639,9 @@ export default function AdminFeedback() {
                             padding: '8px 14px',
                             fontSize: '13px',
                             gap: '6px',
-                            backgroundColor: votes[post.id]?.voted ? '#059669' : 'transparent',
+                            backgroundColor: 'transparent',
                             borderColor: votes[post.id]?.voted ? '#059669' : (d ? '#4b5563' : '#e5e7eb'),
-                            color: votes[post.id]?.voted ? '#ffffff' : (d ? '#d1d5db' : '#374151'),
+                            color: votes[post.id]?.voted ? '#059669' : (d ? '#d1d5db' : '#374151'),
                           }}
                           onMouseEnter={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
                           onMouseLeave={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = d ? '#4b5563' : '#e5e7eb'; }}
@@ -617,7 +657,7 @@ export default function AdminFeedback() {
                       </td>
 
                       {/* Title + Content Preview */}
-                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} px-5 max-w-0 overflow-hidden`}
+                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} pl-5 pr-10 max-w-0 overflow-hidden`}
                         onMouseEnter={(e) => {
                           const td = e.currentTarget.getBoundingClientRect();
                           if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
@@ -627,9 +667,9 @@ export default function AdminFeedback() {
                           if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
                           hoverTimeout.current = setTimeout(() => setHoverPost(null), 150);
                         }}>
-                        <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
+                        <p className={`text-[15px] font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
                         {(post.description || post.content) && (
-                          <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ maxWidth: '85%' }}>{post.description || post.content!.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()}</p>
+                          <p className={`text-[13px] truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description || post.content!.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()}</p>
                         )}
                       </td>
 
@@ -640,44 +680,37 @@ export default function AdminFeedback() {
                         </span>
                       </td>
 
-                      {/* Comments */}
-                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-center text-sm font-semibold text-emerald-600`}>
-                        {post.commentCount}
+                      {/* Board */}
+                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} max-w-0`}>
+                        <span className={`block text-sm font-medium truncate ${d ? 'text-gray-300' : 'text-gray-700'}`} title={post.board?.name || ''}>
+                          {post.board?.name || '—'}
+                        </span>
                       </td>
 
-                      {/* Author */}
+                      {/* Type */}
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
-                        <div className="flex items-center gap-2 group/author">
-                          {post.author.avatar ? (
-                            <img src={post.author.avatar.startsWith('http') ? post.author.avatar : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${post.author.avatar}`} alt={post.author.name} className="w-7 h-7 rounded-full object-cover shrink-0" />
-                          ) : (
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${d ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                              {post.author.name[0].toUpperCase()}
-                            </div>
-                          )}
-                          <div className="relative">
-                            <span className={`text-sm truncate block ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ maxWidth: '100px' }}>{post.author.name}</span>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/author:flex flex-col items-center z-50 pointer-events-none">
-                              <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
-                                {post.author.name}
-                              </div>
-                              <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900 -mt-[1px]" />
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Created */}
-                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm whitespace-nowrap ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                        {new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {(() => {
+                          const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+                            feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
+                            bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
+                            improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
+                            integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
+                          };
+                          const ts = typeStyles[post.type] || typeStyles.feature;
+                          return (
+                            <span className={`inline-block px-2.5 py-1 rounded-full text-[13px] font-semibold capitalize ${d ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                              {post.type}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Actions */}
-                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }} onClick={(e) => e.stopPropagation()}>
+                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '24px' }} onClick={(e) => e.stopPropagation()}>
                         <div className="relative inline-block">
                           <button onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
                             className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
-                            <MoreVertical className="w-4 h-4 text-gray-400" />
+                            <MoreVertical className={`w-4 h-4 ${d ? 'text-gray-300' : 'text-gray-600'}`} />
                           </button>
 
                           {openMenuId === post.id && (
@@ -721,7 +754,7 @@ export default function AdminFeedback() {
                 const EmptyIcon = emptyConfig.icon;
                 return (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={7}>
                     <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
                       <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
                         <EmptyIcon className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
@@ -735,6 +768,7 @@ export default function AdminFeedback() {
               })()}
             </tbody>
           </table>
+          </div>
 
           {/* Pagination */}
           <div className="flex items-center justify-between px-6 py-3">
@@ -841,14 +875,14 @@ export default function AdminFeedback() {
 
               {/* Footer */}
               <div className={`flex justify-end gap-2 border-t ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '16px 24px' }}>
-                <button onClick={() => setShowExportDialog(false)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+                <button onClick={() => setShowExportDialog(false)} disabled={exporting}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
                   Cancel
                 </button>
-                <button onClick={() => exportPostsCSV(postsForExport)} disabled={postsForExport.length === 0}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#0c68e9] text-white hover:bg-[#0b5dd0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                <LoadingButton onClick={() => exportPostsCSV(postsForExport)} disabled={postsForExport.length === 0 || exporting} loading={exporting}
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-[#0c68e9] text-white hover:bg-[#0b5dd0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   <Download className="w-4 h-4" /> Export
-                </button>
+                </LoadingButton>
               </div>
             </div>
           </div>
@@ -863,6 +897,17 @@ export default function AdminFeedback() {
         onConfirm={handleDeletePost}
         onCancel={() => setDeleteConfirm(null)}
         loading={deleting}
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={bulkDeleteConfirm}
+        title={`Delete ${selectedPosts.size} selected post${selectedPosts.size === 1 ? '' : 's'}?`}
+        message={`${selectedPosts.size} post${selectedPosts.size === 1 ? '' : 's'} will be permanently deleted. This action cannot be undone.`}
+        confirmLabel={`Delete ${selectedPosts.size}`}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setBulkDeleteConfirm(false)}
+        loading={bulkDeleting}
       />
 
       {/* Create Post Modal */}

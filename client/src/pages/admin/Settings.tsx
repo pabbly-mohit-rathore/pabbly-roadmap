@@ -49,7 +49,7 @@ export default function AdminSettings() {
         </div>
         {currentTab.btnLabel && (
           <button onClick={() => setTriggerAction(prev => prev + 1)}
-            className="flex items-center gap-2 bg-[#0C68E9] text-white rounded-lg hover:bg-[#0b5dd0] transition shrink-0"
+            className="flex items-center gap-2 bg-[#009966] text-white rounded-lg hover:bg-[#047857] transition shrink-0"
             style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
             <Plus className="w-5 h-5" /> {currentTab.btnLabel}
           </button>

@@ -205,9 +205,9 @@ export default function UserDashboard() {
                         padding: '8px 14px',
                         fontSize: '13px',
                         gap: '6px',
-                        backgroundColor: votes[post.id]?.voted ? '#059669' : 'transparent',
+                        backgroundColor: 'transparent',
                         borderColor: votes[post.id]?.voted ? '#059669' : (d ? '#4b5563' : '#e5e7eb'),
-                        color: votes[post.id]?.voted ? '#ffffff' : (d ? '#d1d5db' : '#374151'),
+                        color: votes[post.id]?.voted ? '#059669' : (d ? '#d1d5db' : '#374151'),
                       }}
                       onMouseEnter={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
                       onMouseLeave={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = d ? '#4b5563' : '#e5e7eb'; }}

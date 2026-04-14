@@ -82,7 +82,9 @@ export default function CommentEditor({
     },
     editorProps: {
       attributes: {
-        class: `outline-none px-4 py-3 text-sm ${maxEditorHeight ? '' : (isReply ? 'comment-editor-compact' : 'comment-editor-full')}`,
+        // When maxEditorHeight is set, override the global .tiptap min-height: 400px
+        // so the editor starts compact and grows with content up to max.
+        class: `outline-none px-4 py-3 text-sm ${maxEditorHeight ? '!min-h-0' : (isReply ? 'comment-editor-compact' : 'comment-editor-full')}`,
       },
     },
   });

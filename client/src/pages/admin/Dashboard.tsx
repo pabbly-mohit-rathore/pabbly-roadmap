@@ -20,7 +20,9 @@ interface Post {
   title: string;
   slug: string;
   status: string;
+  type: string;
   description?: string;
+  content?: string;
   hasVoted?: boolean;
   voteCount?: number;
   board?: { name: string };
@@ -29,6 +31,13 @@ interface Post {
     comments: number;
   };
 }
+
+const TYPE_STYLES: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+  feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
+  bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
+  improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
+  integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
+};
 
 const STAT_CONFIG: Record<string, { iconColor: string; glowColor: string; icon: React.ElementType }> = {
   'Total Posts':    { iconColor: 'text-blue-400',   glowColor: 'linear-gradient(180deg, rgba(96,165,250,0.15) 0%, rgba(255,255,255,0.0) 100%)',  icon: MessageSquare },
@@ -158,9 +167,9 @@ export default function AdminDashboard() {
             <table className="w-full table-fixed">
               <thead>
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                  {['Upvote', 'Post', 'Board', 'Status', 'Comments'].map((h, i) => (
+                  {['Upvote', 'Post', 'Type', 'Board', 'Status', 'Comments'].map((h, i) => (
                     <th key={h} className={`font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
-                      style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : i === 4 ? '24px' : '16px', width: i === 0 ? '120px' : i === 2 ? '300px' : i === 3 ? '180px' : i === 4 ? '200px' : undefined, textAlign: i === 4 ? 'right' as const : 'left' as const }}>{h}</th>
+                      style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : i === 5 ? '24px' : '16px', width: i === 0 ? '120px' : i === 2 ? '140px' : i === 3 ? '240px' : i === 4 ? '180px' : i === 5 ? '160px' : undefined, textAlign: i === 5 ? 'right' as const : 'left' as const }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -177,9 +186,9 @@ export default function AdminDashboard() {
                           padding: '8px 14px',
                           fontSize: '13px',
                           gap: '6px',
-                          backgroundColor: votes[post.id]?.voted ? '#059669' : 'transparent',
+                          backgroundColor: 'transparent',
                           borderColor: votes[post.id]?.voted ? '#059669' : (d ? '#4b5563' : '#e5e7eb'),
-                          color: votes[post.id]?.voted ? '#ffffff' : (d ? '#d1d5db' : '#374151'),
+                          color: votes[post.id]?.voted ? '#059669' : (d ? '#d1d5db' : '#374151'),
                         }}
                         onMouseEnter={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
                         onMouseLeave={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = d ? '#4b5563' : '#e5e7eb'; }}
@@ -195,10 +204,23 @@ export default function AdminDashboard() {
                     </td>
                     {/* Title + description */}
                     <td className="px-5 py-4 max-w-0 overflow-hidden">
-                      <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                      {post.description && (
-                        <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>
+                      <p className={`text-[15px] font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
+                      {(post.description || post.content) && (
+                        <p className={`text-[13px] truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {post.description || post.content!.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()}
+                        </p>
                       )}
+                    </td>
+                    {/* Type */}
+                    <td className="px-4 py-4">
+                      {(() => {
+                        const ts = TYPE_STYLES[post.type] || TYPE_STYLES.feature;
+                        return (
+                          <span className={`inline-block px-2.5 py-1 rounded-full text-[13px] font-semibold capitalize ${d ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                            {post.type}
+                          </span>
+                        );
+                      })()}
                     </td>
                     {/* Board */}
                     <td className={`px-5 py-4 text-sm max-w-0 overflow-hidden ${d ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -220,7 +242,7 @@ export default function AdminDashboard() {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={5} className={`px-5 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No posts yet</td>
+                    <td colSpan={6} className={`px-5 py-12 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No posts yet</td>
                   </tr>
                 )}
               </tbody>

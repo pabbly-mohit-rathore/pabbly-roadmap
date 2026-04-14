@@ -380,9 +380,9 @@ export default function AdminBoardDetail() {
                       <div className="inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden"
                         style={{
                           padding: '8px 14px', fontSize: '13px', gap: '6px',
-                          backgroundColor: votes[post.id]?.voted ? '#059669' : 'transparent',
+                          backgroundColor: 'transparent',
                           borderColor: votes[post.id]?.voted ? '#059669' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
-                          color: votes[post.id]?.voted ? '#ffffff' : (theme === 'dark' ? '#d1d5db' : '#374151'),
+                          color: votes[post.id]?.voted ? '#059669' : (theme === 'dark' ? '#d1d5db' : '#374151'),
                         }}>
                         <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
                         <span>{votes[post.id]?.count ?? post.voteCount}</span>

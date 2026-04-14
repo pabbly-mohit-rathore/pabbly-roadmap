@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
+import LoadingButton from './LoadingButton';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -38,14 +39,14 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'De
           </div>
           <p className={`text-sm leading-relaxed ${d ? 'text-gray-400' : 'text-gray-500'}`}>{message}</p>
           <div className="flex gap-3 justify-end mt-8">
-            <button onClick={onCancel}
-              className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+            <button onClick={onCancel} disabled={loading}
+              className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}>{cancelLabel}</button>
-            <button onClick={onConfirm} disabled={loading}
+            <LoadingButton onClick={onConfirm} loading={loading}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60">
-              {loading ? 'Deleting...' : confirmLabel}
-            </button>
+              {confirmLabel}
+            </LoadingButton>
           </div>
         </div>
       </div>

@@ -340,10 +340,10 @@ export default function UserFeatureRequests() {
                 { key: 'most-voted', label: 'Most Voted', icon: CheckCircle2 },
               ] as const).map(({ key, label, icon: SortIcon }) => (
                 <button key={key} onClick={() => { setSortBy(key); setPage(0); }}
-                  className={`flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium border transition-colors ${
                     sortBy === key
-                      ? 'bg-[#059669] text-white'
-                      : d ? 'text-gray-400 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'border-[#059669] text-[#059669] bg-transparent'
+                      : d ? 'border-transparent text-gray-400 hover:bg-gray-700 hover:text-white' : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                   }`} style={{ height: '36px' }}>
                   <SortIcon className="w-3.5 h-3.5" />
                   {label}
@@ -374,7 +374,7 @@ export default function UserFeatureRequests() {
                 return (
                   <button key={tab.key} ref={(el) => { tabsRef.current[tab.key] = el; }}
                     onClick={() => { setTypeFilter(tab.key); setPage(0); }}
-                    className={`flex items-center gap-1.5 pb-3 text-sm font-semibold transition-colors ${
+                    className={`flex items-center gap-1.5 pb-3 text-sm font-semibold transition-colors cursor-pointer ${
                       isActive ? (d ? 'text-white' : 'text-gray-900') : (d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')
                     }`}>
                     {tab.label}
@@ -388,17 +388,17 @@ export default function UserFeatureRequests() {
                 style={{ left: indicatorStyle.left, width: indicatorStyle.width, transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
             </div>
 
-            <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+            <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead>
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-                  {['Upvote', 'Title', 'Status', 'Comments', 'Author', 'Created', 'Actions'].map((h, i) => (
+                  {['Upvote', 'Title', 'Status', 'Board', 'Type', 'Actions'].map((h, i) => (
                     <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                       style={{
                         fontSize: '14px', color: d ? undefined : '#1C252E',
-                        textAlign: i === 3 ? 'center' as const : i === 6 ? 'right' as const : 'left' as const,
-                        width: i === 0 ? '90px' : i === 2 ? '140px' : i === 3 ? '280px' : i === 4 ? '250px' : i === 5 ? '150px' : i === 6 ? '100px' : undefined,
+                        textAlign: i === 5 ? 'right' as const : 'left' as const,
+                        width: i === 0 ? '90px' : i === 1 ? '500px' : i === 2 ? '170px' : i === 3 ? '180px' : i === 4 ? '120px' : i === 5 ? '80px' : undefined,
                       }}>
-                      <div style={{ paddingLeft: i === 0 ? '12px' : '16px', paddingRight: i === 6 ? '24px' : '16px' }}>{h}</div>
+                      <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 5 ? '24px' : '16px' }}>{h}</div>
                     </th>
                   ))}
                 </tr>
@@ -411,14 +411,14 @@ export default function UserFeatureRequests() {
                     <tr key={post.id} onClick={() => navigate(`/user/posts/${post.slug}`)}
                       className={`border-b border-dashed transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
                       {/* Upvote */}
-                      <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '12px', paddingRight: '12px', width: '90px' }}
+                      <td className={denseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px', paddingRight: '12px', width: '90px' }}
                         onClick={(e) => { e.stopPropagation(); handleVote(post.id); }}>
                         <div className="inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden"
                           style={{
                             padding: '8px 14px', fontSize: '13px', gap: '6px',
-                            backgroundColor: votes[post.id]?.voted ? '#059669' : 'transparent',
+                            backgroundColor: 'transparent',
                             borderColor: votes[post.id]?.voted ? '#059669' : (d ? '#4b5563' : '#e5e7eb'),
-                            color: votes[post.id]?.voted ? '#ffffff' : (d ? '#d1d5db' : '#374151'),
+                            color: votes[post.id]?.voted ? '#059669' : (d ? '#d1d5db' : '#374151'),
                           }}
                           onMouseEnter={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
                           onMouseLeave={e => { if (!votes[post.id]?.voted) e.currentTarget.style.borderColor = d ? '#4b5563' : '#e5e7eb'; }}>
@@ -430,7 +430,7 @@ export default function UserFeatureRequests() {
                         </div>
                       </td>
                       {/* Title + Content Preview */}
-                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} px-5 max-w-0 overflow-hidden`}
+                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} pl-5 pr-10 max-w-0 overflow-hidden`}
                         onMouseEnter={(e) => {
                           const td = e.currentTarget.getBoundingClientRect();
                           if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
@@ -440,9 +440,9 @@ export default function UserFeatureRequests() {
                           if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
                           hoverTimeout.current = setTimeout(() => setHoverPost(null), 150);
                         }}>
-                        <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                        {post.content && (
-                          <p className={`text-xs truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ maxWidth: '85%' }}>{post.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}</p>
+                        <p className={`text-[15px] font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
+                        {(post.description || post.content) && (
+                          <p className={`text-[13px] truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description || post.content!.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()}</p>
                         )}
                       </td>
                       {/* Status */}
@@ -451,42 +451,36 @@ export default function UserFeatureRequests() {
                           {post.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                         </span>
                       </td>
-                      {/* Comments */}
-                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-center text-sm font-semibold text-emerald-600`}>
-                        {post.commentCount ?? 0}
+                      {/* Board */}
+                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} max-w-0`}>
+                        <span className={`block text-sm font-medium truncate ${d ? 'text-gray-300' : 'text-gray-700'}`} title={post.board?.name || ''}>
+                          {post.board?.name || '—'}
+                        </span>
                       </td>
-                      {/* Author */}
+                      {/* Type */}
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'}`}>
-                        <div className="flex items-center gap-2 group/author">
-                          {post.author?.avatar ? (
-                            <img src={post.author.avatar.startsWith('http') ? post.author.avatar : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${post.author.avatar}`} alt={post.author.name} className="w-7 h-7 rounded-full object-cover shrink-0" />
-                          ) : (
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${d ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                              {post.author?.name?.[0]?.toUpperCase() || '?'}
-                            </div>
-                          )}
-                          <div className="relative">
-                            <span className={`text-sm truncate block ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ maxWidth: '100px' }}>{post.author?.name}</span>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/author:flex flex-col items-center z-50 pointer-events-none">
-                              <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
-                                {post.author?.name}
-                              </div>
-                              <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900 -mt-[1px]" />
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      {/* Created */}
-                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm whitespace-nowrap ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                        {new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {(() => {
+                          const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+                            feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
+                            bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
+                            improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
+                            integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
+                          };
+                          const ts = typeStyles[post.type] || typeStyles.feature;
+                          return (
+                            <span className={`inline-block px-2.5 py-1 rounded-full text-[13px] font-semibold capitalize ${d ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                              {post.type}
+                            </span>
+                          );
+                        })()}
                       </td>
                       {/* Actions */}
-                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }} onClick={(e) => e.stopPropagation()}>
+                      <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '24px' }} onClick={(e) => e.stopPropagation()}>
                         {isOwner && (
                           <div className="relative inline-block">
                             <button onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
                               className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
-                              <MoreVertical className="w-4 h-4 text-gray-400" />
+                              <MoreVertical className={`w-4 h-4 ${d ? 'text-gray-300' : 'text-gray-600'}`} />
                             </button>
                             {openMenuId === post.id && (
                               <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${
@@ -511,7 +505,7 @@ export default function UserFeatureRequests() {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={7}>
+                    <td colSpan={6}>
                       <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '300px' }}>
                         <MessageSquare className={`w-10 h-10 mb-3 ${d ? 'text-gray-600' : 'text-gray-300'}`} />
                         <p className={`text-base font-semibold mb-1 ${d ? 'text-gray-300' : 'text-gray-600'}`}>No posts found</p>

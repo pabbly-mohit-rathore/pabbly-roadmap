@@ -258,28 +258,28 @@ export default function RoadmapPage() {
                               ? 'bg-gray-750 border-gray-600 hover:border-gray-500'
                               : 'bg-white border-gray-200 hover:border-gray-300'
                           }`}
-                          style={{ minHeight: '90px' }}
+                          style={{ minHeight: '104px' }}
                         >
                           <div className={!subtitle ? 'flex-1 flex items-center' : ''}>
                             <div className="w-full">
-                              <p className={`text-sm font-semibold line-clamp-2 leading-snug ${
+                              <p className={`text-sm font-semibold truncate leading-snug ${
                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                               }`}>
                                 {post.title}
                               </p>
                               {subtitle && (
-                                <p className={`text-xs line-clamp-1 mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
+                                <p className={`text-xs line-clamp-1 mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
                               )}
                             </div>
                           </div>
                           {/* Board + Type chips */}
-                          <div className="flex items-center gap-1.5 flex-wrap mt-auto pt-2">
+                          <div className="flex items-center gap-2 flex-wrap mt-auto pt-3">
                             {post.board?.name && (
-                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
                                 {post.board.name}
                               </span>
                             )}
-                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
                               {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
                             </span>
                           </div>

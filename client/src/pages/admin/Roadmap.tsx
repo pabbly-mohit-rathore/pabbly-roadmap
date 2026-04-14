@@ -6,6 +6,7 @@ import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
 import CustomDropdown from '../../components/ui/CustomDropdown';
+import StatusReasonDialog from '../../components/ui/StatusReasonDialog';
 import toast from 'react-hot-toast';
 
 interface Post {
@@ -54,6 +55,9 @@ export default function AdminRoadmap() {
   const [selectedBoard, setSelectedBoard] = useState('');
   const [boards, setBoards] = useState<Board[]>([]);
   const [draggedPost, setDraggedPost] = useState<Post | null>(null);
+  // Pending status change that's waiting on a reason from admin (hold / live flow)
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ post: Post; oldStatus: string; newStatus: string } | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,39 +122,63 @@ export default function AdminRoadmap() {
     e.preventDefault();
   };
 
+  const applyStatusChange = async (post: Post, oldStatus: string, newStatus: string, reason?: string) => {
+    const postId = post.id;
+    // Optimistic update — move card instantly
+    setRoadmap(prev => {
+      const updated = { ...prev };
+      updated[oldStatus] = (updated[oldStatus] || []).filter((p: Post) => p.id !== postId);
+      updated[newStatus] = [...(updated[newStatus] || []), { ...post, status: newStatus }];
+      return updated;
+    });
+
+    try {
+      await api.put(`/posts/${postId}/status`, { status: newStatus });
+      // If a reason was supplied (hold/live flow), post it as a comment so the
+      // decision is recorded on the post timeline.
+      if (reason) {
+        // `reason` is already rich-text HTML from CommentEditor — just prepend a label.
+        const label = newStatus === 'hold' ? 'Status changed to On Hold' : 'Status changed to Live';
+        const content = `<p><strong>${label}</strong></p>${reason}`;
+        try {
+          const r = await api.post(`/comments/post/${postId}`, { content });
+          console.log('[status-reason-comment] posted', r.data);
+          toast.success(`Status updated to ${newStatus === 'hold' ? 'On Hold' : 'Live'}`);
+        } catch (err) {
+          console.error('[status-reason-comment] failed', err);
+          const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+          toast.error(msg || 'Status updated but failed to post reason as comment');
+        }
+      }
+    } catch {
+      // Revert on error
+      setRoadmap(prev => {
+        const reverted = { ...prev };
+        reverted[newStatus] = (reverted[newStatus] || []).filter((p: Post) => p.id !== postId);
+        reverted[oldStatus] = [...(reverted[oldStatus] || []), { ...post, status: oldStatus }];
+        return reverted;
+      });
+      toast.error('Failed to change status');
+    }
+  };
+
   const handleDrop = async (newStatus: string) => {
     if (!draggedPost || draggedPost.status === newStatus) {
       setDraggedPost(null);
       return;
     }
 
-    const postId = draggedPost.id;
-    const oldStatus = draggedPost.status;
-
-    // Optimistic update — move card instantly
-    setRoadmap(prev => {
-      const updated = { ...prev };
-      // Remove from old status
-      updated[oldStatus] = (updated[oldStatus] || []).filter((p: Post) => p.id !== postId);
-      // Add to new status
-      updated[newStatus] = [...(updated[newStatus] || []), { ...draggedPost, status: newStatus }];
-      return updated;
-    });
-    setDraggedPost(null);
-
-    // API call in background
-    try {
-      await api.put(`/posts/${postId}/status`, { status: newStatus });
-    } catch {
-      // Revert on error
-      setRoadmap(prev => {
-        const reverted = { ...prev };
-        reverted[newStatus] = (reverted[newStatus] || []).filter((p: Post) => p.id !== postId);
-        reverted[oldStatus] = [...(reverted[oldStatus] || []), { ...draggedPost, status: oldStatus }];
-        return reverted;
-      });
-      toast.error('Failed to change status');
+    // hold / live require a reason — open dialog first
+    if (newStatus === 'hold' || newStatus === 'live') {
+      setPendingStatusChange({ post: draggedPost, oldStatus: draggedPost.status, newStatus });
+      setDraggedPost(null);
+      return;
     }
+
+    const post = draggedPost;
+    const oldStatus = draggedPost.status;
+    setDraggedPost(null);
+    await applyStatusChange(post, oldStatus, newStatus);
   };
 
   const clearFilters = () => {
@@ -260,16 +288,6 @@ export default function AdminRoadmap() {
         </div>
       </div>
 
-      {/* Info Bar */}
-      <div className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg mb-6 text-sm ${
-        theme === 'dark'
-          ? 'bg-blue-900/20 text-blue-300 border border-blue-800'
-          : 'bg-blue-50 text-blue-700 border border-blue-200'
-      }`}>
-        <span>💡</span>
-        <span>Drag and drop cards between columns to change status, or use the dropdown on each card.</span>
-      </div>
-
       {/* Kanban Board */}
       {loading ? (
         <LoadingBar />
@@ -355,9 +373,9 @@ export default function AdminRoadmap() {
                           {/* Top: Vote + Title/Description */}
                           <div className="flex items-start gap-3">
                             <div onClick={(e) => { e.stopPropagation(); toggleVote(post.id); }}
-                              className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold shrink-0 cursor-pointer transition-all ${
+                              className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold shrink-0 cursor-pointer transition-all bg-transparent ${
                                 votes[post.id]?.voted
-                                  ? 'bg-[#059669] border-[#059669] text-white'
+                                  ? 'border-[#059669] text-[#059669]'
                                   : (theme === 'dark' ? 'border-gray-600 text-gray-300 hover:border-[#059669]' : 'border-gray-200 text-gray-700 hover:border-[#059669]')
                               }`} style={{ padding: '6px 10px', fontSize: '12px', gap: '5px' }}>
                               <ArrowUpRight className="w-3.5 h-3.5 rotate-[-45deg]" />
@@ -367,21 +385,21 @@ export default function AdminRoadmap() {
                               const subtitle = (post.description && post.description.trim())
                                 || (post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '');
                               return (
-                            <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: '62px' }}>
+                            <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: '78px' }}>
                               <div className={!subtitle ? 'flex-1 flex items-center' : ''}>
                                 <div className="w-full">
-                                  <p className={`text-sm font-semibold line-clamp-2 leading-snug ${
+                                  <p className={`text-sm font-semibold truncate leading-snug ${
                                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                                   }`}>{post.title}</p>
                                   {subtitle && (
-                                    <p className={`text-xs line-clamp-1 mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
+                                    <p className={`text-xs line-clamp-1 mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
                                   )}
                                 </div>
                               </div>
                               {/* Board + Type chips */}
-                              <div className="flex items-center gap-1.5 flex-wrap mt-auto pt-2">
+                              <div className="flex items-center gap-2 flex-wrap mt-auto pt-3">
                                 {post.board?.name && (
-                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
                                     theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
                                   }`}>
                                     {post.board.name}
@@ -396,7 +414,7 @@ export default function AdminRoadmap() {
                                   };
                                   const ts = typeStyles[post.type] || typeStyles.feature;
                                   return (
-                                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
                                       theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`
                                     }`}>
                                       {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
@@ -431,6 +449,20 @@ export default function AdminRoadmap() {
           </div>
         </div>
       )}
+
+      <StatusReasonDialog
+        open={!!pendingStatusChange}
+        status={pendingStatusChange?.newStatus === 'hold' ? 'hold' : pendingStatusChange?.newStatus === 'live' ? 'live' : null}
+        loading={statusSaving}
+        onConfirm={async (reason) => {
+          if (!pendingStatusChange) return;
+          setStatusSaving(true);
+          await applyStatusChange(pendingStatusChange.post, pendingStatusChange.oldStatus, pendingStatusChange.newStatus, reason);
+          setStatusSaving(false);
+          setPendingStatusChange(null);
+        }}
+        onCancel={() => setPendingStatusChange(null)}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply, Bell } from 'lucide-react';
+import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply } from 'lucide-react';
+import StatusReasonDialog from '../../components/ui/StatusReasonDialog';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useVoteStore from '../../store/voteStore';
@@ -84,7 +85,9 @@ export default function AdminPostDetail() {
   const [replyText, setReplyText] = useState('');
   const [activeTab, setActiveTab] = useState<'comments' | 'activities'>('comments');
   const [commentMenuId, setCommentMenuId] = useState<string | null>(null);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  // Pending hold/live status change waiting on a reason from admin
+  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
   const [deleteCommentConfirm, setDeleteCommentConfirm] = useState<string | null>(null);
   const [replyingToName, setReplyingToName] = useState<string | null>(null);
   const [activities, setActivities] = useState<Array<{
@@ -119,24 +122,6 @@ export default function AdminPostDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
 
-  // Fetch subscription status
-  useEffect(() => {
-    if (post?.id) {
-      api.get(`/subscriptions/${post.id}/status`).then(res => {
-        if (res.data.success) setIsSubscribed(res.data.data.isSubscribed);
-      }).catch(() => {});
-    }
-  }, [post?.id]);
-
-  const handleToggleSubscription = async () => {
-    if (!post) return;
-    setIsSubscribed(prev => !prev);
-    try {
-      await api.post(`/subscriptions/${post.id}`);
-    } catch {
-      setIsSubscribed(prev => !prev);
-    }
-  };
 
   const fetchPost = async () => {
     try {
@@ -218,18 +203,50 @@ export default function AdminPostDetail() {
     setTimeout(() => setAnimating(false), 400);
   };
 
-  const handleChangeStatus = async (newStatus: string) => {
+  // Performs the actual status change + optional reason comment.
+  // Optimistic update + instant toast so the UI feels snappy; reverts on failure.
+  const applyStatusChange = async (newStatus: string, reason?: string) => {
+    if (!post?.id) return;
+    const postId = post.id;
+    const oldStatus = post.status;
+    // Optimistic — flip UI and show success toast IMMEDIATELY.
+    setPost((prev) => (prev ? { ...prev, status: newStatus } : null));
+    const successLabel = reason
+      ? `Status updated to ${newStatus === 'hold' ? 'On Hold' : 'Live'}`
+      : 'Status updated';
+    toast.success(successLabel);
     try {
-      const response = await api.put(`/posts/${post?.id}/status`, {
-        status: newStatus,
-      });
-      if (response.data.success) {
-        setPost((prev) => (prev ? { ...prev, status: newStatus } : null));
+      await api.put(`/posts/${postId}/status`, { status: newStatus });
+      if (reason) {
+        // `reason` is already rich-text HTML from CommentEditor — just prepend a label.
+        const label = newStatus === 'hold' ? 'Status changed to On Hold' : 'Status changed to Live';
+        const content = `<p><strong>${label}</strong></p>${reason}`;
+        try {
+          await api.post(`/comments/post/${postId}`, { content });
+          // Refresh comments list so the new comment shows up immediately.
+          fetchPost();
+        } catch (err) {
+          console.error('[status-reason-comment] failed', err);
+          const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+          toast.error(msg || 'Failed to post reason as comment');
+        }
       }
     } catch (error) {
+      // Revert optimistic update + undo success toast feeling
+      setPost((prev) => (prev ? { ...prev, status: oldStatus } : null));
       console.error('Error changing status:', error);
       toast.error('Failed to change status');
     }
+  };
+
+  const handleChangeStatus = (newStatus: string) => {
+    if (!post?.id || newStatus === post.status) return;
+    // hold / live require a reason from admin — open dialog first
+    if (newStatus === 'hold' || newStatus === 'live') {
+      setPendingStatusChange(newStatus);
+      return;
+    }
+    applyStatusChange(newStatus);
   };
 
   const handleAddComment = async (htmlContent?: string) => {
@@ -399,29 +416,6 @@ export default function AdminPostDetail() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: { [key: string]: string } = {
-      open: 'bg-blue-100 text-blue-800',
-      under_review: 'bg-yellow-100 text-yellow-800',
-      planned: 'bg-purple-100 text-purple-800',
-      in_progress: 'bg-orange-100 text-orange-800',
-      live: 'bg-green-100 text-green-800',
-      closed: 'bg-gray-100 text-gray-800',
-      hold: 'bg-red-100 text-red-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getTypeColor = (type: string) => {
-    const colors: { [key: string]: string } = {
-      feature: 'bg-indigo-100 text-indigo-800',
-      bug: 'bg-red-100 text-red-800',
-      improvement: 'bg-blue-100 text-blue-800',
-      integration: 'bg-green-100 text-green-800',
-    };
-    return colors[type] || 'bg-gray-100 text-gray-800';
-  };
-
   if (!post && !loading) {
     return (
       <div
@@ -468,9 +462,9 @@ export default function AdminPostDetail() {
                         padding: '8px 14px',
                         fontSize: '13px',
                         gap: '6px',
-                        backgroundColor: votes[post!.id]?.voted ? '#059669' : 'transparent',
+                        backgroundColor: 'transparent',
                         borderColor: votes[post!.id]?.voted ? '#059669' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
-                        color: votes[post!.id]?.voted ? '#ffffff' : (theme === 'dark' ? '#d1d5db' : '#374151'),
+                        color: votes[post!.id]?.voted ? '#059669' : (theme === 'dark' ? '#d1d5db' : '#374151'),
                       }}
                       onMouseEnter={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
                       onMouseLeave={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = theme === 'dark' ? '#4b5563' : '#e5e7eb'; }}
@@ -752,77 +746,21 @@ export default function AdminPostDetail() {
 
           {/* Sidebar - Right */}
           <div className="sticky top-10 space-y-4">
-            {/* Subscribe Card */}
-            <div className={`rounded-xl border p-5 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
-              <h3 className={`text-sm font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Subscribe to post</h3>
-              <p className={`text-xs mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Get notified when status changes or new comments</p>
-              <button onClick={handleToggleSubscription}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  isSubscribed
-                    ? (theme === 'dark' ? 'border border-emerald-600 text-emerald-400 hover:bg-emerald-900/20 bg-transparent' : 'border border-emerald-600 text-emerald-600 hover:bg-emerald-50 bg-transparent')
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                }`}>
-                <Bell className="w-4 h-4" />
-                {isSubscribed ? 'Unsubscribe' : 'Get notified'}
-              </button>
-            </div>
-
             {/* Post Details Card */}
             <div
               className={`rounded-xl border ${
                 theme === 'dark'
-                  ? 'bg-gray-800 border-gray-700'
-                  : 'bg-white border-gray-200 shadow-sm'
+                  ? 'bg-gray-800 border-gray-700/60'
+                  : 'bg-white border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]'
               }`}
             >
               <div className="p-5 space-y-5">
                 {/* Created */}
-                <div className={`flex items-center justify-between pb-3 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Post Created</p>
+                <div className={`flex items-center justify-between pb-3 -mx-5 px-5 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Post Created</p>
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     {post?.createdAt ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
                   </p>
-                </div>
-
-                {/* Type & Status Chips */}
-                <div className="flex flex-wrap gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(post?.type || '')}`}>
-                    {post?.type?.toUpperCase()}
-                  </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(post?.status || '')}`}>
-                    {post?.status?.replace(/_/g, ' ')}
-                  </span>
-                </div>
-
-                {/* Board */}
-                <div className={`flex items-center gap-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
-                    {post?.board.name?.[0]?.toUpperCase()}
-                  </div>
-                  <div>
-                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Board</p>
-                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.board.name}</p>
-                  </div>
-                </div>
-
-                {/* Author */}
-                <div className={`flex items-center gap-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  {(() => {
-                    const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-                    const av = post?.author.avatar;
-                    const url = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
-                    return url ? (
-                      <img src={url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                        {post?.author.name?.[0]?.toUpperCase()}
-                      </div>
-                    );
-                  })()}
-                  <div>
-                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Author</p>
-                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.author.name}</p>
-                  </div>
                 </div>
 
                 {/* Status Selector */}
@@ -836,12 +774,93 @@ export default function AdminPostDetail() {
                       { value: 'planned', label: 'Planned' },
                       { value: 'in_progress', label: 'In Progress' },
                       { value: 'live', label: 'Live' },
-                      { value: 'closed', label: 'Closed' },
                       { value: 'hold', label: 'Hold' },
                     ]}
                     onChange={(v) => handleChangeStatus(v)}
                     minWidth="100%"
                   />
+                </div>
+
+                {/* Board */}
+                <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                    {post?.board.name?.[0]?.toUpperCase()}
+                  </div>
+                  <div>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Board</p>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.board.name}</p>
+                  </div>
+                </div>
+
+                {/* Type */}
+                {(() => {
+                  const typeChipStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+                    feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
+                    bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
+                    improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
+                    integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
+                  };
+                  const ts = typeChipStyles[post?.type || ''] || typeChipStyles.feature;
+                  return (
+                    <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                        {post?.type?.[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Type</p>
+                        <span className={`inline-block mt-0.5 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                          {post?.type}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Status */}
+                {(() => {
+                  const statusChipStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+                    open:         { bg: 'bg-blue-100',    text: 'text-blue-700',    darkBg: 'bg-blue-900/40',    darkText: 'text-blue-300' },
+                    under_review: { bg: 'bg-yellow-100',  text: 'text-yellow-700',  darkBg: 'bg-yellow-900/40',  darkText: 'text-yellow-300' },
+                    planned:      { bg: 'bg-purple-100',  text: 'text-purple-700',  darkBg: 'bg-purple-900/40',  darkText: 'text-purple-300' },
+                    in_progress:  { bg: 'bg-orange-100',  text: 'text-orange-700',  darkBg: 'bg-orange-900/40',  darkText: 'text-orange-300' },
+                    live:         { bg: 'bg-green-100',   text: 'text-green-700',   darkBg: 'bg-green-900/40',   darkText: 'text-green-300' },
+                    closed:       { bg: 'bg-gray-100',    text: 'text-gray-700',    darkBg: 'bg-gray-700/60',    darkText: 'text-gray-300' },
+                    hold:         { bg: 'bg-red-100',     text: 'text-red-700',     darkBg: 'bg-red-900/40',     darkText: 'text-red-300' },
+                  };
+                  const ss = statusChipStyles[post?.status || ''] || statusChipStyles.open;
+                  return (
+                    <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? `${ss.darkBg} ${ss.darkText}` : `${ss.bg} ${ss.text}`}`}>
+                        {post?.status?.[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Status</p>
+                        <span className={`inline-block mt-0.5 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${theme === 'dark' ? `${ss.darkBg} ${ss.darkText}` : `${ss.bg} ${ss.text}`}`}>
+                          {post?.status?.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Author */}
+                <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                  {(() => {
+                    const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+                    const av = post?.author.avatar;
+                    const url = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
+                    return url ? (
+                      <img src={url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                        {post?.author.name?.[0]?.toUpperCase()}
+                      </div>
+                    );
+                  })()}
+                  <div>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Author</p>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.author.name}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -855,6 +874,20 @@ export default function AdminPostDetail() {
         message="This comment will be permanently deleted. This action cannot be undone."
         onConfirm={handleDeleteComment}
         onCancel={() => setDeleteCommentConfirm(null)}
+      />
+
+      <StatusReasonDialog
+        open={!!pendingStatusChange}
+        status={pendingStatusChange === 'hold' ? 'hold' : pendingStatusChange === 'live' ? 'live' : null}
+        loading={statusSaving}
+        onConfirm={async (reason) => {
+          if (!pendingStatusChange) return;
+          setStatusSaving(true);
+          await applyStatusChange(pendingStatusChange, reason);
+          setStatusSaving(false);
+          setPendingStatusChange(null);
+        }}
+        onCancel={() => setPendingStatusChange(null)}
       />
     </div>
   );
