@@ -6,6 +6,7 @@ import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface DashboardStats {
   totalPosts: number;
@@ -191,7 +192,7 @@ export default function AdminDashboard() {
                       style={{
                         fontSize: '14px', color: d ? undefined : '#1C252E',
                         textAlign: i === 4 ? 'right' as const : 'left' as const,
-                        width: i === 0 ? '80px' : i === 3 ? '200px' : i === 4 ? '100px' : undefined,
+                        width: i === 0 ? '80px' : i === 1 ? '280px' : i === 3 ? '200px' : i === 4 ? '100px' : undefined,
                       }}>
                       <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
                     </th>
@@ -214,11 +215,15 @@ export default function AdminDashboard() {
                             style={{ backgroundColor: boardColor + '15' }}>
                             <span className="text-sm font-bold" style={{ color: boardColor }}>{initial}</span>
                           </div>
-                          <span className={`text-sm font-semibold ${d ? 'text-white' : 'text-gray-900'}`}>{board.name}</span>
+                          <Tooltip title={board.name}>
+                            <span className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{board.name}</span>
+                          </Tooltip>
                         </div>
                       </td>
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                        <span className="line-clamp-1">{board.description || 'No description provided.'}</span>
+                        <Tooltip title={board.description || 'No description provided.'}>
+                          <span className="line-clamp-1">{board.description || 'No description provided.'}</span>
+                        </Tooltip>
                       </td>
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
                         {formatDate(board.createdAt)}
@@ -255,11 +260,7 @@ export default function AdminDashboard() {
                         <LayoutGrid className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
                       </div>
                       <p className={`text-base font-semibold mb-1 ${d ? 'text-gray-300' : 'text-gray-600'}`}>No Boards Created</p>
-                      <p className={`text-sm mb-4 ${d ? 'text-gray-500' : 'text-gray-400'}`}>Create your first board to get started.</p>
-                      <button onClick={() => setShowCreateModal(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors text-sm font-medium">
-                        <Plus className="w-4 h-4" /> Create First Board
-                      </button>
+                      <p className={`text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>Use the "Create Board" button above to get started.</p>
                     </div>
                   </td></tr>
                 )}
@@ -372,7 +373,7 @@ export default function AdminDashboard() {
                 <button onClick={() => { setShowCreateModal(false); setFormData({ name: '', description: '', color: '#6366f1' }); }}
                   className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                 <LoadingButton onClick={handleCreateBoard} loading={creatingBoard}
-                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Create Board</LoadingButton>
+                  className="px-3 py-1.5 bg-[#009966] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Create Board</LoadingButton>
               </div>
             </div>
           </div>
@@ -431,7 +432,7 @@ export default function AdminDashboard() {
                   <button onClick={() => { setShowEditModal(false); setSelectedBoard(null); }}
                     className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                   <LoadingButton onClick={handleUpdateBoard} loading={updatingBoard}
-                    className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update Board</LoadingButton>
+                    className="px-3 py-1.5 bg-[#009966] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update Board</LoadingButton>
                 </div>
               </div>
             </div>

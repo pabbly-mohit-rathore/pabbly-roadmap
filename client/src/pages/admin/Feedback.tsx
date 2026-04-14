@@ -11,6 +11,7 @@ import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import CommentEditor from '../../components/CommentEditor';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface Post {
   id: string;
@@ -36,6 +37,7 @@ interface Post {
 interface Board {
   id: string;
   name: string;
+  description?: string;
 }
 
 const STATUS_CONFIG: Record<string, { dot: string; bg: string; text: string }> = {
@@ -71,6 +73,17 @@ const EMPTY_TYPE_CONFIG: Record<string, { icon: React.ElementType; title: string
   bug: { icon: Bug, title: 'No Bug Reports', description: 'No bug reports found. Reported bugs will appear here.' },
   improvement: { icon: Zap, title: 'No Improvements', description: 'No improvement suggestions found. Improvement ideas will appear here.' },
   integration: { icon: Puzzle, title: 'No Integration Requests', description: 'No integration requests found. Integration ideas will appear here.' },
+};
+
+// Strip all image-related content from HTML string — handles truncated tags, base64 data, etc.
+const stripImages = (html: string): string => {
+  return html
+    .replace(/<img\b[\s\S]*?(?:>|$)/gi, '')   // <img ...> or <img ... (truncated, no >)
+    .replace(/<[^>]*>/g, ' ')                   // remaining HTML tags
+    .replace(/&nbsp;/g, ' ')
+    .replace(/data:image\/\S+/gi, '')           // loose data:image strings
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 export default function AdminFeedback() {
@@ -422,8 +435,12 @@ export default function AdminFeedback() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>Feedback Management</h1>
-          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{sortedPosts.length} posts</p>
+          <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>
+            {boardFilter !== 'all' ? boards.find(b => b.id === boardFilter)?.name || 'All Board Posts' : 'All Board Posts'}
+          </h1>
+          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+            {boardFilter !== 'all' ? (boards.find(b => b.id === boardFilter)?.description || `${sortedPosts.length} posts`) : 'Have something to say? Join the conversation.'}
+          </p>
         </div>
         <button onClick={() => { setShowCreateModal(true); setFormErrors({}); }}
           className="flex items-center gap-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition" style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
@@ -495,7 +512,9 @@ export default function AdminFeedback() {
           {/* Title + Export */}
           <div className="flex items-center justify-between" style={{ padding: '24px 24px 16px 24px' }}>
             <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>
-              {statusFilter === 'all' ? 'All Posts' : `${statusFilter.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Posts`}
+              {boardFilter !== 'all'
+                ? (boards.find(b => b.id === boardFilter)?.name || 'All Posts')
+                : (statusFilter === 'all' ? 'All Posts' : `${statusFilter.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Posts`)}
             </h2>
             <div className="flex items-center gap-2">
               <button onClick={() => setShowExportDialog(true)}
@@ -668,9 +687,10 @@ export default function AdminFeedback() {
                           hoverTimeout.current = setTimeout(() => setHoverPost(null), 150);
                         }}>
                         <p className={`text-[15px] font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                        {(post.description || post.content) && (
-                          <p className={`text-[13px] truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{post.description || post.content!.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()}</p>
-                        )}
+                        {(() => {
+                          const text = stripImages(post.content || post.description || '');
+                          return text ? <p className={`text-[13px] truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{text}</p> : null;
+                        })()}
                       </td>
 
                       {/* Status */}
@@ -682,9 +702,11 @@ export default function AdminFeedback() {
 
                       {/* Board */}
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} max-w-0`}>
-                        <span className={`block text-sm font-medium truncate ${d ? 'text-gray-300' : 'text-gray-700'}`} title={post.board?.name || ''}>
-                          {post.board?.name || '—'}
-                        </span>
+                        <Tooltip title={post.board?.name ? `Board Name : ${post.board.name}` : ''}>
+                          <span className={`block text-sm font-medium truncate ${d ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {post.board?.name || '—'}
+                          </span>
+                        </Tooltip>
                       </td>
 
                       {/* Type */}
@@ -913,7 +935,7 @@ export default function AdminFeedback() {
       {/* Create Post Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px' }}>
+          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px', maxHeight: 'calc(100vh - 32px)' }}>
             {/* Sticky Header */}
             <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Create New Post</h2>
@@ -922,7 +944,7 @@ export default function AdminFeedback() {
               </button>
             </div>
             {/* Scrollable Content */}
-            <div style={{ padding: '24px' }}>
+            <div className="overflow-y-auto" style={{ padding: '24px' }}>
               <div className="space-y-4">
                 {/* Title */}
                 <div>
@@ -1004,7 +1026,7 @@ export default function AdminFeedback() {
       {/* Edit Post Modal */}
       {showEditModal && selectedPost && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px' }}>
+          <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px', maxHeight: 'calc(100vh - 32px)' }}>
             {/* Sticky Header */}
             <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Edit Post</h2>
@@ -1013,7 +1035,7 @@ export default function AdminFeedback() {
               </button>
             </div>
             {/* Body */}
-            <div style={{ padding: '24px' }}>
+            <div className="overflow-y-auto" style={{ padding: '24px' }}>
               <div className="space-y-4">
                 {/* Title */}
                 <div>
@@ -1115,12 +1137,14 @@ export default function AdminFeedback() {
                 </span>
               </div>
               <p className={`text-sm font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{hp.title}</p>
-              {hp.content && (
+              {hp.content && (() => {
+                const text = stripImages(hp.content);
+                return text ? (
                 <div className={`text-xs leading-relaxed overflow-hidden ${d ? 'text-gray-400' : 'text-gray-500'}`}
                   style={{ display: '-webkit-box', WebkitLineClamp: 10, WebkitBoxOrient: 'vertical' as const }}>
-                  {hp.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}
-                </div>
-              )}
+                  {text}
+                </div>) : null;
+              })()}
             </div>
           </div>
         );

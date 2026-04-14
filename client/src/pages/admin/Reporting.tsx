@@ -207,15 +207,6 @@ export default function AdminReporting() {
     );
   };
 
-  const getStatusColor = (status: string) => {
-    const c: Record<string, string> = {
-      open: 'bg-blue-100 text-blue-700',
-      under_review: 'bg-yellow-100 text-yellow-700',
-      planned: 'bg-purple-100 text-purple-700',
-      in_progress: 'bg-orange-100 text-orange-700',
-    };
-    return c[status] || 'bg-gray-100 text-gray-700';
-  };
 
   if (loading) return <LoadingBar />;
 
