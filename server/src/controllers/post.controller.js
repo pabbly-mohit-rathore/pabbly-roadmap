@@ -119,6 +119,7 @@ const getPosts = async (req, res, next) => {
         title: true,
         slug: true,
         description: true,
+        content: true,
         status: true,
         type: true,
         voteCount: true,
@@ -134,22 +135,24 @@ const getPosts = async (req, res, next) => {
         } : {}),
       },
     });
-    // Fetch truncated content previews via raw SQL so we get a short snippet
-    // without pulling multi-MB base64 images out of the database.
-    let contentMap = {};
-    if (posts.length > 0) {
-      const ids = posts.map(p => p.id);
-      const rows = await prisma.$queryRaw`
-        SELECT id, LEFT(content, 500) AS content_preview
-        FROM "posts"
-        WHERE id IN (${Prisma.join(ids)})
-      `;
-      contentMap = Object.fromEntries(rows.map(r => [r.id, r.content_preview || '']));
-    }
+
+    // Strip img tags (incl base64) and HTML from text, return plain text preview
+    const stripToText = (str) => {
+      if (!str) return '';
+      return str
+        .replace(/<img\b[\s\S]*?>/gi, '')       // full img tags
+        .replace(/<img\b[\s\S]*$/gi, '')         // truncated img tags (no closing >)
+        .replace(/<[^>]*>/g, ' ')                // other HTML tags
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 300);
+    };
 
     const postsWithVoteStatus = posts.map(post => ({
       ...post,
-      content: contentMap[post.id] || '',
+      content: stripToText(post.content),
+      description: stripToText(post.description),
       hasVoted: req.user ? (post.votes?.length > 0) : false,
       hasCommented: req.user ? (post.comments?.length > 0) : false,
       votes: undefined,

@@ -39,8 +39,8 @@ const getActivityOverview = async (req, res, next) => {
     });
     const adminBoardIds = adminBoards.map(b => b.id);
 
-    const boardWhere = boardId && boardId !== 'all' ? { boardId } : { boardId: { in: adminBoardIds } };
-    const postBoardFilter = boardId && boardId !== 'all' ? { boardId } : { boardId: { in: adminBoardIds } };
+    const boardWhere = boardId && boardId !== 'all' ? { boardId: adminBoardIds.includes(boardId) ? boardId : 'none' } : { boardId: { in: adminBoardIds } };
+    const postBoardFilter = boardId && boardId !== 'all' ? { boardId: adminBoardIds.includes(boardId) ? boardId : 'none' } : { boardId: { in: adminBoardIds } };
 
     const [posts, votes, comments] = await Promise.all([
       prisma.post.count({ where: { createdAt: { gte: start }, isDraft: false, ...boardWhere } }),
