@@ -349,19 +349,18 @@ const deleteBoard = async (req, res, next) => {
       });
     }
 
-    // Board delete karo (cascade delete hoga related posts, comments, etc.)
-    await prisma.board.delete({
-      where: { id },
-    });
-
-    // Activity log
+    // Activity log BEFORE delete (board still exists for FK)
     await prisma.activity.create({
       data: {
         action: 'deleted',
         description: `Board "${board.name}" deleted`,
         userId,
-        boardId: id,
       },
+    });
+
+    // Board delete karo (cascade delete hoga related posts, comments, etc.)
+    await prisma.board.delete({
+      where: { id },
     });
 
     res.json({

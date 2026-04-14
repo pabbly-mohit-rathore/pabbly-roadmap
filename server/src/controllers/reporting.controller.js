@@ -32,18 +32,26 @@ const getActivityOverview = async (req, res, next) => {
     const { period = 'week', boardId } = req.query;
     const { start, prevStart } = getDateRange(period);
 
-    const boardWhere = boardId && boardId !== 'all' ? { boardId } : {};
+    // Filter by admin's own boards
+    const adminBoards = await prisma.board.findMany({
+      where: { createdById: req.user.userId },
+      select: { id: true },
+    });
+    const adminBoardIds = adminBoards.map(b => b.id);
+
+    const boardWhere = boardId && boardId !== 'all' ? { boardId } : { boardId: { in: adminBoardIds } };
+    const postBoardFilter = boardId && boardId !== 'all' ? { boardId } : { boardId: { in: adminBoardIds } };
 
     const [posts, votes, comments] = await Promise.all([
-      prisma.post.count({ where: { createdAt: { gte: start }, ...boardWhere } }),
-      prisma.vote.count({ where: { createdAt: { gte: start }, post: boardWhere.boardId ? { boardId: boardWhere.boardId } : undefined } }),
-      prisma.comment.count({ where: { createdAt: { gte: start }, post: boardWhere.boardId ? { boardId: boardWhere.boardId } : undefined } }),
+      prisma.post.count({ where: { createdAt: { gte: start }, isDraft: false, ...boardWhere } }),
+      prisma.vote.count({ where: { createdAt: { gte: start }, post: postBoardFilter } }),
+      prisma.comment.count({ where: { createdAt: { gte: start }, post: postBoardFilter } }),
     ]);
 
     const [prevPosts, prevVotes, prevComments] = await Promise.all([
-      prisma.post.count({ where: { createdAt: { gte: prevStart, lt: start }, ...boardWhere } }),
-      prisma.vote.count({ where: { createdAt: { gte: prevStart, lt: start }, post: boardWhere.boardId ? { boardId: boardWhere.boardId } : undefined } }),
-      prisma.comment.count({ where: { createdAt: { gte: prevStart, lt: start }, post: boardWhere.boardId ? { boardId: boardWhere.boardId } : undefined } }),
+      prisma.post.count({ where: { createdAt: { gte: prevStart, lt: start }, isDraft: false, ...boardWhere } }),
+      prisma.vote.count({ where: { createdAt: { gte: prevStart, lt: start }, post: postBoardFilter } }),
+      prisma.comment.count({ where: { createdAt: { gte: prevStart, lt: start }, post: postBoardFilter } }),
     ]);
 
     res.json({
@@ -65,8 +73,20 @@ const getNewPosts = async (req, res, next) => {
 
     const { period = 'week', boardId } = req.query;
     const { start } = getDateRange(period);
-    const where = { createdAt: { gte: start } };
-    if (boardId && boardId !== 'all') where.boardId = boardId;
+    const where = { createdAt: { gte: start }, isDraft: false };
+
+    // Filter by admin's own boards
+    const adminBoards = await prisma.board.findMany({
+      where: { createdById: req.user.userId },
+      select: { id: true },
+    });
+    const adminBoardIds = adminBoards.map(b => b.id);
+
+    if (boardId && boardId !== 'all') {
+      where.boardId = adminBoardIds.includes(boardId) ? boardId : 'none';
+    } else {
+      where.boardId = { in: adminBoardIds };
+    }
 
     const userId = req.user.userId;
     const posts = await prisma.post.findMany({
@@ -98,8 +118,20 @@ const getStalePosts = async (req, res, next) => {
 
     const { boardId } = req.query;
     const staleDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const where = { updatedAt: { lt: staleDate }, status: { notIn: ['closed', 'live'] } };
-    if (boardId && boardId !== 'all') where.boardId = boardId;
+    const where = { updatedAt: { lt: staleDate }, status: { notIn: ['closed', 'live'] }, isDraft: false };
+
+    // Filter by admin's own boards
+    const adminBoards = await prisma.board.findMany({
+      where: { createdById: req.user.userId },
+      select: { id: true },
+    });
+    const adminBoardIds = adminBoards.map(b => b.id);
+
+    if (boardId && boardId !== 'all') {
+      where.boardId = adminBoardIds.includes(boardId) ? boardId : 'none';
+    } else {
+      where.boardId = { in: adminBoardIds };
+    }
 
     const posts = await prisma.post.findMany({
       where,
@@ -121,7 +153,8 @@ const getPostsByBoard = async (req, res, next) => {
     const { period = 'week', boardId } = req.query;
     const { start } = getDateRange(period);
 
-    const boardsFilter = boardId && boardId !== 'all' ? { id: boardId } : {};
+    // Filter by admin's own boards
+    const boardsFilter = boardId && boardId !== 'all' ? { id: boardId, createdById: req.user.userId } : { createdById: req.user.userId };
 
     const boards = await prisma.board.findMany({
       where: boardsFilter,
