@@ -242,6 +242,7 @@ const getProfile = async (req, res, next) => {
         phone: true,
         avatar: true,
         role: true,
+        isActive: true,
         createdAt: true,
       },
     });
