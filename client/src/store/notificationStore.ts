@@ -12,6 +12,8 @@ interface Notification {
   createdAt: string;
   data?: string | null;
   post?: { id: string; title: string; slug: string };
+  accepted?: boolean;
+  rejected?: boolean;
 }
 
 interface InvitationResult {
@@ -84,7 +86,7 @@ const useNotificationStore = create<NotificationStore>((set) => ({
       set(s => {
         const wasUnread = s.notifications.find(n => n.id === notificationId && !n.isRead);
         return {
-          notifications: s.notifications.filter(n => n.id !== notificationId),
+          notifications: s.notifications.map(n => n.id === notificationId ? { ...n, accepted: true, isRead: true } : n),
           unreadCount: wasUnread ? Math.max(0, s.unreadCount - 1) : s.unreadCount,
         };
       });
@@ -101,7 +103,7 @@ const useNotificationStore = create<NotificationStore>((set) => ({
       set(s => {
         const wasUnread = s.notifications.find(n => n.id === notificationId && !n.isRead);
         return {
-          notifications: s.notifications.filter(n => n.id !== notificationId),
+          notifications: s.notifications.map(n => n.id === notificationId ? { ...n, rejected: true, isRead: true } : n),
           unreadCount: wasUnread ? Math.max(0, s.unreadCount - 1) : s.unreadCount,
         };
       });

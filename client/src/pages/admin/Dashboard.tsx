@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MessageSquare, Users, Layout, TrendingUp, BarChart2, ThumbsUp, Plus, X, MoreVertical, Edit2, Trash2, ChevronDown, ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
+import useTeamAccessStore from '../../store/teamAccessStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
@@ -43,6 +44,8 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isTeamAccess, accessLevel } = useTeamAccessStore();
+  const isTeamManager = isTeamAccess && accessLevel === 'manager';
   const d = theme === 'dark';
 
   // Board management state
@@ -241,12 +244,16 @@ export default function AdminDashboard() {
                                 className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
                                 <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
                               </button>
+                              {!isTeamManager && (
+                              <>
                               <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
                               <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: board.id, name: board.name }); setOpenMenuId(null); }}
                                 disabled={deletingBoard}
                                 className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg disabled:opacity-50 ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
                                 <Trash2 className="w-[18px] h-[18px]" /> Delete
                               </button>
+                              </>
+                              )}
                             </div>
                           )}
                         </div>
@@ -422,12 +429,14 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               </div>
-              <div className="flex gap-3 justify-between pt-2">
+              <div className={`flex gap-3 pt-2 ${isTeamManager ? 'justify-end' : 'justify-between'}`}>
+                {!isTeamManager && (
                 <button onClick={() => { const name = selectedBoard.name; const id = selectedBoard.id; setShowEditModal(false); setSelectedBoard(null); setDeleteConfirm({ id, name }); }}
                   disabled={deletingBoard}
                   className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium border transition-colors disabled:opacity-70 ${d ? 'border-red-800 text-red-400 hover:bg-red-900/20' : 'border-red-200 text-red-600 hover:bg-red-50'}`} style={{ borderRadius: '8px' }}>
                   <Trash2 className="w-4 h-4" /> Delete Board
                 </button>
+                )}
                 <div className="flex gap-3">
                   <button onClick={() => { setShowEditModal(false); setSelectedBoard(null); }}
                     className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>

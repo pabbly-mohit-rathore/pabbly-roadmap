@@ -137,7 +137,7 @@ function App() {
                     <Route path="posts/:postId" element={<AdminPostDetail />} />
                     <Route path="users" element={<AdminUsers />} />
                     <Route path="changelog/:id/view" element={<ChangelogView />} />
-                    <Route path="settings" element={<AdminSettings />} />
+                    <Route path="settings" element={isTeamAccess && !isAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminSettings />} />
                   </Routes>
                 </AdminLayout>
                 <Toaster position="top-right" />

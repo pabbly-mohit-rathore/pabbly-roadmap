@@ -183,7 +183,7 @@ export default function Navbar() {
                             <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{n.title}</p>
                             <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{n.message}</p>
                             <p className={`text-[11px] mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(n.createdAt)}</p>
-                            {invitationId && (
+                            {invitationId && !n.accepted && !n.rejected && (
                               <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   disabled={isBusy}
@@ -204,6 +204,12 @@ export default function Navbar() {
                                   <X className="w-3 h-3" /> Reject
                                 </button>
                               </div>
+                            )}
+                            {n.accepted && (
+                              <p className="mt-2 text-xs font-semibold text-emerald-600">You have accepted the access</p>
+                            )}
+                            {n.rejected && (
+                              <p className="mt-2 text-xs font-semibold text-red-500">You have rejected the access</p>
                             )}
                           </div>
                         </div>

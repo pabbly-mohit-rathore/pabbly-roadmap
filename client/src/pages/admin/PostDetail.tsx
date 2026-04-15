@@ -4,6 +4,7 @@ import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply } f
 import StatusReasonDialog from '../../components/ui/StatusReasonDialog';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
+import useTeamAccessStore from '../../store/teamAccessStore';
 import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -67,6 +68,8 @@ const getTimeAgo = (dateStr: string): string => {
 export default function AdminPostDetail() {
   const theme = useThemeStore((state) => state.theme);
   const { user: currentUser } = useAuthStore();
+  const { isTeamAccess, accessLevel } = useTeamAccessStore();
+  const isTeamManager = isTeamAccess && accessLevel === 'manager';
   const { votes, init, toggle } = useVoteStore();
   const { postId } = useParams<{ postId: string }>();
   const { state } = useLocation();
@@ -544,8 +547,10 @@ export default function AdminPostDetail() {
                                       <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-lg z-50 p-1 ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '130px' }}>
                                         <button onClick={() => { setEditingCommentId(comment.id); setCommentMenuId(null); }}
                                           className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button>
+                                        {!isTeamManager && (
                                         <button onClick={() => { setDeleteCommentConfirm(comment.id); setCommentMenuId(null); }}
                                           className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button>
+                                        )}
                                       </div>
                                     )}
                                   </div>
@@ -614,8 +619,10 @@ export default function AdminPostDetail() {
                                                   <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-lg z-50 p-1 ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '130px' }}>
                                                     <button onClick={() => { setEditingCommentId(reply.id); setCommentMenuId(null); }}
                                                       className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button>
+                                                    {!isTeamManager && (
                                                     <button onClick={() => { setDeleteCommentConfirm(reply.id); setCommentMenuId(null); }}
                                                       className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button>
+                                                    )}
                                                   </div>
                                                 )}
                                               </div>

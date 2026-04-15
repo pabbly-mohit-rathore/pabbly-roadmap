@@ -4,6 +4,7 @@ import { Plus, X, Edit2, Trash2, Search, ChevronLeft, ChevronRight, ChevronDown,
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
 import useAuthStore from '../../store/authStore';
+import useTeamAccessStore from '../../store/teamAccessStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
@@ -90,6 +91,8 @@ export default function AdminFeedback() {
   const theme = useThemeStore((state) => state.theme);
   const { init, toggle, votes } = useVoteStore();
   const { user } = useAuthStore();
+  const { isTeamAccess, accessLevel } = useTeamAccessStore();
+  const isTeamManager = isTeamAccess && accessLevel === 'manager';
   const navigate = useNavigate();
   const [animatingPosts, setAnimatingPosts] = useState<Set<string>>(new Set());
   const [posts, setPosts] = useState<Post[]>([]);
@@ -527,7 +530,7 @@ export default function AdminFeedback() {
                 }`}>
                 <Download className="w-4 h-4" /> Export{selectedPosts.size > 0 ? ` (${selectedPosts.size})` : ''}
               </button>
-              {selectedPosts.size > 0 && (
+              {selectedPosts.size > 0 && !isTeamManager && (
                 <button onClick={() => setBulkDeleteConfirm(true)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                     d ? 'border-red-500/60 text-red-400 hover:bg-red-500/10' : 'border-red-300 text-red-600 hover:bg-red-50'
@@ -755,6 +758,8 @@ export default function AdminFeedback() {
                                   <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
                                 </div>
                               </div>
+                              {!isTeamManager && (
+                              <>
                               <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
                               <div className="relative group/del">
                                 <button onClick={() => { setDeleteConfirm({ id: post.id, title: post.title }); setOpenMenuId(null); }}
@@ -766,6 +771,8 @@ export default function AdminFeedback() {
                                   <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
                                 </div>
                               </div>
+                              </>
+                              )}
                             </div>
                           )}
                         </div>

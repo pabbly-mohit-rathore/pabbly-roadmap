@@ -16,7 +16,7 @@ interface SidebarProps {
 export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
   const location = useLocation();
   const theme = useThemeStore((state) => state.theme);
-  const { isTeamAccess, accessLevel } = useTeamAccessStore();
+  const { isTeamAccess } = useTeamAccessStore();
   const { user } = useAuthStore();
 
   const isRealAdmin = user?.role === 'admin';
@@ -31,17 +31,11 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
   ];
 
   // Filter menu based on team access level
+  // Settings page sirf main admin ko dikhega (jo account ka owner hai)
   let menuItems = allMenuItems;
   if (isTeamMember) {
-    if (accessLevel === 'admin') {
-      // Admin access: Users visible, everything else too
-      menuItems = allMenuItems;
-    } else {
-      // Manager access: no Users
-      menuItems = allMenuItems.filter(item =>
-        item.label !== 'Users'
-      );
-    }
+    // Team members (admin/manager access) ko Settings nahi dikhega
+    menuItems = allMenuItems.filter(item => item.label !== 'Settings');
   }
 
   const isActive = (path: string) => {

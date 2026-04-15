@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, Users, Share2, FolderInput, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Search, X, XCircle, Users, Shield, UserCog, FolderInput, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
@@ -37,7 +37,8 @@ interface SharedBoard {
 
 interface Stats {
   uniqueTeamMembers: number;
-  boardsSharedByYou: number;
+  adminAccessCount: number;
+  managerAccessCount: number;
   boardsSharedWithYou: number;
 }
 
@@ -48,7 +49,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   const navigate = useNavigate();
   const d = theme === 'dark';
 
-  const [stats, setStats] = useState<Stats>({ uniqueTeamMembers: 0, boardsSharedByYou: 0, boardsSharedWithYou: 0 });
+  const [stats, setStats] = useState<Stats>({ uniqueTeamMembers: 0, adminAccessCount: 0, managerAccessCount: 0, boardsSharedWithYou: 0 });
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [sharedWithMe, setSharedWithMe] = useState<SharedBoard[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -200,13 +201,15 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
 
   const STAT_CONFIG: Record<string, { iconColor: string; glowColor: string }> = {
     'Unique Team Members Added': { iconColor: 'text-orange-400', glowColor: 'linear-gradient(180deg, rgba(251,146,60,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
-    'Boards Shared by You':     { iconColor: 'text-green-500',  glowColor: 'linear-gradient(180deg, rgba(34,197,94,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
-    'Boards Shared With You':   { iconColor: 'text-blue-400',   glowColor: 'linear-gradient(180deg, rgba(96,165,250,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
+    'Admin Access':              { iconColor: 'text-purple-500', glowColor: 'linear-gradient(180deg, rgba(168,85,247,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
+    'Manager Access':            { iconColor: 'text-blue-500',   glowColor: 'linear-gradient(180deg, rgba(59,130,246,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
+    'Boards Shared With You':    { iconColor: 'text-green-500',  glowColor: 'linear-gradient(180deg, rgba(34,197,94,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
   };
 
   const statCards = [
     { label: 'Unique Team Members Added', value: stats.uniqueTeamMembers, icon: Users },
-    { label: 'Boards Shared by You', value: stats.boardsSharedByYou, icon: Share2 },
+    { label: 'Admin Access', value: stats.adminAccessCount, icon: Shield },
+    { label: 'Manager Access', value: stats.managerAccessCount, icon: UserCog },
     { label: 'Boards Shared With You', value: stats.boardsSharedWithYou, icon: FolderInput },
   ];
 
@@ -220,7 +223,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => {
           const Icon = card.icon;
           const cfg = STAT_CONFIG[card.label];
@@ -326,39 +329,41 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                   </span>
                 </td>
                 <td className={`${tmDenseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }}>
-                  {member.status === 'pending' ? (
-                    <button onClick={() => handleCancelInvitation(member.id)}
-                      disabled={removingId === member.id}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'} ${removingId === member.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                      {removingId === member.id ? 'Cancelling...' : 'Cancel Invite'}
-                    </button>
-                  ) : (
                   <div className="relative inline-block">
                     <button onClick={() => setOpenMenuId(openMenuId === member.id ? null : member.id)}
                       className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
                       <MoreVertical className="w-4 h-4 text-gray-400" />
                     </button>
                     {openMenuId === member.id && (
-                      <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px' }}>
+                      <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 whitespace-nowrap ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px' }}>
                         <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
-                        <button onClick={() => {
-                          setUpdateAccessLevel(member.accessLevel as 'admin' | 'manager');
-                          setShowUpdateModal(member);
-                          setOpenMenuId(null);
-                        }}
-                          className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
-                          <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Update Access
-                        </button>
-                        <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
-                        <button onClick={() => handleRemoveMember(member.id)}
-                          disabled={removingId === member.id}
-                          className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'} ${removingId === member.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                          <Trash2 className="w-[18px] h-[18px]" /> {removingId === member.id ? 'Removing...' : 'Remove Access'}
-                        </button>
+                        {member.status === 'pending' ? (
+                          <button onClick={() => { setOpenMenuId(null); handleCancelInvitation(member.id); }}
+                            disabled={removingId === member.id}
+                            className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'} ${removingId === member.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <XCircle className="w-[18px] h-[18px] shrink-0" /> {removingId === member.id ? 'Cancelling...' : 'Cancel Invite'}
+                          </button>
+                        ) : (
+                          <>
+                            <button onClick={() => {
+                              setUpdateAccessLevel(member.accessLevel as 'admin' | 'manager');
+                              setShowUpdateModal(member);
+                              setOpenMenuId(null);
+                            }}
+                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
+                              <Edit2 className="w-[18px] h-[18px] shrink-0 text-amber-500" /> Update Access
+                            </button>
+                            <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
+                            <button onClick={() => handleRemoveMember(member.id)}
+                              disabled={removingId === member.id}
+                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'} ${removingId === member.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              <Trash2 className="w-[18px] h-[18px] shrink-0" /> {removingId === member.id ? 'Removing...' : 'Remove Access'}
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
-                  )}
                 </td>
               </tr>
             )) : (

@@ -5,11 +5,20 @@ const api = axios.create({
   timeout: 30000, // 30s timeout
 });
 
-// Request interceptor - har request me token lagao
+// Request interceptor - har request me token aur team access info lagao
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // Team access mode mein board ID aur access level header mein bhejo
+  const teamAccess = localStorage.getItem('teamAccess');
+  if (teamAccess) {
+    try {
+      const parsed = JSON.parse(teamAccess);
+      if (parsed?.boardId) config.headers['x-team-board-id'] = parsed.boardId;
+      if (parsed?.accessLevel) config.headers['x-team-access-level'] = parsed.accessLevel;
+    } catch { /* ignore */ }
   }
   return config;
 });
