@@ -157,10 +157,10 @@ export default function UserRoadmapPage() {
           </div>
 
           {/* Kanban Board */}
-          <div className="overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 380px)' }}>
+          <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 380px)' }}>
             <div className="grid gap-4 h-full" style={{
               gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
-              minHeight: 'calc(100vh - 380px)',
+              height: '100%',
             }}>
               {STATUS_ORDER.map((status) => {
                 const posts = getFilteredPosts(status);
@@ -193,8 +193,7 @@ export default function UserRoadmapPage() {
                     {/* Cards */}
                     <div className={`flex-1 px-3 pb-3 pt-3 space-y-2.5 overflow-y-auto ${d ? 'bg-gray-850' : 'bg-[#f5f5f5]'}`}>
                       {posts.length > 0 ? posts.map((post) => {
-                        const subtitle = (post.description && post.description.trim())
-                          || (post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '');
+                        const subtitle = (post.description && post.description.trim()) || '';
                         const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
                           feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
                           bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
@@ -217,27 +216,23 @@ export default function UserRoadmapPage() {
                               <ArrowUpRight className="w-3.5 h-3.5 rotate-[-45deg]" />
                               <span>{votes[post.id]?.count ?? post._count?.votes ?? post.voteCount ?? 0}</span>
                             </div>
-                            <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: '78px' }}>
-                              <div className={!subtitle ? 'flex-1 flex items-center' : ''}>
-                                <div className="w-full">
-                                  <p className={`text-sm font-semibold truncate leading-snug ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                                  {subtitle && (
-                                    <p className={`text-xs line-clamp-1 mt-1.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
-                                  )}
-                                </div>
-                              </div>
-                              {/* Board + Type chips */}
-                              <div className="flex items-center gap-2 flex-wrap mt-auto pt-3">
-                                {post.board?.name && (
-                                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${d ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                                    {post.board.name}
-                                  </span>
-                                )}
-                                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${d ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
-                                  {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
-                                </span>
-                              </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold truncate leading-snug ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
+                              {subtitle && (
+                                <p className={`text-xs line-clamp-1 mt-1.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
+                              )}
                             </div>
+                          </div>
+                          <div className={`mt-5 mb-3 -mx-3.5 border-t ${d ? 'border-gray-600' : 'border-gray-100'}`} />
+                          <div className="flex items-center gap-2 min-w-0">
+                            {post.board?.name && (
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded truncate shrink min-w-0 ${d ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                                {post.board.name}
+                              </span>
+                            )}
+                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded shrink-0 whitespace-nowrap ${d ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                              {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
+                            </span>
                           </div>
                         </div>
                         );

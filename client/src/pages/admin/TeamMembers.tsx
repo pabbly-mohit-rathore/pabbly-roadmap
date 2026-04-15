@@ -16,6 +16,7 @@ interface TeamMember {
   boardId: string;
   accessLevel: string;
   createdAt: string;
+  status?: 'accepted' | 'pending';
   user: { id: string; name: string; email: string; avatar?: string };
   board: { id: string; name: string; slug: string; color: string };
 }
@@ -147,6 +148,22 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
     }
   };
 
+  const handleCancelInvitation = async (invitationId: string) => {
+    if (!confirm('Are you sure you want to cancel this invitation?')) return;
+    setRemovingId(invitationId);
+    try {
+      const res = await api.delete(`/team-members/invitations/${invitationId}`);
+      if (res.data.success) {
+        toast.success('Invitation cancelled');
+        fetchAll();
+      }
+    } catch (error) {
+      toast.error('Failed to cancel invitation');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
   const handleUpdateAccess = async () => {
     if (!showUpdateModal) return;
     setUpdatingAccess(true);
@@ -197,7 +214,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
     return <LoadingBar />;
   }
 
-  const TM_HEADERS = ['S.No', 'Team Member Email', 'Permission Type', 'Actions'];
+  const TM_HEADERS = ['S.No', 'Team Member Email', 'Permission Type', 'Status', 'Actions'];
   const SW_HEADERS = ['S.No', 'Shared On', 'Permission Type', 'Actions'];
 
   return (
@@ -270,8 +287,8 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                   style={{
                     fontSize: '14px', color: d ? undefined : '#1C252E',
-                    textAlign: i === 3 ? 'right' as const : 'left' as const,
-                    width: i === 0 ? '80px' : i === 3 ? '70px' : undefined,
+                    textAlign: i === 4 ? 'right' as const : 'left' as const,
+                    width: i === 0 ? '80px' : i === 4 ? '70px' : undefined,
                   }}>
                   <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
                 </th>
@@ -299,7 +316,23 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                     {member.accessLevel === 'admin' ? 'Admin Access' : 'Manager Access'}
                   </span>
                 </td>
+                <td className={`px-4 ${tmDenseMode ? 'py-1.5' : 'py-4'}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    member.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {member.status === 'pending' ? 'Pending' : 'Active'}
+                  </span>
+                </td>
                 <td className={`${tmDenseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }}>
+                  {member.status === 'pending' ? (
+                    <button onClick={() => handleCancelInvitation(member.id)}
+                      disabled={removingId === member.id}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'} ${removingId === member.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      {removingId === member.id ? 'Cancelling...' : 'Cancel Invite'}
+                    </button>
+                  ) : (
                   <div className="relative inline-block">
                     <button onClick={() => setOpenMenuId(openMenuId === member.id ? null : member.id)}
                       className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
@@ -325,10 +358,11 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                       </div>
                     )}
                   </div>
+                  )}
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={4}>
+              <tr><td colSpan={5}>
                 <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
                     <Users className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />

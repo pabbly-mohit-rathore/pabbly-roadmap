@@ -688,7 +688,7 @@ export default function AdminFeedback() {
                         }}>
                         <p className={`text-[15px] font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
                         {(() => {
-                          const text = stripImages(post.content || post.description || '');
+                          const text = stripImages(post.description || '');
                           return text ? <p className={`text-[13px] truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{text}</p> : null;
                         })()}
                       </td>
@@ -1137,8 +1137,8 @@ export default function AdminFeedback() {
                 </span>
               </div>
               <p className={`text-sm font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{hp.title}</p>
-              {hp.content && (() => {
-                const text = stripImages(hp.content);
+              {hp.description && (() => {
+                const text = stripImages(hp.description);
                 return text ? (
                 <div className={`text-xs leading-relaxed overflow-hidden ${d ? 'text-gray-400' : 'text-gray-500'}`}
                   style={{ display: '-webkit-box', WebkitLineClamp: 10, WebkitBoxOrient: 'vertical' as const }}>

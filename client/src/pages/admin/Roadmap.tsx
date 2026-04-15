@@ -292,10 +292,10 @@ export default function AdminRoadmap() {
       {loading ? (
         <LoadingBar />
       ) : (
-        <div className="overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 320px)' }}>
+        <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 320px)' }}>
           <div className="grid gap-4 h-full" style={{
             gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
-            minHeight: 'calc(100vh - 320px)',
+            height: '100%',
           }}>
             {STATUS_ORDER.map((status) => {
               const posts = getFilteredPosts(status);
@@ -382,48 +382,43 @@ export default function AdminRoadmap() {
                               <span>{votes[post.id]?.count ?? post._count?.votes ?? 0}</span>
                             </div>
                             {(() => {
-                              const subtitle = (post.description && post.description.trim())
-                                || (post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '');
+                              const subtitle = (post.description && post.description.trim()) || '';
                               return (
-                            <div className="flex-1 min-w-0 flex flex-col" style={{ minHeight: '78px' }}>
-                              <div className={!subtitle ? 'flex-1 flex items-center' : ''}>
-                                <div className="w-full">
-                                  <p className={`text-sm font-semibold truncate leading-snug ${
-                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                  }`}>{post.title}</p>
-                                  {subtitle && (
-                                    <p className={`text-xs line-clamp-1 mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
-                                  )}
-                                </div>
-                              </div>
-                              {/* Board + Type chips */}
-                              <div className="flex items-center gap-2 flex-wrap mt-auto pt-3">
-                                {post.board?.name && (
-                                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
-                                    theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
-                                  }`}>
-                                    {post.board.name}
-                                  </span>
-                                )}
-                                {(() => {
-                                  const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
-                                    feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
-                                    bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
-                                    improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
-                                    integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
-                                  };
-                                  const ts = typeStyles[post.type] || typeStyles.feature;
-                                  return (
-                                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
-                                      theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`
-                                    }`}>
-                                      {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
-                                    </span>
-                                  );
-                                })()}
-                              </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold truncate leading-snug ${
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                              }`}>{post.title}</p>
+                              {subtitle && (
+                                <p className={`text-xs line-clamp-1 mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
+                              )}
                             </div>
                             );
+                            })()}
+                          </div>
+                          <div className={`mt-5 mb-3 -mx-3.5 border-t ${theme === 'dark' ? 'border-gray-600' : 'border-gray-100'}`} />
+                          <div className="flex items-center gap-2 min-w-0">
+                            {post.board?.name && (
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded truncate shrink min-w-0 ${
+                                theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                {post.board.name}
+                              </span>
+                            )}
+                            {(() => {
+                              const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+                                feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
+                                bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
+                                improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
+                                integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
+                              };
+                              const ts = typeStyles[post.type] || typeStyles.feature;
+                              return (
+                                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded shrink-0 whitespace-nowrap ${
+                                  theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`
+                                }`}>
+                                  {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
+                                </span>
+                              );
                             })()}
                           </div>
                         </div>
