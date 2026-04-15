@@ -264,14 +264,19 @@ export default function UserFeatureRequests() {
     finally { setUpdating(false); }
   };
 
-  const filteredPosts = posts.filter(p => {
+  // Base filtered posts — everything except type filter, used for type tab counts
+  const baseFilteredPosts = posts.filter(p => {
     if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-    if (typeFilter !== 'all' && p.type !== typeFilter) return false;
     if (boardFilter !== 'all' && p.board?.id !== boardFilter) return false;
     if (activityFilter === 'my-posts' && p.author?.id !== user?.id) return false;
     if (activityFilter === 'my-voted' && !p.hasVoted) return false;
     if (activityFilter === 'my-commented' && !p.hasCommented) return false;
+    return true;
+  });
+
+  const filteredPosts = baseFilteredPosts.filter(p => {
+    if (typeFilter !== 'all' && p.type !== typeFilter) return false;
     return true;
   });
 
@@ -387,7 +392,7 @@ export default function UserFeatureRequests() {
                 { key: 'integration', label: 'Integration', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', darkBadgeBg: 'bg-purple-900/40', darkBadgeText: 'text-purple-300' },
               ].map((tab) => {
                 const isActive = typeFilter === tab.key;
-                const count = tab.key === 'all' ? posts.length : posts.filter(p => p.type === tab.key).length;
+                const count = tab.key === 'all' ? baseFilteredPosts.length : baseFilteredPosts.filter(p => p.type === tab.key).length;
                 return (
                   <button key={tab.key} ref={(el) => { tabsRef.current[tab.key] = el; }}
                     onClick={() => { setTypeFilter(tab.key); setPage(0); }}

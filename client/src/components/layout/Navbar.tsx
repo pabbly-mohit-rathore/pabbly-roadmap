@@ -157,16 +157,23 @@ export default function Navbar() {
                       {notifications.length > 0 ? notifications.map(n => {
                         const invitationId = n.type === 'team_access_request' ? parseInvitationId(n.data) : null;
                         const isBusy = invitationBusyId === n.id;
-                        const isInteractive = !invitationId;
+                        const isTeamNotif = n.type?.startsWith('team_access');
+                        const isClickable = !isTeamNotif && n.post;
                         return (
                         <div key={n.id}
                           onClick={() => {
-                            if (!isInteractive) return;
+                            if (!isClickable) return;
                             markAsRead(n.id);
-                            if (n.post) { navigate(location.pathname.startsWith('/admin') ? `/admin/posts/${n.post.slug}` : `/user/posts/${n.post.slug}`); }
+                            const isAdmin = location.pathname.startsWith('/admin');
+                            const basePath = isAdmin ? `/admin/posts/${n.post!.slug}` : `/user/posts/${n.post!.slug}`;
+                            // Comment notifications: navigate with commentId for scroll
+                            let parsed: Record<string, string> | null = null;
+                            try { parsed = n.data ? JSON.parse(n.data) : null; } catch { /* ignore */ }
+                            const commentId = parsed?.commentId || parsed?.parentId;
+                            navigate(commentId ? `${basePath}?commentId=${commentId}` : basePath);
                             setNotifOpen(false);
                           }}
-                          className={`flex gap-3 px-4 py-3 transition-colors ${isInteractive ? 'cursor-pointer' : ''} ${
+                          className={`flex gap-3 px-4 py-3 transition-colors ${isClickable ? 'cursor-pointer' : ''} ${
                             !n.isRead
                               ? (theme === 'dark' ? 'bg-blue-900/10 hover:bg-gray-700' : 'bg-blue-50/50 hover:bg-gray-50')
                               : (theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50')

@@ -230,12 +230,19 @@ export default function AdminFeedback() {
     }
   };
 
-  const filteredPosts = posts.filter((post) => {
+  // Base filtered posts — activity filter + search applied, but NOT type filter
+  // Used for type tab counts so they reflect the activity filter
+  const baseFilteredPosts = posts.filter((post) => {
     if (!post.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (typeFilter !== 'all' && post.type !== typeFilter) return false;
     if (activityFilter === 'my-posts' && post.author?.id !== user?.id) return false;
     if (activityFilter === 'my-voted' && !post.hasVoted) return false;
     if (activityFilter === 'my-commented' && !post.hasCommented) return false;
+    return true;
+  });
+
+  // Final filtered posts — type filter on top of base
+  const filteredPosts = baseFilteredPosts.filter((post) => {
+    if (typeFilter !== 'all' && post.type !== typeFilter) return false;
     return true;
   });
 
@@ -552,7 +559,7 @@ export default function AdminFeedback() {
               { key: 'integration', label: 'Integration', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', darkBadgeBg: 'bg-purple-900/40', darkBadgeText: 'text-purple-300' },
             ].map((tab) => {
               const isActive = typeFilter === tab.key;
-              const count = tab.key === 'all' ? posts.length : posts.filter(p => p.type === tab.key).length;
+              const count = tab.key === 'all' ? baseFilteredPosts.length : baseFilteredPosts.filter(p => p.type === tab.key).length;
               return (
                 <button key={tab.key}
                   ref={(el) => { tabsRef.current[tab.key] = el; }}

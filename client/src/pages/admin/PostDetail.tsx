@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply, X, Copy, Check } from 'lucide-react';
 import StatusReasonDialog from '../../components/ui/StatusReasonDialog';
 import useThemeStore from '../../store/themeStore';
@@ -73,6 +73,7 @@ export default function AdminPostDetail() {
   const { votes, init, toggle } = useVoteStore();
   const { postId } = useParams<{ postId: string }>();
   const { state } = useLocation();
+  const [searchParams] = useSearchParams();
 
   const [post, setPost] = useState<Post | null>(state?.post || null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -176,6 +177,22 @@ export default function AdminPostDetail() {
   useEffect(() => {
     if (activeTab === 'activities' && post?.id && activities.length === 0) fetchActivities();
   }, [activeTab, post?.id]);
+
+  // Scroll to comment from notification link
+  useEffect(() => {
+    const commentId = searchParams.get('commentId');
+    if (commentId && comments.length > 0) {
+      setActiveTab('comments');
+      setTimeout(() => {
+        const el = document.getElementById(`comment-${commentId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2', 'rounded-lg');
+          setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2', 'rounded-lg'), 3000);
+        }
+      }, 300);
+    }
+  }, [comments.length, searchParams]);
 
   const fetchComments = () => fetchCommentsById(post?.id || postId);
 
@@ -548,7 +565,7 @@ export default function AdminPostDetail() {
                         const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
                         const avatarUrl = comment.author.avatar ? (comment.author.avatar.startsWith('http') ? comment.author.avatar : `${API_BASE}${comment.author.avatar}`) : null;
                         return (
-                        <div key={comment.id} className={`rounded-xl p-4 ${comment.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border border-red-800' : 'bg-red-50 border border-red-200') : (theme === 'dark' ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200 shadow-sm')}`}>
+                        <div key={comment.id} id={`comment-${comment.id}`} className={`rounded-xl p-4 transition-all ${comment.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border border-red-800' : 'bg-red-50 border border-red-200') : (theme === 'dark' ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200 shadow-sm')}`}>
                           <div className="flex gap-3">
                             {avatarUrl ? (
                               <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
@@ -621,7 +638,7 @@ export default function AdminPostDetail() {
                                   {comment.replies.map((reply) => {
                                     const rAvatarUrl = reply.author.avatar ? (reply.author.avatar.startsWith('http') ? reply.author.avatar : `${API_BASE}${reply.author.avatar}`) : null;
                                     return (
-                                    <div key={reply.id} className={`pl-4 py-3 border-l-[3px] ${reply.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border-l-red-500' : 'bg-red-50 border-l-red-400') : (theme === 'dark' ? 'border-l-emerald-600' : 'border-l-emerald-500')}`}>
+                                    <div key={reply.id} id={`comment-${reply.id}`} className={`pl-4 py-3 border-l-[3px] transition-all ${reply.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border-l-red-500' : 'bg-red-50 border-l-red-400') : (theme === 'dark' ? 'border-l-emerald-600' : 'border-l-emerald-500')}`}>
                                       <div className="flex gap-3">
                                         {rAvatarUrl ? (
                                           <img src={rAvatarUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
