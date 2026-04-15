@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ArrowUpRight } from 'lucide-react';
+import Tooltip from '../../components/ui/Tooltip';
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
@@ -124,40 +125,29 @@ export default function AdminRoadmap() {
 
   const applyStatusChange = async (post: Post, oldStatus: string, newStatus: string, reason?: string) => {
     const postId = post.id;
-    // Optimistic update — move card instantly
-    setRoadmap(prev => {
-      const updated = { ...prev };
-      updated[oldStatus] = (updated[oldStatus] || []).filter((p: Post) => p.id !== postId);
-      updated[newStatus] = [...(updated[newStatus] || []), { ...post, status: newStatus }];
-      return updated;
-    });
-
     try {
       await api.put(`/posts/${postId}/status`, { status: newStatus });
-      // If a reason was supplied (hold/live flow), post it as a comment so the
-      // decision is recorded on the post timeline.
+      setRoadmap(prev => {
+        const updated = { ...prev };
+        updated[oldStatus] = (updated[oldStatus] || []).filter((p: Post) => p.id !== postId);
+        updated[newStatus] = [...(updated[newStatus] || []), { ...post, status: newStatus }];
+        return updated;
+      });
       if (reason) {
-        // `reason` is already rich-text HTML from CommentEditor — just prepend a label.
         const label = newStatus === 'hold' ? 'Status changed to On Hold' : 'Status changed to Live';
         const content = `<p><strong>${label}</strong></p>${reason}`;
         try {
-          const r = await api.post(`/comments/post/${postId}`, { content });
-          console.log('[status-reason-comment] posted', r.data);
-          toast.success(`Status updated to ${newStatus === 'hold' ? 'On Hold' : 'Live'}`);
+          await api.post(`/comments/post/${postId}`, { content });
         } catch (err) {
           console.error('[status-reason-comment] failed', err);
           const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-          toast.error(msg || 'Status updated but failed to post reason as comment');
+          toast.error(msg || 'Failed to post reason as comment');
         }
       }
+      toast.success(reason
+        ? `Status updated to ${newStatus === 'hold' ? 'On Hold' : 'Live'}`
+        : 'Status updated');
     } catch {
-      // Revert on error
-      setRoadmap(prev => {
-        const reverted = { ...prev };
-        reverted[newStatus] = (reverted[newStatus] || []).filter((p: Post) => p.id !== postId);
-        reverted[oldStatus] = [...(reverted[oldStatus] || []), { ...post, status: oldStatus }];
-        return reverted;
-      });
       toast.error('Failed to change status');
     }
   };
@@ -292,7 +282,7 @@ export default function AdminRoadmap() {
       {loading ? (
         <LoadingBar />
       ) : (
-        <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 320px)' }}>
+        <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 230px)' }}>
           <div className="grid gap-4 h-full" style={{
             gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
             height: '100%',
@@ -312,32 +302,33 @@ export default function AdminRoadmap() {
                   onDragOver={handleDragOver}
                   onDrop={() => handleDrop(status)}
                 >
-                  {/* Column Header - White bg */}
-                  <div className={`px-4 pt-4 pb-3 ${
-                    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+                  {/* Column Header */}
+                  <div className={`px-4 pt-4 pb-3 border-b ${
+                    theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                   }`}>
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className={`w-2.5 h-2.5 rounded-full ${config.dotColor}`} />
-                        <h2 className={`text-sm font-bold ${
+                        <h2 className={`text-[14px] font-bold ${
                           theme === 'dark' ? 'text-white' : 'text-gray-900'
                         }`}>
                           {config.label}
                         </h2>
                       </div>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                        theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                      <span className={`text-xs font-medium ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                       }`}>
                         {posts.length}
                       </span>
                     </div>
+                    <div className={`my-3 -mx-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`} />
 
                     {/* Column Search */}
-                    <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border ${
+                    <div className={`flex items-center gap-2 px-2.5 rounded-md border ${
                       theme === 'dark'
                         ? 'bg-gray-700 border-gray-600'
                         : 'bg-gray-50 border-gray-200'
-                    }`}>
+                    }`} style={{ height: '34px' }}>
                       <Search className="w-3.5 h-3.5 text-gray-400" />
                       <input
                         type="text"
@@ -351,9 +342,9 @@ export default function AdminRoadmap() {
                     </div>
                   </div>
 
-                  {/* Cards - Light gray bg */}
+                  {/* Cards */}
                   <div className={`flex-1 px-3 pb-3 pt-3 space-y-2.5 overflow-y-auto ${
-                    theme === 'dark' ? 'bg-gray-850' : 'bg-[#f5f5f5]'
+                    theme === 'dark' ? 'bg-gray-850' : 'bg-[#f4f6f8]'
                   }`}>
                     {posts.length > 0 ? (
                       posts.map((post) => (
@@ -382,12 +373,14 @@ export default function AdminRoadmap() {
                               <span>{votes[post.id]?.count ?? post._count?.votes ?? 0}</span>
                             </div>
                             {(() => {
-                              const subtitle = (post.description && post.description.trim()) || '';
+                              const subtitle = (post.description && post.description.trim()) || (post.content && post.content.trim()) || '';
                               return (
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-semibold truncate leading-snug ${
-                                theme === 'dark' ? 'text-white' : 'text-gray-900'
-                              }`}>{post.title}</p>
+                              <Tooltip title={post.title}>
+                                <p className={`text-sm font-semibold truncate leading-snug ${
+                                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                }`}>{post.title}</p>
+                              </Tooltip>
                               {subtitle && (
                                 <p className={`text-xs line-clamp-1 mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
                               )}

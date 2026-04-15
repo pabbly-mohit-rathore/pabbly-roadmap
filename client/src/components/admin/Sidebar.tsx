@@ -26,7 +26,7 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
   const allMenuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
     { label: 'Roadmap', icon: RoadmapIcon, path: '/admin/roadmap' },
-    { label: 'All Posts', icon: ({ className }: { className?: string }) => <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />, path: '/admin/feedback' },
+    { label: 'All Posts', icon: ({ className }: { className?: string }) => <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />, path: '/admin/all-posts' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
   ];
 
@@ -48,9 +48,9 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
     const source = (location.state as { source?: string } | null)?.source;
     const onPostPage = location.pathname.startsWith('/admin/posts');
 
-    if (path === '/admin/feedback') {
+    if (path === '/admin/all-posts') {
       if (onPostPage) return !source || source === 'feedback';
-      return location.pathname.startsWith('/admin/feedback');
+      return location.pathname.startsWith('/admin/all-posts');
     }
     if (path === '/admin/board-management') {
       if (onPostPage) return source === 'board';

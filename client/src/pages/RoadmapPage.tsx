@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
+import Tooltip from '../components/ui/Tooltip';
 import useThemeStore from '../store/themeStore';
 import useAuthStore from '../store/authStore';
 import api from '../services/api';
@@ -177,7 +178,7 @@ export default function RoadmapPage() {
         </div>
 
         {/* Kanban Board */}
-        <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 320px)' }}>
+        <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 230px)' }}>
           <div className="grid gap-4 h-full" style={{
             gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
             height: '100%',
@@ -196,31 +197,32 @@ export default function RoadmapPage() {
                   }`}
                 >
                   {/* Column Header */}
-                  <div className={`px-4 pt-4 pb-3 ${
-                    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+                  <div className={`px-4 pt-4 pb-3 border-b ${
+                    theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                   }`}>
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className={`w-2.5 h-2.5 rounded-full ${config.dotColor}`} />
-                        <h2 className={`text-sm font-bold ${
+                        <h2 className={`text-[14px] font-bold ${
                           theme === 'dark' ? 'text-white' : 'text-gray-900'
                         }`}>
                           {config.label}
                         </h2>
                       </div>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                        theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                      <span className={`text-xs font-medium ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                       }`}>
                         {filteredPosts.length}
                       </span>
                     </div>
+                    <div className={`my-3 -mx-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`} />
 
                     {/* Column Search */}
-                    <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border ${
+                    <div className={`flex items-center gap-2 px-2.5 rounded-md border ${
                       theme === 'dark'
                         ? 'bg-gray-700 border-gray-600'
                         : 'bg-gray-50 border-gray-200'
-                    }`}>
+                    }`} style={{ height: '34px' }}>
                       <Search className="w-3.5 h-3.5 text-gray-400" />
                       <input
                         type="text"
@@ -236,11 +238,11 @@ export default function RoadmapPage() {
 
                   {/* Cards */}
                   <div className={`flex-1 px-3 pb-3 pt-3 space-y-2.5 overflow-y-auto ${
-                    theme === 'dark' ? 'bg-gray-850' : 'bg-[#f5f5f5]'
+                    theme === 'dark' ? 'bg-gray-850' : 'bg-[#f4f6f8]'
                   }`}>
                     {filteredPosts.length > 0 ? (
                       filteredPosts.map((post) => {
-                        const subtitle = (post.description && post.description.trim()) || '';
+                        const subtitle = (post.description && post.description.trim()) || (post.content && post.content.trim()) || '';
                         const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
                           feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
                           bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
@@ -259,11 +261,13 @@ export default function RoadmapPage() {
                           }`}
                         >
                           <div className="w-full">
-                            <p className={`text-sm font-semibold truncate leading-snug ${
-                              theme === 'dark' ? 'text-white' : 'text-gray-900'
-                            }`}>
-                              {post.title}
-                            </p>
+                            <Tooltip title={post.title}>
+                              <p className={`text-sm font-semibold truncate leading-snug ${
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                              }`}>
+                                {post.title}
+                              </p>
+                            </Tooltip>
                             {subtitle && (
                               <p className={`text-xs line-clamp-1 mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
                             )}

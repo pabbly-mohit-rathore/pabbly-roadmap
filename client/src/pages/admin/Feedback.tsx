@@ -154,6 +154,13 @@ export default function AdminFeedback() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, boardFilter]);
 
+  useEffect(() => {
+    const handleFocus = () => { if (!isInitialLoad.current) fetchPosts(); };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, boardFilter]);
+
   // Prefetch full content in the background after posts load so Edit is instant.
   useEffect(() => {
     if (posts.length === 0) return;
@@ -192,9 +199,6 @@ export default function AdminFeedback() {
       const response = await api.get('/boards');
       if (response.data.success) {
         setBoards(response.data.data.boards);
-        if (!formData.boardId && response.data.data.boards.length > 0) {
-          setFormData((prev) => ({ ...prev, boardId: response.data.data.boards[0].id }));
-        }
       }
     } catch {
       console.error('Error fetching boards');
@@ -260,7 +264,7 @@ export default function AdminFeedback() {
       const response = await api.post('/posts', { ...formData, content, isDraft: false });
       if (response.data.success) {
         setShowCreateModal(false);
-        setFormData({ title: '', type: 'feature', boardId: boards[0]?.id || '', priority: 'none' });
+        setFormData({ title: '', type: 'feature', boardId: '', priority: 'none' });
         setPostContent('');
         setPage(0);
         toast.success('Post published!');
@@ -688,7 +692,7 @@ export default function AdminFeedback() {
                         }}>
                         <p className={`text-[15px] font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
                         {(() => {
-                          const text = stripImages(post.description || '');
+                          const text = stripImages(post.content || post.description || '');
                           return text ? <p className={`text-[13px] truncate mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{text}</p> : null;
                         })()}
                       </td>
@@ -1137,8 +1141,8 @@ export default function AdminFeedback() {
                 </span>
               </div>
               <p className={`text-sm font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{hp.title}</p>
-              {hp.description && (() => {
-                const text = stripImages(hp.description);
+              {(hp.content || hp.description) && (() => {
+                const text = stripImages(hp.content || hp.description || '');
                 return text ? (
                 <div className={`text-xs leading-relaxed overflow-hidden ${d ? 'text-gray-400' : 'text-gray-500'}`}
                   style={{ display: '-webkit-box', WebkitLineClamp: 10, WebkitBoxOrient: 'vertical' as const }}>

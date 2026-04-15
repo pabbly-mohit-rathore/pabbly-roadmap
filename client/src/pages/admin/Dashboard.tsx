@@ -184,7 +184,7 @@ export default function AdminDashboard() {
               <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>All Boards</h2>
             </div>
 
-            <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+            <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead>
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
                   {['S.No', 'Board', 'Description', 'Created At', 'Actions'].map((h, i) => (
@@ -220,9 +220,9 @@ export default function AdminDashboard() {
                           </Tooltip>
                         </div>
                       </td>
-                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-400' : 'text-gray-500'} overflow-hidden`}>
                         <Tooltip title={board.description || 'No description provided.'}>
-                          <span className="line-clamp-1">{board.description || 'No description provided.'}</span>
+                          <span className="block truncate">{board.description || 'No description provided.'}</span>
                         </Tooltip>
                       </td>
                       <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>

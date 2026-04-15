@@ -208,22 +208,14 @@ export default function AdminPostDetail() {
   const applyStatusChange = async (newStatus: string, reason?: string) => {
     if (!post?.id) return;
     const postId = post.id;
-    const oldStatus = post.status;
-    // Optimistic — flip UI and show success toast IMMEDIATELY.
-    setPost((prev) => (prev ? { ...prev, status: newStatus } : null));
-    const successLabel = reason
-      ? `Status updated to ${newStatus === 'hold' ? 'On Hold' : 'Live'}`
-      : 'Status updated';
-    toast.success(successLabel);
     try {
       await api.put(`/posts/${postId}/status`, { status: newStatus });
+      setPost((prev) => (prev ? { ...prev, status: newStatus } : null));
       if (reason) {
-        // `reason` is already rich-text HTML from CommentEditor — just prepend a label.
         const label = newStatus === 'hold' ? 'Status changed to On Hold' : 'Status changed to Live';
         const content = `<p><strong>${label}</strong></p>${reason}`;
         try {
           await api.post(`/comments/post/${postId}`, { content });
-          // Refresh comments list so the new comment shows up immediately.
           fetchPost();
         } catch (err) {
           console.error('[status-reason-comment] failed', err);
@@ -231,9 +223,10 @@ export default function AdminPostDetail() {
           toast.error(msg || 'Failed to post reason as comment');
         }
       }
+      toast.success(reason
+        ? `Status updated to ${newStatus === 'hold' ? 'On Hold' : 'Live'}`
+        : 'Status updated');
     } catch (error) {
-      // Revert optimistic update + undo success toast feeling
-      setPost((prev) => (prev ? { ...prev, status: oldStatus } : null));
       console.error('Error changing status:', error);
       toast.error('Failed to change status');
     }

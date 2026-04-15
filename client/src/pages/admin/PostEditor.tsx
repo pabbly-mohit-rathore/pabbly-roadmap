@@ -141,7 +141,7 @@ export default function PostEditor() {
   const { id } = useParams<{ id: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isAdminRoute = window.location.pathname.startsWith('/admin');
-  const backPath = isAdminRoute ? '/admin/feedback' : '/user/feature-requests';
+  const backPath = isAdminRoute ? '/admin/all-posts' : '/user/feature-requests';
 
   const [post, setPost] = useState<Post | null>(null);
   const [title, setTitle] = useState('');

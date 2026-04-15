@@ -96,11 +96,11 @@ export default function Navbar() {
               {showViewToggle && (
                 <div className="flex items-center gap-2">
                   <Link
-                    to="/user/all-posts"
+                    to="/user/roadmap"
                     className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border transition-colors duration-200 ${
                       !location.pathname.startsWith('/admin')
                         ? 'border-[#059669] text-[#059669]'
-                        : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-gray-500' : 'border-gray-200 text-gray-600 hover:border-gray-400'
+                        : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -111,7 +111,7 @@ export default function Navbar() {
                     className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border transition-colors duration-200 ${
                       location.pathname.startsWith('/admin')
                         ? 'border-[#059669] text-[#059669]'
-                        : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-gray-500' : 'border-gray-200 text-gray-600 hover:border-gray-400'
+                        : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
                     }`}
                   >
                     <Layout className="w-3.5 h-3.5" />

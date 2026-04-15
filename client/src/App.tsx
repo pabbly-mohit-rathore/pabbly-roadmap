@@ -53,15 +53,15 @@ function App() {
       <Suspense fallback={null}>
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={!isAuthenticated ? <LoginPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/all-posts" />} />
-          <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/all-posts" />} />
+          <Route path="/login" element={!isAuthenticated ? <LoginPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/roadmap" />} />
+          <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/roadmap" />} />
           <Route path="/invite/:token" element={<InvitePage />} />
 
           {/* Root redirect */}
           <Route path="/" element={
             isAuthenticated ? (
-              isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/all-posts" />
-            ) : <Navigate to="/user/all-posts" />
+              isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/roadmap" />
+            ) : <Navigate to="/user/roadmap" />
           } />
 
           <Route path="/board/:slug" element={
@@ -128,7 +128,8 @@ function App() {
                 <AdminLayout>
                   <Routes>
                     <Route path="dashboard" element={<AdminDashboard />} />
-                    <Route path="feedback" element={<AdminFeedback />} />
+                    <Route path="all-posts" element={<AdminFeedback />} />
+                    <Route path="feedback" element={<Navigate to="/admin/all-posts" replace />} />
                     <Route path="roadmap" element={<AdminRoadmap />} />
                     <Route path="board-management" element={<BoardManagement />} />
                     <Route path="boards/:boardId" element={<AdminBoardDetail />} />

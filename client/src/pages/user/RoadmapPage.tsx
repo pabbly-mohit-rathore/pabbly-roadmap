@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ArrowUpRight } from 'lucide-react';
+import Tooltip from '../../components/ui/Tooltip';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
@@ -40,7 +41,6 @@ export default function UserRoadmapPage() {
   const theme = useThemeStore((s) => s.theme);
   const navigate = useNavigate();
   const { init: initVote, toggle: toggleVote, votes } = useVoteStore();
-  const d = theme === 'dark';
 
   const [roadmap, setRoadmap] = useState<Record<string, Post[]>>({});
   const [loading, setLoading] = useState(true);
@@ -106,58 +106,86 @@ export default function UserRoadmapPage() {
     return filtered;
   };
 
-  if (loading) return <UserLayout><LoadingBar /></UserLayout>;
-
   return (
     <UserLayout>
       <div>
-        <div className="pb-8">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>Roadmap</h1>
-            <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-600'}`}>View your product roadmap by status</p>
-          </div>
-
-          {/* Filter Bar */}
-          <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div className="flex flex-wrap items-center gap-4">
-              <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[200px] max-w-[380px] ${
-                d ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-              }`} style={{ padding: '0 14px', height: '48px' }}>
-                <Search className="w-4 h-4 text-gray-400" />
-                <input type="text" placeholder="Search by title..." value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`bg-transparent text-sm outline-none w-full ${d ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`} />
-              </div>
-
-              <CustomDropdown label="Board" value={selectedBoard}
-                options={[{ value: '', label: 'All Boards' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
-                onChange={(v) => setSelectedBoard(v)} />
-
-              <CustomDropdown label="Type" value={filterType}
-                options={[{ value: '', label: 'All Types' }, { value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
-                onChange={(v) => setFilterType(v)} />
-
-              {hasActiveFilters && (
-                <button onClick={clearFilters}
-                  className="flex items-center gap-2 font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
-                  style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
-                  <X className="w-5 h-5" /> Clear Filters
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Info Bar */}
-          <div className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg mb-6 text-sm ${
-            d ? 'bg-blue-900/20 text-blue-300 border border-blue-800' : 'bg-blue-50 text-blue-700 border border-blue-200'
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className={`text-2xl font-bold mb-2 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
-            <span>💡</span>
-            <span>Browse items by status to see what's coming next.</span>
-          </div>
+            Roadmap
+          </h1>
+          <p className={`text-base ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+          }`}>
+            View your product roadmap by status
+          </p>
+        </div>
 
-          {/* Kanban Board */}
-          <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 380px)' }}>
+        {/* Filter Bar */}
+        <div className={`p-4 rounded-lg border mb-4 ${
+          theme === 'dark'
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[200px] max-w-[380px] ${
+              theme === 'dark'
+                ? 'bg-gray-700 border-gray-600'
+                : 'bg-gray-50 border-gray-200'
+            }`} style={{ padding: '0 14px', height: '48px' }}>
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by title..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`bg-transparent text-sm outline-none w-full ${
+                  theme === 'dark' ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'
+                }`}
+              />
+            </div>
+
+            {/* Board Selector */}
+            <CustomDropdown
+              label="Board"
+              value={selectedBoard}
+              options={[{ value: '', label: 'All Boards' }, ...boards.map((b) => ({ value: b.id, label: b.name }))]}
+              onChange={(v) => setSelectedBoard(v)}
+            />
+
+            {/* Type Filter */}
+            <CustomDropdown
+              label="Type"
+              value={filterType}
+              options={[
+                { value: '', label: 'All Types' },
+                { value: 'feature', label: 'Feature' },
+                { value: 'bug', label: 'Bug' },
+                { value: 'improvement', label: 'Improvement' },
+                { value: 'integration', label: 'Integration' },
+              ]}
+              onChange={(v) => setFilterType(v)}
+            />
+
+            {/* Clear Filters */}
+            {hasActiveFilters && (
+              <button onClick={clearFilters}
+                className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors"
+                style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+                <X className="w-5 h-5" /> Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Kanban Board */}
+        {loading ? (
+          <LoadingBar />
+        ) : (
+          <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 230px)' }}>
             <div className="grid gap-4 h-full" style={{
               gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
               height: '100%',
@@ -165,80 +193,127 @@ export default function UserRoadmapPage() {
               {STATUS_ORDER.map((status) => {
                 const posts = getFilteredPosts(status);
                 const config = STATUS_CONFIG[status];
+
                 return (
-                  <div key={status} className={`rounded-lg border border-t-[3px] ${config.borderColor} flex flex-col overflow-hidden ${
-                    d ? 'border-gray-700' : 'border-gray-200'
-                  }`}>
+                  <div
+                    key={status}
+                    className={`rounded-lg border border-t-[3px] ${config.borderColor} flex flex-col overflow-hidden ${
+                      theme === 'dark'
+                        ? 'border-gray-700'
+                        : 'border-gray-200'
+                    }`}
+                  >
                     {/* Column Header */}
-                    <div className={`px-4 pt-4 pb-3 ${d ? 'bg-gray-800' : 'bg-white'}`}>
-                      <div className="flex items-center justify-between mb-3">
+                    <div className={`px-4 pt-4 pb-3 border-b ${
+                      theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                    }`}>
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className={`w-2.5 h-2.5 rounded-full ${config.dotColor}`} />
-                          <span className={`text-sm font-bold ${d ? 'text-white' : 'text-gray-900'}`}>{config.label}</span>
+                          <h2 className={`text-[14px] font-bold ${
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {config.label}
+                          </h2>
                         </div>
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${d ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                        <span className={`text-xs font-medium ${
+                          theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
                           {posts.length}
                         </span>
                       </div>
-                      <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border ${
-                        d ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-                      }`}>
+                      <div className={`my-3 -mx-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`} />
+
+                      {/* Column Search */}
+                      <div className={`flex items-center gap-2 px-2.5 rounded-md border ${
+                        theme === 'dark'
+                          ? 'bg-gray-700 border-gray-600'
+                          : 'bg-gray-50 border-gray-200'
+                      }`} style={{ height: '34px' }}>
                         <Search className="w-3.5 h-3.5 text-gray-400" />
-                        <input type="text" placeholder="Search..." value={columnSearches[status] || ''}
+                        <input
+                          type="text"
+                          placeholder="Search..."
+                          value={columnSearches[status] || ''}
                           onChange={(e) => setColumnSearches(prev => ({ ...prev, [status]: e.target.value }))}
-                          className={`bg-transparent text-xs outline-none w-full ${d ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`} />
+                          className={`bg-transparent text-xs outline-none w-full ${
+                            theme === 'dark' ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'
+                          }`}
+                        />
                       </div>
                     </div>
 
                     {/* Cards */}
-                    <div className={`flex-1 px-3 pb-3 pt-3 space-y-2.5 overflow-y-auto ${d ? 'bg-gray-850' : 'bg-[#f5f5f5]'}`}>
-                      {posts.length > 0 ? posts.map((post) => {
-                        const subtitle = (post.description && post.description.trim()) || '';
-                        const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
-                          feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
-                          bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
-                          improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
-                          integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
-                        };
-                        const ts = typeStyles[post.type] || typeStyles.feature;
-                        return (
-                        <div key={post.id} onClick={() => navigate(`/user/posts/${post.slug}`, { state: { from: '/user/roadmap', source: 'roadmap' } })}
-                          className={`p-3.5 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                            d ? 'bg-gray-750 border-gray-600 hover:border-gray-500' : 'bg-white border-gray-200 hover:border-gray-300'
-                          }`}>
-                          <div className="flex items-start gap-3">
-                            <div onClick={(e) => { e.stopPropagation(); toggleVote(post.id); }}
-                              className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold shrink-0 cursor-pointer transition-all bg-transparent ${
-                                votes[post.id]?.voted
-                                  ? 'border-[#059669] text-[#059669]'
-                                  : (d ? 'border-gray-600 text-gray-300 hover:border-[#059669]' : 'border-gray-200 text-gray-700 hover:border-[#059669]')
-                              }`} style={{ padding: '6px 10px', fontSize: '12px', gap: '5px' }}>
-                              <ArrowUpRight className="w-3.5 h-3.5 rotate-[-45deg]" />
-                              <span>{votes[post.id]?.count ?? post._count?.votes ?? post.voteCount ?? 0}</span>
+                    <div className={`flex-1 px-3 pb-3 pt-3 space-y-2.5 overflow-y-auto ${
+                      theme === 'dark' ? 'bg-gray-850' : 'bg-[#f4f6f8]'
+                    }`}>
+                      {posts.length > 0 ? (
+                        posts.map((post) => {
+                          const subtitle = (post.description && post.description.trim()) || (post.content && post.content.trim()) || '';
+                          const typeStyles: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+                            feature:     { bg: 'bg-blue-100',   text: 'text-blue-700',   darkBg: 'bg-blue-900/40',   darkText: 'text-blue-300' },
+                            bug:         { bg: 'bg-red-100',    text: 'text-red-700',    darkBg: 'bg-red-900/40',    darkText: 'text-red-300' },
+                            improvement: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-900/40', darkText: 'text-orange-300' },
+                            integration: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
+                          };
+                          const ts = typeStyles[post.type] || typeStyles.feature;
+                          return (
+                          <div
+                            key={post.id}
+                            onClick={() => navigate(`/user/posts/${post.slug}`, { state: { from: '/user/roadmap', source: 'roadmap' } })}
+                            className={`p-3.5 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                              theme === 'dark'
+                                ? 'bg-gray-750 border-gray-600 hover:border-gray-500'
+                                : 'bg-white border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            {/* Vote + Title/Description */}
+                            <div className="flex items-start gap-3">
+                              <div onClick={(e) => { e.stopPropagation(); toggleVote(post.id); }}
+                                className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold shrink-0 cursor-pointer transition-all bg-transparent ${
+                                  votes[post.id]?.voted
+                                    ? 'border-[#059669] text-[#059669]'
+                                    : (theme === 'dark' ? 'border-gray-600 text-gray-300 hover:border-[#059669]' : 'border-gray-200 text-gray-700 hover:border-[#059669]')
+                                }`} style={{ padding: '6px 10px', fontSize: '12px', gap: '5px' }}>
+                                <ArrowUpRight className="w-3.5 h-3.5 rotate-[-45deg]" />
+                                <span>{votes[post.id]?.count ?? post._count?.votes ?? post.voteCount ?? 0}</span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <Tooltip title={post.title}>
+                                  <p className={`text-sm font-semibold truncate leading-snug ${
+                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                  }`}>{post.title}</p>
+                                </Tooltip>
+                                {subtitle && (
+                                  <p className={`text-xs line-clamp-1 mt-1.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-semibold truncate leading-snug ${d ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                              {subtitle && (
-                                <p className={`text-xs line-clamp-1 mt-1.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{subtitle}</p>
+                            <div className={`mt-5 mb-3 -mx-3.5 border-t ${theme === 'dark' ? 'border-gray-600' : 'border-gray-100'}`} />
+                            <div className="flex items-center gap-2 min-w-0">
+                              {post.board?.name && (
+                                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded truncate shrink min-w-0 ${
+                                  theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {post.board.name}
+                                </span>
                               )}
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded shrink-0 whitespace-nowrap ${
+                                theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`
+                              }`}>
+                                {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
+                              </span>
                             </div>
                           </div>
-                          <div className={`mt-5 mb-3 -mx-3.5 border-t ${d ? 'border-gray-600' : 'border-gray-100'}`} />
-                          <div className="flex items-center gap-2 min-w-0">
-                            {post.board?.name && (
-                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded truncate shrink min-w-0 ${d ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                                {post.board.name}
-                              </span>
-                            )}
-                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded shrink-0 whitespace-nowrap ${d ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
-                              {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
-                            </span>
-                          </div>
-                        </div>
-                        );
-                      }) : (
-                        <div className={`text-center py-12 text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                          <div className={`w-10 h-10 mx-auto mb-2 rounded-lg flex items-center justify-center ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                          );
+                        })
+                      ) : (
+                        <div className={`text-center py-12 text-xs ${
+                          theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        }`}>
+                          <div className={`w-10 h-10 mx-auto mb-2 rounded-lg flex items-center justify-center ${
+                            theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
+                          }`}>
                             <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
@@ -252,7 +327,7 @@ export default function UserRoadmapPage() {
               })}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </UserLayout>
   );

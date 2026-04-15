@@ -4,7 +4,6 @@ import api from '../services/api';
 interface VoteState {
   count: number;
   voted: boolean;
-  lockedUntil?: number; // timestamp — don't overwrite until this time
 }
 
 interface VoteStore {
@@ -13,15 +12,14 @@ interface VoteStore {
   toggle: (postId: string) => void;
 }
 
+const pendingTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+const baseState: Record<string, { count: number; voted: boolean }> = {};
+
 const useVoteStore = create<VoteStore>((set, get) => ({
   votes: {},
 
   init: (postId, count, voted) => {
-    const existing = get().votes[postId];
-    // Don't overwrite if there was a recent toggle (within 5 seconds)
-    if (existing?.lockedUntil && Date.now() < existing.lockedUntil) {
-      return;
-    }
+    if (pendingTimers[postId]) return;
     set(s => ({ votes: { ...s.votes, [postId]: { count, voted } } }));
   },
 
@@ -29,44 +27,58 @@ const useVoteStore = create<VoteStore>((set, get) => ({
     const current = get().votes[postId];
     if (!current) return;
 
-    const prevVoted = current.voted;
-    const prevCount = current.count;
+    if (!pendingTimers[postId]) {
+      baseState[postId] = { count: current.count, voted: current.voted };
+    }
 
-    // Optimistic update — instant everywhere + lock for 5 seconds
+    const newVoted = !current.voted;
+    const newCount = current.count + (current.voted ? -1 : 1);
+
     set(s => ({
       votes: {
         ...s.votes,
-        [postId]: {
-          count: prevCount + (prevVoted ? -1 : 1),
-          voted: !prevVoted,
-          lockedUntil: Date.now() + 5000,
-        },
+        [postId]: { count: newCount, voted: newVoted },
       },
     }));
 
-    // Fire API in background
-    api.post(`/votes/${postId}`).then(res => {
-      if (res.data.success) {
-        // Sync with server's authoritative count
+    if (pendingTimers[postId]) {
+      clearTimeout(pendingTimers[postId]);
+    }
+
+    pendingTimers[postId] = setTimeout(() => {
+      const finalState = get().votes[postId];
+      const base = baseState[postId];
+
+      if (finalState.voted === base.voted) {
+        delete pendingTimers[postId];
+        delete baseState[postId];
+        return;
+      }
+
+      api.post(`/votes/${postId}`).then(res => {
+        if (res.data.success) {
+          set(s => ({
+            votes: {
+              ...s.votes,
+              [postId]: {
+                count: res.data.data.post.voteCount,
+                voted: finalState.voted,
+              },
+            },
+          }));
+        }
+      }).catch(() => {
         set(s => ({
           votes: {
             ...s.votes,
-            [postId]: {
-              count: res.data.data.post.voteCount,
-              voted: !prevVoted,
-            },
+            [postId]: { count: base.count, voted: base.voted },
           },
         }));
-      }
-    }).catch(() => {
-      // Revert on error
-      set(s => ({
-        votes: {
-          ...s.votes,
-          [postId]: { count: prevCount, voted: prevVoted },
-        },
-      }));
-    });
+      }).finally(() => {
+        delete pendingTimers[postId];
+        delete baseState[postId];
+      });
+    }, 500);
   },
 }));
 
