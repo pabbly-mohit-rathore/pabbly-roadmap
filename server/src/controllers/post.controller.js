@@ -120,6 +120,7 @@ const getPosts = async (req, res, next) => {
         title: true,
         slug: true,
         description: true,
+        content: true,
         status: true,
         type: true,
         voteCount: true,
@@ -158,6 +159,7 @@ const getPosts = async (req, res, next) => {
 
     const postsWithVoteStatus = posts.map(post => ({
       ...post,
+      content: stripToText(post.content),
       description: stripToText(post.description),
       hasVoted: req.user ? (post.votes?.length > 0) : false,
       hasCommented: req.user ? (post.comments?.length > 0) : false,

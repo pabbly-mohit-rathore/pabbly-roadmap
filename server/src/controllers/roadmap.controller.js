@@ -69,6 +69,7 @@ const getRoadmap = async (req, res, next) => {
         title: true,
         slug: true,
         description: true,
+        content: true,
         status: true,
         boardId: true,
         type: true,
@@ -103,6 +104,7 @@ const getRoadmap = async (req, res, next) => {
 
     const postsWithVoteStatus = posts.map(post => ({
       ...post,
+      content: stripToText(post.content),
       description: stripToText(post.description),
       hasVoted: userId ? (post.votes?.length > 0) : false,
       votes: undefined,
