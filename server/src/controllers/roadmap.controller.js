@@ -70,9 +70,13 @@ const getRoadmap = async (req, res, next) => {
     else if (sort === 'oldest') orderBy = { createdAt: 'asc' };
     else if (sort === 'priority') orderBy = { priorityScore: 'desc' };
 
+    // Admin/team members sab posts dekhe, regular users sirf public posts
+    const isAdminOrTeam = role === 'admin' || teamAccess;
+    const visibilityFilter = isAdminOrTeam ? { isDraft: false } : { isPublic: true, isDraft: false };
+
     // Get all posts for this board — use cached counts, skip _count
     const posts = await prisma.post.findMany({
-      where: { ...boardFilter, isPublic: true, isDraft: false },
+      where: { ...boardFilter, ...visibilityFilter },
       select: {
         id: true,
         title: true,

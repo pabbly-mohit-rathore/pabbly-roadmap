@@ -43,8 +43,8 @@ const getDashboardStats = async (req, res, next) => {
     // Sab queries parallel mein chalao for speed
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const [totalPosts, totalVotes, totalUsers, activeUsersData] = await Promise.all([
-      prisma.post.count({ where: { boardId: { in: boardIds } } }),
-      prisma.vote.count({ where: { post: { boardId: { in: boardIds } } } }),
+      prisma.post.count({ where: { boardId: { in: boardIds }, isDraft: false } }),
+      prisma.vote.count({ where: { post: { boardId: { in: boardIds }, isDraft: false } } }),
       prisma.user.count({
         where: {
           OR: [

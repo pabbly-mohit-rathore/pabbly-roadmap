@@ -142,9 +142,9 @@ const listUsers = async (req, res, next) => {
 const getUserDetails = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const { role } = req.user;
+    const { role, teamAccess } = req.user;
 
-    if (role !== 'admin') {
+    if (role !== 'admin' && !teamAccess) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can view user details.',
