@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply } from 'lucide-react';
+import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply, X, Copy, Check } from 'lucide-react';
 import StatusReasonDialog from '../../components/ui/StatusReasonDialog';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -93,6 +93,11 @@ export default function AdminPostDetail() {
   const [statusSaving, setStatusSaving] = useState(false);
   const [deleteCommentConfirm, setDeleteCommentConfirm] = useState<string | null>(null);
   const [replyingToName, setReplyingToName] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedCommentUser, setSelectedCommentUser] = useState<any>(null);
+  const [userDrawerOpen, setUserDrawerOpen] = useState(false);
+  const [userDetailLoading, setUserDetailLoading] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [activities, setActivities] = useState<Array<{
     id: string;
     action: string;
@@ -412,6 +417,28 @@ export default function AdminPostDetail() {
     }
   };
 
+  const handleUserClick = async (userId: string) => {
+    setUserDrawerOpen(true);
+    setSelectedCommentUser(null);
+    setUserDetailLoading(true);
+    try {
+      const res = await api.get(`/admin/users/${userId}`);
+      if (res.data.success) setSelectedCommentUser(res.data.data.user);
+    } catch { /* silent */ }
+    finally { setUserDetailLoading(false); }
+  };
+
+  const closeUserDrawer = () => {
+    setUserDrawerOpen(false);
+    setTimeout(() => { setSelectedCommentUser(null); }, 300);
+  };
+
+  const handleCopyField = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
   if (!post && !loading) {
     return (
       <div
@@ -533,7 +560,7 @@ export default function AdminPostDetail() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{comment.author.name}</span>
+                                  <span onClick={() => handleUserClick(comment.author.id)} className={`font-semibold text-sm cursor-pointer hover:underline ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{comment.author.name}</span>
                                   <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(comment.createdAt)}</span>
                                   {comment.isSpam && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800">Spam</span>}
                                 </div>
@@ -606,7 +633,7 @@ export default function AdminPostDetail() {
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                              <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{reply.author.name}</span>
+                                              <span onClick={() => handleUserClick(reply.author.id)} className={`font-semibold text-sm cursor-pointer hover:underline ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{reply.author.name}</span>
                                               <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(reply.createdAt)}</span>
                                             </div>
                                             {!reply.isSpam && (
@@ -783,7 +810,7 @@ export default function AdminPostDetail() {
 
                 {/* Board */}
                 <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
                     {post?.board.name?.[0]?.toUpperCase()}
                   </div>
                   <div>
@@ -803,7 +830,7 @@ export default function AdminPostDetail() {
                   const ts = typeChipStyles[post?.type || ''] || typeChipStyles.feature;
                   return (
                     <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
                         {post?.type?.[0]?.toUpperCase()}
                       </div>
                       <div>
@@ -830,7 +857,7 @@ export default function AdminPostDetail() {
                   const ss = statusChipStyles[post?.status || ''] || statusChipStyles.open;
                   return (
                     <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? `${ss.darkBg} ${ss.darkText}` : `${ss.bg} ${ss.text}`}`}>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? `${ss.darkBg} ${ss.darkText}` : `${ss.bg} ${ss.text}`}`}>
                         {post?.status?.[0]?.toUpperCase()}
                       </div>
                       <div>
@@ -850,9 +877,9 @@ export default function AdminPostDetail() {
                     const av = post?.author.avatar;
                     const url = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
                     return url ? (
-                      <img src={url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                      <img src={url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
                     ) : (
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
                         {post?.author.name?.[0]?.toUpperCase()}
                       </div>
                     );
@@ -867,6 +894,129 @@ export default function AdminPostDetail() {
           </div>
         </div>
       </div>
+
+      {/* User Detail Drawer */}
+      {userDrawerOpen && (() => {
+        const d = theme === 'dark';
+        const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+        const av = selectedCommentUser?.avatar;
+        const avatarSrc = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
+        return (
+        <>
+          <div className={`fixed inset-0 z-40 transition-opacity duration-300 ${userDrawerOpen ? 'bg-black/20 opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={closeUserDrawer} />
+          <div
+            className={`fixed top-16 right-0 z-50 h-[calc(100vh-64px)] w-[380px] border-l shadow-2xl overflow-y-auto transition-transform duration-300 ease-out ${userDrawerOpen ? 'translate-x-0' : 'translate-x-full'} ${d ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}
+          >
+            {/* Close */}
+            <button onClick={closeUserDrawer}
+              className={`absolute top-5 right-5 p-1.5 rounded-full transition z-10 ${d ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+              <X className="w-5 h-5" />
+            </button>
+
+            {userDetailLoading || !selectedCommentUser ? (
+              /* Loading skeleton */
+              <div className="flex flex-col items-center pt-8 pb-6 px-6 animate-pulse">
+                <div className={`w-20 h-20 rounded-full ${d ? 'bg-gray-700' : 'bg-gray-200'}`} />
+                <div className={`h-5 w-32 rounded mt-4 ${d ? 'bg-gray-700' : 'bg-gray-200'}`} />
+                <div className={`h-4 w-48 rounded mt-2 ${d ? 'bg-gray-700' : 'bg-gray-200'}`} />
+                <div className={`h-3 w-20 rounded mt-3 ${d ? 'bg-gray-700' : 'bg-gray-200'}`} />
+                <div className={`w-full h-16 rounded-xl mt-6 ${d ? 'bg-gray-700' : 'bg-gray-200'}`} />
+                <div className={`w-full h-14 rounded-lg mt-4 ${d ? 'bg-gray-700' : 'bg-gray-200'}`} />
+                <div className={`w-full h-14 rounded-lg mt-3 ${d ? 'bg-gray-700' : 'bg-gray-200'}`} />
+                <div className={`w-full h-14 rounded-lg mt-3 ${d ? 'bg-gray-700' : 'bg-gray-200'}`} />
+              </div>
+            ) : (
+            <>
+            {/* Header with avatar */}
+            <div className="flex flex-col items-center pt-8 pb-6 px-6">
+              {avatarSrc ? (
+                <img src={avatarSrc} alt="" className="w-20 h-20 rounded-full object-cover ring-4 ring-white shadow-lg" style={d ? { '--tw-ring-color': '#1f2937' } as React.CSSProperties : {}} />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-2xl font-bold ring-4 shadow-lg" style={{ '--tw-ring-color': d ? '#1f2937' : '#fff' } as React.CSSProperties}>
+                  {selectedCommentUser.name?.[0]?.toUpperCase()}
+                </div>
+              )}
+              <h2 className={`text-lg font-bold mt-4 ${d ? 'text-white' : 'text-gray-900'}`}>{selectedCommentUser.name}</h2>
+              <p className={`text-sm mt-0.5 ${d ? 'text-gray-400' : 'text-gray-500'}`}>{selectedCommentUser.email}</p>
+              <div className="flex items-center gap-2 mt-3">
+                <span className={`w-2 h-2 rounded-full ${selectedCommentUser.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
+                <span className={`text-xs font-medium ${selectedCommentUser.isActive ? 'text-green-600' : 'text-red-500'}`}>
+                  {selectedCommentUser.isActive ? 'Active' : 'Banned'}
+                </span>
+                <span className={`mx-1 text-xs ${d ? 'text-gray-600' : 'text-gray-300'}`}>|</span>
+                <span className={`text-xs font-medium capitalize ${d ? 'text-gray-400' : 'text-gray-500'}`}>{selectedCommentUser.role}</span>
+              </div>
+            </div>
+
+            {/* Stats row */}
+            <div className={`mx-6 rounded-xl border grid grid-cols-3 divide-x ${d ? 'bg-gray-800/50 border-gray-700 divide-gray-700' : 'bg-gray-50 border-gray-100 divide-gray-100'}`}>
+              {[
+                { label: 'Posts', value: selectedCommentUser._count?.posts ?? 0 },
+                { label: 'Votes', value: selectedCommentUser._count?.votes ?? 0 },
+                { label: 'Comments', value: selectedCommentUser._count?.comments ?? 0 },
+              ].map(s => (
+                <div key={s.label} className="py-3 text-center">
+                  <p className={`text-lg font-bold ${d ? 'text-white' : 'text-gray-900'}`}>{s.value}</p>
+                  <p className={`text-[11px] font-medium mt-0.5 ${d ? 'text-gray-500' : 'text-gray-400'}`}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Details */}
+            <div className="px-6 pt-6 pb-4 space-y-3">
+              {/* Email Card */}
+              <div className={`flex items-center gap-3 p-3 rounded-lg border ${d ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${d ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-600'}`}>
+                  @
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-600'}`}>Email</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-sm font-medium truncate ${d ? 'text-white' : 'text-gray-900'}`}>{selectedCommentUser.email}</span>
+                    <button onClick={() => handleCopyField(selectedCommentUser.email, 'email')}
+                      className={`p-0.5 rounded transition shrink-0 ${copiedField === 'email' ? 'text-green-600' : d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>
+                      {copiedField === 'email' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* User ID Card */}
+              <div className={`flex items-center gap-3 p-3 rounded-lg border ${d ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${d ? 'bg-purple-900/40 text-purple-300' : 'bg-purple-100 text-purple-600'}`}>
+                  #
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-600'}`}>User ID</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-sm font-medium font-mono truncate ${d ? 'text-white' : 'text-gray-900'}`}>{selectedCommentUser.id}</span>
+                    <button onClick={() => handleCopyField(selectedCommentUser.id, 'id')}
+                      className={`p-0.5 rounded transition shrink-0 ${copiedField === 'id' ? 'text-green-600' : d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>
+                      {copiedField === 'id' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Joined Card */}
+              <div className={`flex items-center gap-3 p-3 rounded-lg border ${d ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${d ? 'bg-green-900/40 text-green-300' : 'bg-green-100 text-green-600'}`}>
+                  J
+                </div>
+                <div>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : 'text-gray-600'}`}>Joined</p>
+                  <span className={`text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>
+                    {new Date(selectedCommentUser.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              </div>
+            </div>
+            </>
+            )}
+          </div>
+        </>
+        );
+      })()}
 
       <ConfirmDialog
         open={!!deleteCommentConfirm}

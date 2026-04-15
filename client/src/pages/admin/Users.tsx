@@ -299,17 +299,17 @@ export default function AdminUsers() {
               <h3 className={`text-sm font-bold mb-5 ${d ? 'text-white' : 'text-gray-900'}`}>User details</h3>
               <div className="space-y-5">
                 <div>
-                  <p className={`text-xs mb-1 ${d ? 'text-gray-500' : 'text-gray-400'}`}>Role</p>
+                  <p className={`text-xs font-medium mb-1 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Role</p>
                   <p className={`text-sm font-semibold capitalize ${d ? 'text-white' : 'text-gray-900'}`}>{selectedUser.role}</p>
                 </div>
                 <div>
-                  <p className={`text-xs mb-1 ${d ? 'text-gray-500' : 'text-gray-400'}`}>Account Created</p>
+                  <p className={`text-xs font-medium mb-1 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Account Created</p>
                   <p className={`text-sm font-semibold ${d ? 'text-white' : 'text-gray-900'}`}>
                     {new Date(selectedUser.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </p>
                 </div>
                 <div>
-                  <p className={`text-xs mb-1 ${d ? 'text-gray-500' : 'text-gray-400'}`}>Email</p>
+                  <p className={`text-xs font-medium mb-1 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Email</p>
                   <div className="flex items-center gap-2">
                     <p className={`text-sm font-semibold ${d ? 'text-white' : 'text-gray-900'}`}>{selectedUser.email}</p>
                     <button onClick={() => handleCopy(selectedUser.email, 'email')}
@@ -323,7 +323,7 @@ export default function AdminUsers() {
                   </div>
                 </div>
                 <div>
-                  <p className={`text-xs mb-1 ${d ? 'text-gray-500' : 'text-gray-400'}`}>User ID</p>
+                  <p className={`text-xs font-medium mb-1 ${d ? 'text-gray-400' : 'text-gray-500'}`}>User ID</p>
                   <div className="flex items-center gap-2">
                     <p className={`text-sm font-semibold font-mono truncate ${d ? 'text-white' : 'text-gray-900'}`}>{selectedUser.id}</p>
                     <button onClick={() => handleCopy(selectedUser.id, 'id')}
@@ -337,23 +337,10 @@ export default function AdminUsers() {
                   </div>
                 </div>
                 <div>
-                  <p className={`text-xs mb-1 ${d ? 'text-gray-500' : 'text-gray-400'}`}>Status</p>
+                  <p className={`text-xs font-medium mb-1 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Status</p>
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${selectedUser.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                     {selectedUser.isActive ? 'Active' : 'Banned'}
                   </span>
-                </div>
-                <div>
-                  <p className={`text-xs mb-1 ${d ? 'text-gray-500' : 'text-gray-400'}`}>Board Access ({selectedUser._count.boardAccess})</p>
-                  {selectedUser.boardAccess?.length > 0 ? (
-                    <div className="space-y-2 mt-2">
-                      {selectedUser.boardAccess.map((ba) => (
-                        <div key={ba.board.id} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg ${d ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: ba.board.color || '#6366f1' }} />
-                          <span className={`text-sm font-medium ${d ? 'text-white' : 'text-gray-900'}`}>{ba.board.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : <p className={`text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No boards</p>}
                 </div>
               </div>
               {selectedUser.role !== 'admin' && (

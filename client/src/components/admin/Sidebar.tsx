@@ -9,11 +9,7 @@ import useThemeStore from '../../store/themeStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
 import useAuthStore from '../../store/authStore';
 
-interface SidebarProps {
-  accessBarHeight?: number;
-}
-
-export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
+export default function AdminSidebar() {
   const location = useLocation();
   const theme = useThemeStore((state) => state.theme);
   const { isTeamAccess } = useTeamAccessStore();
@@ -66,7 +62,7 @@ export default function AdminSidebar({ accessBarHeight = 0 }: SidebarProps) {
       className={`fixed left-0 z-40 border-r transition-colors overflow-y-auto ${
         theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'
       }`}
-      style={{ width: '207px', top: `${64 + accessBarHeight}px`, height: `calc(100vh - 64px - ${accessBarHeight}px)` }}
+      style={{ width: '207px', top: '64px', height: 'calc(100vh - 64px)' }}
     >
       <div className={`h-px w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`} />
 
