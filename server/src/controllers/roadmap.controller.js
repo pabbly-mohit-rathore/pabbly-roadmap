@@ -20,6 +20,8 @@ const getRoadmap = async (req, res, next) => {
     const { boardId, sort = 'votes' } = req.query;
     const { userId, role } = req.user;
 
+    const teamAccess = req.user.teamAccess;
+
     // If boardId provided, verify access
     let boardFilter = {};
     let board = null;
@@ -31,7 +33,12 @@ const getRoadmap = async (req, res, next) => {
       if (!board) {
         return res.status(404).json({ success: false, message: 'Board not found.' });
       }
-      if (role === 'admin') {
+      if (teamAccess) {
+        // Team member: sirf assigned board
+        if (board.id !== teamAccess.boardId) {
+          return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
+        }
+      } else if (role === 'admin') {
         if (board.createdById && board.createdById !== userId) {
           return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
         }
@@ -45,8 +52,10 @@ const getRoadmap = async (req, res, next) => {
       }
       boardFilter = { boardId };
     } else {
-      // All boards: admin sees own boards, user sees accessible boards
-      if (role === 'admin') {
+      // All boards
+      if (teamAccess) {
+        boardFilter = { boardId: teamAccess.boardId };
+      } else if (role === 'admin') {
         const adminBoards = await prisma.board.findMany({ where: { createdById: userId }, select: { id: true } });
         boardFilter = { boardId: { in: adminBoards.map(b => b.id) } };
       } else {

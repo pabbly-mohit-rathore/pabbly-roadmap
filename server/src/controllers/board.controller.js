@@ -35,10 +35,14 @@ const getBoards = async (req, res, next) => {
           _count: { select: { posts: true } },
         },
       });
-    } else if (role === 'admin') {
-      // Admin ko sirf apne boards dikhe
+    } else if (role === 'admin' || req.user.teamAccess) {
+      // Admin ko apne boards dikhe, team member ko uska assigned board
+      const boardWhere = req.user.teamAccess
+        ? { id: req.user.teamAccess.boardId }
+        : { createdById: userId };
+
       boards = await prisma.board.findMany({
-        where: { createdById: userId },
+        where: boardWhere,
         orderBy: { order: 'asc' },
         select: {
           id: true,
@@ -319,10 +323,13 @@ const updateBoard = async (req, res, next) => {
 const deleteBoard = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { userId, role } = req.user;
+    const { userId, role, teamAccess } = req.user;
 
-    // Check: Kya user admin hai?
-    if (role !== 'admin') {
+    // Main admin ya admin access team member delete kar sakta hai, manager nahi
+    const isMainAdmin = role === 'admin';
+    const isTeamAdmin = teamAccess && teamAccess.accessLevel === 'admin';
+
+    if (!isMainAdmin && !isTeamAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can delete boards.',
@@ -341,11 +348,18 @@ const deleteBoard = async (req, res, next) => {
       });
     }
 
-    // Check: Kya admin is board ka owner hai?
-    if (board.createdById !== userId) {
+    // Main admin: sirf apne boards delete kar sakta hai
+    // Team admin: sirf assigned board delete kar sakta hai
+    if (isMainAdmin && board.createdById !== userId) {
       return res.status(403).json({
         success: false,
         message: 'You can only delete your own boards.',
+      });
+    }
+    if (isTeamAdmin && board.id !== teamAccess.boardId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only delete boards assigned to you.',
       });
     }
 

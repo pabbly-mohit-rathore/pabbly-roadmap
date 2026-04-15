@@ -71,6 +71,24 @@ const authenticate = async (req, res, next) => {
       userId: user.id, // userId ke liye id use karo
     };
 
+    // Step 5: Team access check — agar header mein board ID hai toh
+    // verify karo ki user us board ka member hai
+    const teamBoardId = req.headers['x-team-board-id'];
+    if (teamBoardId && user.role !== 'admin') {
+      const boardMember = await prisma.boardMember.findUnique({
+        where: { userId_boardId: { userId: user.id, boardId: teamBoardId } },
+      });
+      if (boardMember) {
+        req.user.teamAccess = {
+          boardId: teamBoardId,
+          accessLevel: boardMember.accessLevel, // 'admin' or 'manager'
+          canDeletePost: boardMember.accessLevel === 'admin',
+          canDeleteComment: boardMember.accessLevel === 'admin',
+          canDeleteBoard: boardMember.accessLevel === 'admin',
+        };
+      }
+    }
+
     // Aage jaao — controller tak
     next();
   } catch (error) {

@@ -354,20 +354,19 @@ const deleteComment = async (req, res, next) => {
 
     // Check permission
     const isAuthor = comment.authorId === userId;
-    let isBoardManager = false;
+    const teamAccess = req.user.teamAccess;
+    // Team admin can delete, team manager cannot
+    const isTeamAdmin = teamAccess && teamAccess.accessLevel === 'admin' && teamAccess.boardId === comment.post.boardId;
+    const isTeamManager = teamAccess && teamAccess.accessLevel === 'manager' && teamAccess.boardId === comment.post.boardId;
 
-    if (role !== 'admin') {
-      isBoardManager = !!(await prisma.boardMember.findUnique({
-        where: {
-          userId_boardId: {
-            userId,
-            boardId: comment.post.boardId,
-          },
-        },
-      }));
+    if (isTeamManager && !isAuthor) {
+      return res.status(403).json({
+        success: false,
+        message: 'Manager access does not allow deleting comments.',
+      });
     }
 
-    if (!isAuthor && !isBoardManager && role !== 'admin') {
+    if (!isAuthor && !isTeamAdmin && role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'You do not have permission to delete this comment.',

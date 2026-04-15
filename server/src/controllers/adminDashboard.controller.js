@@ -18,21 +18,26 @@ const prisma = require('../config/database');
 // ============================================================
 const getDashboardStats = async (req, res, next) => {
   try {
-    const { userId, role } = req.user;
+    const { userId, role, teamAccess } = req.user;
 
-    if (role !== 'admin') {
+    if (role !== 'admin' && !teamAccess) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can access dashboard stats.',
       });
     }
 
-    // Admin ke apne boards dhundho
-    const adminBoards = await prisma.board.findMany({
-      where: { createdById: userId },
-      select: { id: true },
-    });
-    const boardIds = adminBoards.map(b => b.id);
+    // Board IDs determine karo — main admin ke apne boards, team member ka ek board
+    let boardIds;
+    if (teamAccess) {
+      boardIds = [teamAccess.boardId];
+    } else {
+      const adminBoards = await prisma.board.findMany({
+        where: { createdById: userId },
+        select: { id: true },
+      });
+      boardIds = adminBoards.map(b => b.id);
+    }
     const totalBoards = boardIds.length;
 
     // Sab queries parallel mein chalao for speed
@@ -93,22 +98,24 @@ const getDashboardStats = async (req, res, next) => {
 // ============================================================
 const getTopVotedPosts = async (req, res, next) => {
   try {
-    const { userId, role } = req.user;
+    const { userId, role, teamAccess } = req.user;
     const { limit = 5 } = req.query;
 
-    if (role !== 'admin') {
+    if (role !== 'admin' && !teamAccess) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can access top posts.',
       });
     }
 
+    const boardFilter = teamAccess
+      ? { boardId: teamAccess.boardId }
+      : { board: { createdById: userId } };
+
     const topPosts = await prisma.post.findMany({
-      // Match the same visibility filter as /posts list (admin's own boards,
-      // excluding drafts) so Dashboard's Top Posts always stays in sync with All Posts.
       where: {
         isDraft: false,
-        board: { createdById: userId },
+        ...boardFilter,
       },
       select: {
         id: true,
@@ -173,18 +180,22 @@ const getTopVotedPosts = async (req, res, next) => {
 // ============================================================
 const getRecentActivities = async (req, res, next) => {
   try {
-    const { userId, role } = req.user;
+    const { userId, role, teamAccess } = req.user;
     const { limit = 50, offset = 0 } = req.query;
 
-    if (role !== 'admin') {
+    if (role !== 'admin' && !teamAccess) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can access activities.',
       });
     }
 
+    const boardWhere = teamAccess
+      ? { boardId: teamAccess.boardId }
+      : { board: { createdById: userId } };
+
     const activities = await prisma.activity.findMany({
-      where: { board: { createdById: userId } },
+      where: boardWhere,
       include: {
         user: {
           select: { id: true, name: true, email: true, avatar: true },
@@ -199,7 +210,7 @@ const getRecentActivities = async (req, res, next) => {
     });
 
     const total = await prisma.activity.count({
-      where: { board: { createdById: userId } },
+      where: boardWhere,
     });
 
     res.json({
@@ -225,17 +236,21 @@ const getRecentActivities = async (req, res, next) => {
 // ============================================================
 const getBoardMembersOverview = async (req, res, next) => {
   try {
-    const { userId, role } = req.user;
+    const { userId, role, teamAccess } = req.user;
 
-    if (role !== 'admin') {
+    if (role !== 'admin' && !teamAccess) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can access board members overview.',
       });
     }
 
+    const boardWhere = teamAccess
+      ? { boardId: teamAccess.boardId }
+      : { board: { createdById: userId } };
+
     const boardMembers = await prisma.boardMember.findMany({
-      where: { board: { createdById: userId } },
+      where: boardWhere,
       include: {
         user: {
           select: {
@@ -273,17 +288,21 @@ const getBoardMembersOverview = async (req, res, next) => {
 // ============================================================
 const getPostsByStatus = async (req, res, next) => {
   try {
-    const { userId, role } = req.user;
+    const { userId, role, teamAccess } = req.user;
 
-    if (role !== 'admin') {
+    if (role !== 'admin' && !teamAccess) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can access posts by status.',
       });
     }
 
+    const boardFilter = teamAccess
+      ? { boardId: teamAccess.boardId }
+      : { board: { createdById: userId } };
+
     const posts = await prisma.post.findMany({
-      where: { board: { createdById: userId } },
+      where: boardFilter,
       select: {
         id: true,
         title: true,

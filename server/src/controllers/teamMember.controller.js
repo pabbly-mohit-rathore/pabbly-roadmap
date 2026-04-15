@@ -28,12 +28,13 @@ const getTeamMemberStats = async (req, res, next) => {
       distinct: ['userId'],
     });
 
-    // Boards shared by you (boards that have at least one team member)
-    const boardsShared = await prisma.board.findMany({
-      where: {
-        members: { some: {} },
-      },
-      select: { id: true },
+    // Count members by access level
+    const adminCount = await prisma.boardMember.count({
+      where: { accessLevel: 'admin' },
+    });
+
+    const managerCount = await prisma.boardMember.count({
+      where: { accessLevel: 'manager' },
     });
 
     // Boards shared with you (boards where current admin is a member — usually 0 for main admin)
@@ -46,7 +47,8 @@ const getTeamMemberStats = async (req, res, next) => {
       success: true,
       data: {
         uniqueTeamMembers: uniqueMembers.length,
-        boardsSharedByYou: boardsShared.length,
+        adminAccessCount: adminCount,
+        managerAccessCount: managerCount,
         boardsSharedWithYou: boardsSharedWithMe.length,
       },
     });

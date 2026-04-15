@@ -44,8 +44,12 @@ const getPosts = async (req, res, next) => {
       delete where.isDraft;
     }
 
-    // Admin ko sirf apne boards ke posts dikhe
-    if (req.user && req.user.role === 'admin') {
+    // Team member ko assigned board ke posts dikhe
+    if (req.user && req.user.teamAccess) {
+      const teamBoardId = req.user.teamAccess.boardId;
+      where.boardId = boardId ? (boardId === teamBoardId ? boardId : 'none') : teamBoardId;
+    } else if (req.user && req.user.role === 'admin') {
+      // Admin ko sirf apne boards ke posts dikhe
       const adminBoards = await prisma.board.findMany({
         where: { createdById: req.user.userId },
         select: { id: true },
@@ -328,7 +332,9 @@ const updatePost = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Post not found.' });
     }
 
-    if (post.authorId !== userId && req.user.role !== 'admin') {
+    // Author, main admin, ya team member (admin/manager dono) edit kar sakte hai
+    const isTeamMember = req.user.teamAccess && req.user.teamAccess.boardId === post.boardId;
+    if (post.authorId !== userId && req.user.role !== 'admin' && !isTeamMember) {
       return res.status(403).json({ success: false, message: 'You do not have permission to edit this post.' });
     }
 
@@ -384,19 +390,19 @@ const deletePost = async (req, res, next) => {
     }
 
     const isAuthor = post.authorId === userId;
-    const boardMember = role === 'admin'
-      ? null
-      : await prisma.boardMember.findUnique({
-          where: { userId_boardId: { userId, boardId: post.boardId } },
-        });
-    const canDeleteAsManager = !!boardMember && boardMember.canDeletePost;
-    const hasDeletePermission = role === 'admin' || isAuthor || canDeleteAsManager;
+    const teamAccess = req.user.teamAccess;
+    // Team admin can delete, team manager cannot
+    const isTeamAdmin = teamAccess && teamAccess.accessLevel === 'admin' && teamAccess.boardId === post.boardId;
+    const isTeamManager = teamAccess && teamAccess.accessLevel === 'manager' && teamAccess.boardId === post.boardId;
+
+    if (isTeamManager) {
+      return res.status(403).json({ success: false, message: 'Manager access does not allow deleting posts.' });
+    }
+
+    const hasDeletePermission = role === 'admin' || isAuthor || isTeamAdmin;
 
     if (!hasDeletePermission) {
-      const message = boardMember && !boardMember.canDeletePost
-        ? 'Your access level does not allow deleting posts.'
-        : 'You do not have permission to delete this post.';
-      return res.status(403).json({ success: false, message });
+      return res.status(403).json({ success: false, message: 'You do not have permission to delete this post.' });
     }
 
     await prisma.post.delete({ where: { id } });
@@ -431,7 +437,13 @@ const changePostStatus = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Post not found.' });
     }
 
-    if (role === 'admin') {
+    const teamAccess = req.user.teamAccess;
+    if (teamAccess) {
+      // Team member: sirf assigned board ke posts ka status change kar sakta hai
+      if (teamAccess.boardId !== post.boardId) {
+        return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
+      }
+    } else if (role === 'admin') {
       const board = await prisma.board.findUnique({ where: { id: post.boardId } });
       if (board?.createdById !== userId) {
         return res.status(403).json({ success: false, message: 'You can only manage posts in your own boards.' });
