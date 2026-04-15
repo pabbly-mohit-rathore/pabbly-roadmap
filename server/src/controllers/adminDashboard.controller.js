@@ -27,10 +27,11 @@ const getDashboardStats = async (req, res, next) => {
       });
     }
 
-    // Board IDs determine karo — main admin ke apne boards, team member ka ek board
+    // Board IDs — team members ko ALL boards dikhe, admin ko apne created boards
     let boardIds;
     if (teamAccess) {
-      boardIds = [teamAccess.boardId];
+      const allBoards = await prisma.board.findMany({ select: { id: true } });
+      boardIds = allBoards.map(b => b.id);
     } else {
       const adminBoards = await prisma.board.findMany({
         where: { createdById: userId },
@@ -42,7 +43,7 @@ const getDashboardStats = async (req, res, next) => {
 
     // Sab queries parallel mein chalao for speed
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const [totalPosts, totalVotes, totalUsers, activeUsersData] = await Promise.all([
+    const [totalPosts, totalVotes, totalUsers, activeUsersData, totalComments] = await Promise.all([
       prisma.post.count({ where: { boardId: { in: boardIds }, isDraft: false } }),
       prisma.vote.count({ where: { post: { boardId: { in: boardIds }, isDraft: false } } }),
       prisma.user.count({
@@ -63,6 +64,7 @@ const getDashboardStats = async (req, res, next) => {
         },
         select: { id: true },
       }),
+      prisma.comment.count({ where: { post: { boardId: { in: boardIds }, isDraft: false } } }),
     ]);
     const activeUsers = activeUsersData.length;
 
@@ -81,6 +83,7 @@ const getDashboardStats = async (req, res, next) => {
           totalUsers,
           totalBoards,
           activeUsers,
+          totalComments,
           engagementRate: parseFloat(engagementRate.toFixed(2)),
           avgPostsPerBoard: parseFloat(avgPostsPerBoard.toFixed(2)),
         },
@@ -109,7 +112,7 @@ const getTopVotedPosts = async (req, res, next) => {
     }
 
     const boardFilter = teamAccess
-      ? { boardId: teamAccess.boardId }
+      ? {}
       : { board: { createdById: userId } };
 
     const topPosts = await prisma.post.findMany({
@@ -191,7 +194,7 @@ const getRecentActivities = async (req, res, next) => {
     }
 
     const boardWhere = teamAccess
-      ? { boardId: teamAccess.boardId }
+      ? {}
       : { board: { createdById: userId } };
 
     const activities = await prisma.activity.findMany({
@@ -246,7 +249,7 @@ const getBoardMembersOverview = async (req, res, next) => {
     }
 
     const boardWhere = teamAccess
-      ? { boardId: teamAccess.boardId }
+      ? {}
       : { board: { createdById: userId } };
 
     const boardMembers = await prisma.boardMember.findMany({
@@ -298,7 +301,7 @@ const getPostsByStatus = async (req, res, next) => {
     }
 
     const boardFilter = teamAccess
-      ? { boardId: teamAccess.boardId }
+      ? {}
       : { board: { createdById: userId } };
 
     const posts = await prisma.post.findMany({

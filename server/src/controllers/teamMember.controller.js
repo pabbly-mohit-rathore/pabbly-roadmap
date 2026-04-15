@@ -290,14 +290,6 @@ const acceptTeamInvitation = async (req, res, next) => {
         update: {},
       }),
       prisma.teamInvitation.delete({ where: { id: invitationId } }),
-      prisma.notification.updateMany({
-        where: {
-          userId: invitation.userId,
-          type: 'team_access_request',
-          data: { contains: invitationId },
-        },
-        data: { isRead: true },
-      }),
       prisma.notification.create({
         data: {
           userId: invitation.invitedById,
@@ -307,6 +299,23 @@ const acceptTeamInvitation = async (req, res, next) => {
         },
       }),
     ]);
+
+    // Update notification data to mark action as taken (data is a JSON string)
+    const reqNotifications = await prisma.notification.findMany({
+      where: {
+        userId: invitation.userId,
+        type: 'team_access_request',
+        data: { contains: invitationId },
+      },
+    });
+    for (const notif of reqNotifications) {
+      let parsed = {};
+      try { parsed = JSON.parse(notif.data || '{}'); } catch { /* ignore */ }
+      await prisma.notification.update({
+        where: { id: notif.id },
+        data: { isRead: true, data: JSON.stringify({ ...parsed, actionTaken: 'accepted' }) },
+      });
+    }
 
     res.json({
       success: true,
@@ -345,14 +354,6 @@ const rejectTeamInvitation = async (req, res, next) => {
 
     await prisma.$transaction([
       prisma.teamInvitation.delete({ where: { id: invitationId } }),
-      prisma.notification.updateMany({
-        where: {
-          userId: invitation.userId,
-          type: 'team_access_request',
-          data: { contains: invitationId },
-        },
-        data: { isRead: true },
-      }),
       prisma.notification.create({
         data: {
           userId: invitation.invitedById,
@@ -362,6 +363,23 @@ const rejectTeamInvitation = async (req, res, next) => {
         },
       }),
     ]);
+
+    // Update notification data to mark action as taken (data is a JSON string)
+    const reqNotifications = await prisma.notification.findMany({
+      where: {
+        userId: invitation.userId,
+        type: 'team_access_request',
+        data: { contains: invitationId },
+      },
+    });
+    for (const notif of reqNotifications) {
+      let parsed = {};
+      try { parsed = JSON.parse(notif.data || '{}'); } catch { /* ignore */ }
+      await prisma.notification.update({
+        where: { id: notif.id },
+        data: { isRead: true, data: JSON.stringify({ ...parsed, actionTaken: 'rejected' }) },
+      });
+    }
 
     res.json({ success: true, message: 'Team invitation rejected.' });
   } catch (error) {

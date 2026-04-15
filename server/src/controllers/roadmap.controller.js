@@ -34,10 +34,7 @@ const getRoadmap = async (req, res, next) => {
         return res.status(404).json({ success: false, message: 'Board not found.' });
       }
       if (teamAccess) {
-        // Team member: sirf assigned board
-        if (board.id !== teamAccess.boardId) {
-          return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
-        }
+        // Team member: full access — saare boards accessible hain
       } else if (role === 'admin') {
         if (board.createdById && board.createdById !== userId) {
           return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
@@ -54,7 +51,8 @@ const getRoadmap = async (req, res, next) => {
     } else {
       // All boards
       if (teamAccess) {
-        boardFilter = { boardId: teamAccess.boardId };
+        // Team member: full access — no board filter
+        boardFilter = {};
       } else if (role === 'admin') {
         const adminBoards = await prisma.board.findMany({ where: { createdById: userId }, select: { id: true } });
         boardFilter = { boardId: { in: adminBoards.map(b => b.id) } };

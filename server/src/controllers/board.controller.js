@@ -36,9 +36,9 @@ const getBoards = async (req, res, next) => {
         },
       });
     } else if (role === 'admin' || req.user.teamAccess) {
-      // Admin ko apne boards dikhe, team member ko uska assigned board
+      // Admin ko apne boards dikhe, team member ko ALL boards
       const boardWhere = req.user.teamAccess
-        ? { id: req.user.teamAccess.boardId }
+        ? {}
         : { createdById: userId };
 
       boards = await prisma.board.findMany({
@@ -356,12 +356,7 @@ const deleteBoard = async (req, res, next) => {
         message: 'You can only delete your own boards.',
       });
     }
-    if (isTeamAdmin && board.id !== teamAccess.boardId) {
-      return res.status(403).json({
-        success: false,
-        message: 'You can only delete boards assigned to you.',
-      });
-    }
+    // Team admin: full access to all boards (no board restriction)
 
     // Activity log BEFORE delete (board still exists for FK)
     await prisma.activity.create({

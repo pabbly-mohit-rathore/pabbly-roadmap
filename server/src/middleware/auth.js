@@ -73,6 +73,7 @@ const authenticate = async (req, res, next) => {
 
     // Step 5: Team access check — agar header mein board ID hai toh
     // verify karo ki user us board ka member hai
+    // Team members (admin/manager) ko FULL access milta hai — saare boards, saare posts
     const teamBoardId = req.headers['x-team-board-id'];
     if (teamBoardId && user.role !== 'admin') {
       const boardMember = await prisma.boardMember.findUnique({
@@ -123,7 +124,27 @@ const optionalAuth = async (req, res, next) => {
       where: { id: decoded.userId },
     });
 
-    req.user = user ? { ...user, userId: user.id } : null;
+    if (user) {
+      req.user = { ...user, userId: user.id };
+      // Team access check — same as authenticate
+      const teamBoardId = req.headers['x-team-board-id'];
+      if (teamBoardId && user.role !== 'admin') {
+        const boardMember = await prisma.boardMember.findUnique({
+          where: { userId_boardId: { userId: user.id, boardId: teamBoardId } },
+        });
+        if (boardMember) {
+          req.user.teamAccess = {
+            boardId: teamBoardId,
+            accessLevel: boardMember.accessLevel,
+            canDeletePost: boardMember.accessLevel === 'admin',
+            canDeleteComment: boardMember.accessLevel === 'admin',
+            canDeleteBoard: boardMember.accessLevel === 'admin',
+          };
+        }
+      }
+    } else {
+      req.user = null;
+    }
     next();
   } catch (error) {
     // Token galat hai — ignore karo, bina login jaane do

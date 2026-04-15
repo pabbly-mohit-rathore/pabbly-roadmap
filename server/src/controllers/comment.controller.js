@@ -355,9 +355,9 @@ const deleteComment = async (req, res, next) => {
     // Check permission
     const isAuthor = comment.authorId === userId;
     const teamAccess = req.user.teamAccess;
-    // Team admin can delete, team manager cannot
-    const isTeamAdmin = teamAccess && teamAccess.accessLevel === 'admin' && teamAccess.boardId === comment.post.boardId;
-    const isTeamManager = teamAccess && teamAccess.accessLevel === 'manager' && teamAccess.boardId === comment.post.boardId;
+    // Team admin can delete, team manager cannot — full access across all boards
+    const isTeamAdmin = teamAccess && teamAccess.accessLevel === 'admin';
+    const isTeamManager = teamAccess && teamAccess.accessLevel === 'manager';
 
     if (isTeamManager && !isAuthor) {
       return res.status(403).json({

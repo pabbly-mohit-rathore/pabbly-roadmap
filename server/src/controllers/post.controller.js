@@ -44,10 +44,10 @@ const getPosts = async (req, res, next) => {
       delete where.isDraft;
     }
 
-    // Team member ko assigned board ke posts dikhe
+    // Team member: full access — saare boards ke posts dikhe
     if (req.user && req.user.teamAccess) {
-      const teamBoardId = req.user.teamAccess.boardId;
-      where.boardId = boardId ? (boardId === teamBoardId ? boardId : 'none') : teamBoardId;
+      if (boardId) where.boardId = boardId;
+      // no boardId filter = all boards
     } else if (req.user && req.user.role === 'admin') {
       // Admin ko sirf apne boards ke posts dikhe
       const adminBoards = await prisma.board.findMany({
@@ -333,7 +333,7 @@ const updatePost = async (req, res, next) => {
     }
 
     // Author, main admin, ya team member (admin/manager dono) edit kar sakte hai
-    const isTeamMember = req.user.teamAccess && req.user.teamAccess.boardId === post.boardId;
+    const isTeamMember = !!req.user.teamAccess;
     if (post.authorId !== userId && req.user.role !== 'admin' && !isTeamMember) {
       return res.status(403).json({ success: false, message: 'You do not have permission to edit this post.' });
     }
@@ -391,9 +391,9 @@ const deletePost = async (req, res, next) => {
 
     const isAuthor = post.authorId === userId;
     const teamAccess = req.user.teamAccess;
-    // Team admin can delete, team manager cannot
-    const isTeamAdmin = teamAccess && teamAccess.accessLevel === 'admin' && teamAccess.boardId === post.boardId;
-    const isTeamManager = teamAccess && teamAccess.accessLevel === 'manager' && teamAccess.boardId === post.boardId;
+    // Team admin can delete, team manager cannot — full access across all boards
+    const isTeamAdmin = teamAccess && teamAccess.accessLevel === 'admin';
+    const isTeamManager = teamAccess && teamAccess.accessLevel === 'manager';
 
     if (isTeamManager) {
       return res.status(403).json({ success: false, message: 'Manager access does not allow deleting posts.' });
@@ -439,10 +439,7 @@ const changePostStatus = async (req, res, next) => {
 
     const teamAccess = req.user.teamAccess;
     if (teamAccess) {
-      // Team member: sirf assigned board ke posts ka status change kar sakta hai
-      if (teamAccess.boardId !== post.boardId) {
-        return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
-      }
+      // Team member: full access — any board
     } else if (role === 'admin') {
       const board = await prisma.board.findUnique({ where: { id: post.boardId } });
       if (board?.createdById !== userId) {
