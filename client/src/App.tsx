@@ -13,7 +13,6 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const BoardPage = lazy(() => import('./pages/BoardPage'));
 const PostDetailPage = lazy(() => import('./pages/PostDetailPage'));
 const RoadmapPage = lazy(() => import('./pages/RoadmapPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const InvitePage = lazy(() => import('./pages/InvitePage'));
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
 const AdminFeedback = lazy(() => import('./pages/admin/Feedback'));
@@ -26,6 +25,7 @@ const ChangelogView = lazy(() => import('./pages/admin/ChangelogView'));
 const BoardManagement = lazy(() => import('./pages/admin/BoardManagement'));
 const AdminBoardMembers = lazy(() => import('./pages/admin/BoardMembers'));
 const AdminSettings = lazy(() => import('./pages/admin/Settings'));
+const ProfileSettingsPage = lazy(() => import('./pages/admin/ProfileSettingsPage'));
 const AdminUsers = lazy(() => import('./pages/admin/Users'));
 const UserFeatureRequests = lazy(() => import('./pages/user/FeatureRequests'));
 const UserRoadmapPage = lazy(() => import('./pages/user/RoadmapPage'));
@@ -88,13 +88,7 @@ function App() {
             ) : <Navigate to="/login" />
           } />
 
-          <Route path="/profile" element={
-            isAuthenticated ? (
-              <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar /><ProfilePage /><Toaster position="top-right" />
-              </div>
-            ) : <Navigate to="/login" />
-          } />
+          <Route path="/profile" element={<Navigate to="/admin/profile-settings?tab=profile" replace />} />
 
           {/* Changelog Editor - Full width, no sidebar */}
           <Route path="/admin/changelog/:id/edit" element={
@@ -138,6 +132,7 @@ function App() {
                     <Route path="users" element={<AdminUsers />} />
                     <Route path="changelog/:id/view" element={<ChangelogView />} />
                     <Route path="settings" element={isTeamAccess && !isAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminSettings />} />
+                    <Route path="profile-settings" element={<ProfileSettingsPage />} />
                   </Routes>
                 </AdminLayout>
                 <Toaster position="top-right" />

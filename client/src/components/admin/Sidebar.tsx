@@ -1,5 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Settings } from 'lucide-react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { LayoutDashboard, Settings, User, Bell, Lock, Settings as SettingsIcon } from 'lucide-react';
 import { Icon } from '@iconify/react';
 
 function RoadmapIcon({ className }: { className?: string }) {
@@ -11,12 +11,22 @@ import useAuthStore from '../../store/authStore';
 
 export default function AdminSidebar() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const theme = useThemeStore((state) => state.theme);
   const { isTeamAccess } = useTeamAccessStore();
   const { user } = useAuthStore();
 
   const isRealAdmin = user?.role === 'admin';
   const isTeamMember = isTeamAccess && !isRealAdmin;
+  const isProfileSettings = location.pathname.startsWith('/admin/profile-settings');
+
+  // Profile settings tabs
+  const profileMenuItems = [
+    { label: 'Profile', icon: User, path: '/admin/profile-settings?tab=profile', tab: 'profile' },
+    { label: 'Notifications', icon: Bell, path: '/admin/profile-settings?tab=notifications', tab: 'notifications' },
+    { label: 'Change Password', icon: Lock, path: '/admin/profile-settings?tab=password', tab: 'password' },
+    { label: 'Account Settings', icon: SettingsIcon, path: '/admin/profile-settings?tab=account', tab: 'account' },
+  ];
 
   // Full admin menu
   const allMenuItems = [
@@ -27,10 +37,8 @@ export default function AdminSidebar() {
   ];
 
   // Filter menu based on team access level
-  // Settings page sirf main admin ko dikhega (jo account ka owner hai)
   let menuItems = allMenuItems;
   if (isTeamMember) {
-    // Team members (admin/manager access) ko Settings nahi dikhega
     menuItems = allMenuItems.filter(item => item.label !== 'Settings');
   }
 
@@ -57,6 +65,10 @@ export default function AdminSidebar() {
     return location.pathname.startsWith(path);
   };
 
+  const isProfileTabActive = (tab: string) => {
+    return isProfileSettings && searchParams.get('tab') === tab;
+  };
+
   return (
     <aside
       className={`fixed left-0 z-40 border-r transition-colors overflow-y-auto ${
@@ -68,29 +80,57 @@ export default function AdminSidebar() {
 
       <nav className="p-3">
         <ul className="space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200 font-medium text-sm ${
-                    active
-                      ? theme === 'dark'
-                        ? 'bg-emerald-700 text-white'
-                        : 'bg-emerald-600 text-white'
-                      : theme === 'dark'
-                      ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-300'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
+          {isProfileSettings ? (
+            // Profile settings tabs
+            profileMenuItems.map((item) => {
+              const TabIcon = item.icon;
+              const active = isProfileTabActive(item.tab);
+              return (
+                <li key={item.tab}>
+                  <Link
+                    to={item.path}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200 font-medium text-sm ${
+                      active
+                        ? theme === 'dark'
+                          ? 'bg-emerald-700 text-white'
+                          : 'bg-emerald-600 text-white'
+                        : theme === 'dark'
+                        ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-300'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <TabIcon className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })
+          ) : (
+            // Normal admin menu
+            menuItems.map((item) => {
+              const MenuIcon = item.icon;
+              const active = isActive(item.path);
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200 font-medium text-sm ${
+                      active
+                        ? theme === 'dark'
+                          ? 'bg-emerald-700 text-white'
+                          : 'bg-emerald-600 text-white'
+                        : theme === 'dark'
+                        ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-300'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <MenuIcon className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })
+          )}
         </ul>
       </nav>
     </aside>

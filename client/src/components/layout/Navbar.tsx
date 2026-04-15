@@ -322,7 +322,7 @@ export default function Navbar() {
 
                     {/* Menu Items */}
                     <Link
-                      to="/profile"
+                      to="/admin/profile-settings?tab=profile"
                       onClick={() => setProfileOpen(false)}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-b ${
                         theme === 'dark'
