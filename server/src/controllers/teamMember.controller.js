@@ -66,21 +66,50 @@ const getTeamMembers = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Only admins can view team members.' });
     }
 
-    const members = await prisma.boardMember.findMany({
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, avatar: true },
+    const [members, pendingInvitations] = await Promise.all([
+      prisma.boardMember.findMany({
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, avatar: true },
+          },
+          board: {
+            select: { id: true, name: true, slug: true, color: true },
+          },
         },
-        board: {
-          select: { id: true, name: true, slug: true, color: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.teamInvitation.findMany({
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, avatar: true },
+          },
+          board: {
+            select: { id: true, name: true, slug: true, color: true },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const pendingAsMembers = pendingInvitations.map(inv => ({
+      id: inv.id,
+      userId: inv.userId,
+      boardId: inv.boardId,
+      accessLevel: inv.accessLevel,
+      createdAt: inv.createdAt,
+      status: 'pending',
+      user: inv.user,
+      board: inv.board,
+    }));
+
+    const acceptedMembers = members.map(m => ({
+      ...m,
+      status: 'accepted',
+    }));
 
     res.json({
       success: true,
-      data: { members },
+      data: { members: [...acceptedMembers, ...pendingAsMembers] },
     });
   } catch (error) {
     next(error);
@@ -428,6 +457,43 @@ const updateTeamMember = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// 7. CANCEL TEAM INVITATION (Admin only)
+// ============================================================
+const cancelTeamInvitation = async (req, res, next) => {
+  try {
+    const { invitationId } = req.params;
+    const { role } = req.user;
+
+    if (role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Only admins can cancel invitations.' });
+    }
+
+    const invitation = await prisma.teamInvitation.findUnique({
+      where: { id: invitationId },
+    });
+
+    if (!invitation) {
+      return res.status(404).json({ success: false, message: 'Invitation not found.' });
+    }
+
+    await prisma.$transaction([
+      prisma.teamInvitation.delete({ where: { id: invitationId } }),
+      prisma.notification.deleteMany({
+        where: {
+          userId: invitation.userId,
+          type: 'team_access_request',
+          data: { contains: invitationId },
+        },
+      }),
+    ]);
+
+    res.json({ success: true, message: 'Invitation cancelled successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTeamMemberStats,
   getTeamMembers,
@@ -437,4 +503,5 @@ module.exports = {
   updateTeamMember,
   acceptTeamInvitation,
   rejectTeamInvitation,
+  cancelTeamInvitation,
 };

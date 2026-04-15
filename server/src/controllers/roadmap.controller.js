@@ -5,7 +5,6 @@
 //   - Get posts grouped by status (Kanban view)
 // ============================================================
 
-const { Prisma } = require('@prisma/client');
 const prisma = require('../config/database');
 
 // ============================================================
@@ -90,22 +89,21 @@ const getRoadmap = async (req, res, next) => {
       orderBy,
     });
 
-    // Fetch truncated content previews via raw SQL — avoids pulling multi-MB
-    // base64 image payloads out of the DB for the kanban view.
-    let contentMap = {};
-    if (posts.length > 0) {
-      const ids = posts.map(p => p.id);
-      const rows = await prisma.$queryRaw`
-        SELECT id, LEFT(content, 500) AS content_preview
-        FROM "posts"
-        WHERE id IN (${Prisma.join(ids)})
-      `;
-      contentMap = Object.fromEntries(rows.map(r => [r.id, r.content_preview || '']));
-    }
+    const stripToText = (str) => {
+      if (!str) return '';
+      return str
+        .replace(/<img\b[\s\S]*?>/gi, '')
+        .replace(/<img\b[\s\S]*$/gi, '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 300);
+    };
 
     const postsWithVoteStatus = posts.map(post => ({
       ...post,
-      content: contentMap[post.id] || '',
+      description: stripToText(post.description),
       hasVoted: userId ? (post.votes?.length > 0) : false,
       votes: undefined,
     }));

@@ -13,6 +13,7 @@ const {
   updateTeamMember,
   acceptTeamInvitation,
   rejectTeamInvitation,
+  cancelTeamInvitation,
 } = require('../controllers/teamMember.controller');
 
 router.get('/team-members/stats', authenticate, getTeamMemberStats);
@@ -37,6 +38,10 @@ router.put('/team-members/:memberId', authenticate, [
   param('memberId').isUUID().withMessage('Member ID must be a valid UUID.'),
   body('accessLevel').isIn(['admin', 'manager']).withMessage('Access level must be admin or manager.'),
 ], validate, updateTeamMember);
+
+router.delete('/team-members/invitations/:invitationId', authenticate, [
+  param('invitationId').isUUID().withMessage('Invitation ID must be a valid UUID.'),
+], validate, cancelTeamInvitation);
 
 router.delete('/team-members/:memberId', authenticate, [
   param('memberId').isUUID().withMessage('Member ID must be a valid UUID.'),

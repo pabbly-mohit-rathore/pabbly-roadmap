@@ -108,8 +108,9 @@ const getPosts = async (req, res, next) => {
       orderBy = { voteCount: 'desc' };
     }
 
-    const total = await prisma.post.count({ where });
-    const posts = await prisma.post.findMany({
+    const isAll = limit === 'all';
+
+    const postQuery = prisma.post.findMany({
       where,
       orderBy,
       skip,
@@ -119,7 +120,6 @@ const getPosts = async (req, res, next) => {
         title: true,
         slug: true,
         description: true,
-        content: true,
         status: true,
         type: true,
         voteCount: true,
@@ -136,13 +136,20 @@ const getPosts = async (req, res, next) => {
       },
     });
 
-    // Strip img tags (incl base64) and HTML from text, return plain text preview
+    let posts, total;
+    if (isAll) {
+      posts = await postQuery;
+      total = posts.length;
+    } else {
+      [posts, total] = await Promise.all([postQuery, prisma.post.count({ where })]);
+    }
+
     const stripToText = (str) => {
       if (!str) return '';
       return str
-        .replace(/<img\b[\s\S]*?>/gi, '')       // full img tags
-        .replace(/<img\b[\s\S]*$/gi, '')         // truncated img tags (no closing >)
-        .replace(/<[^>]*>/g, ' ')                // other HTML tags
+        .replace(/<img\b[\s\S]*?>/gi, '')
+        .replace(/<img\b[\s\S]*$/gi, '')
+        .replace(/<[^>]*>/g, ' ')
         .replace(/&nbsp;/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
@@ -151,7 +158,6 @@ const getPosts = async (req, res, next) => {
 
     const postsWithVoteStatus = posts.map(post => ({
       ...post,
-      content: stripToText(post.content),
       description: stripToText(post.description),
       hasVoted: req.user ? (post.votes?.length > 0) : false,
       hasCommented: req.user ? (post.comments?.length > 0) : false,
@@ -167,7 +173,7 @@ const getPosts = async (req, res, next) => {
           page: parseInt(page),
           limit: take,
           total,
-          pages: Math.ceil(total / take),
+          pages: take ? Math.ceil(total / take) : 1,
         },
       },
     });
