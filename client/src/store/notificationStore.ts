@@ -50,7 +50,19 @@ const useNotificationStore = create<NotificationStore>((set) => ({
     set({ loading: true });
     try {
       const res = await api.get('/notifications?limit=30');
-      if (res.data.success) set({ notifications: res.data.data.notifications });
+      if (res.data.success) {
+        const notifications = (res.data.data.notifications as Notification[]).map(n => {
+          if (n.type === 'team_access_request' && n.data) {
+            try {
+              const parsed = JSON.parse(n.data);
+              if (parsed.actionTaken === 'accepted') return { ...n, accepted: true };
+              if (parsed.actionTaken === 'rejected') return { ...n, rejected: true };
+            } catch { /* ignore */ }
+          }
+          return n;
+        });
+        set({ notifications });
+      }
     } catch { /* silent */ }
     finally { set({ loading: false }); }
   },

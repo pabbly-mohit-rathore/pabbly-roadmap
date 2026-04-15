@@ -668,7 +668,7 @@ export default function UserPostDetail() {
 
                   {/* Board */}
                   <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
                       {post?.board.name?.[0]?.toUpperCase()}
                     </div>
                     <div>
@@ -688,7 +688,7 @@ export default function UserPostDetail() {
                     const ts = typeChipStyles[post?.type || ''] || typeChipStyles.feature;
                     return (
                       <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? `${ts.darkBg} ${ts.darkText}` : `${ts.bg} ${ts.text}`}`}>
                           {post?.type?.[0]?.toUpperCase()}
                         </div>
                         <div>
@@ -715,7 +715,7 @@ export default function UserPostDetail() {
                     const ss = statusChipStyles[post?.status || ''] || statusChipStyles.open;
                     return (
                       <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? `${ss.darkBg} ${ss.darkText}` : `${ss.bg} ${ss.text}`}`}>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${theme === 'dark' ? `${ss.darkBg} ${ss.darkText}` : `${ss.bg} ${ss.text}`}`}>
                           {post?.status?.[0]?.toUpperCase()}
                         </div>
                         <div>
@@ -734,9 +734,9 @@ export default function UserPostDetail() {
                       const av = post?.author.avatar;
                       const url = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
                       return url ? (
-                        <img src={url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                        <img src={url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
                       ) : (
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
                           {post?.author.name?.[0]?.toUpperCase()}
                         </div>
                       );
