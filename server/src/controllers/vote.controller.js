@@ -26,7 +26,7 @@ const upvotePost = async (req, res, next) => {
     // Post dhundho
     const post = await prisma.post.findUnique({
       where: { id: postId },
-      select: { id: true, boardId: true, voteCount: true },
+      select: { id: true, boardId: true, voteCount: true, title: true, authorId: true },
     });
 
     if (!post) {
@@ -94,6 +94,20 @@ const upvotePost = async (req, res, next) => {
         boardId: post.boardId,
       },
     });
+
+    // Notification — post author ko batao (sirf new vote pe, remove pe nahi)
+    if (!existingVote && post.authorId && post.authorId !== userId) {
+      const voter = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+      await prisma.notification.create({
+        data: {
+          userId: post.authorId,
+          type: 'post_voted',
+          title: 'New vote on your post',
+          message: `${voter?.name || 'Someone'} upvoted "${post.title}"`,
+          postId,
+        },
+      }).catch(() => {});
+    }
 
     // Real-time broadcast — sabko turant dikhega
     const io = req.app.get('io');

@@ -470,6 +470,9 @@ enum NotificationType {
   status_changed
   new_comment
   official_reply
+  post_voted
+  comment_liked
+  comment_reply
   team_access_granted
   team_access_request
   team_access_accepted

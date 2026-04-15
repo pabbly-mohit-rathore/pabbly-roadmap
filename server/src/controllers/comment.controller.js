@@ -131,7 +131,7 @@ const addComment = async (req, res, next) => {
     // Post dhundho
     const post = await prisma.post.findUnique({
       where: { id: postId },
-      select: { id: true, boardId: true, authorId: true },
+      select: { id: true, boardId: true, authorId: true, title: true, slug: true },
     });
 
     if (!post) {
@@ -211,13 +211,33 @@ const addComment = async (req, res, next) => {
       },
     });
 
-    // Notify all subscribers (excludes commenter + post author gets direct notification)
+    // Notify all subscribers (excludes commenter)
     await notifySubscribers(postId, {
       type: 'new_comment',
-      title: 'New comment',
+      title: 'New comment on your post',
       message: `${comment.author.name} commented on "${post.title}"`,
       excludeUserIds: [userId],
     });
+
+    // Reply notification — parent comment author ko batao
+    if (parentId) {
+      const parentComment = await prisma.comment.findUnique({
+        where: { id: parentId },
+        select: { authorId: true },
+      });
+      if (parentComment && parentComment.authorId !== userId) {
+        await prisma.notification.create({
+          data: {
+            userId: parentComment.authorId,
+            type: 'comment_reply',
+            title: 'New reply to your comment',
+            message: `${comment.author.name} replied to your comment on "${post.title}"`,
+            postId,
+            data: JSON.stringify({ commentId: comment.id, parentId }),
+          },
+        }).catch(() => {});
+      }
+    }
 
     // Auto-subscribe commenter to the post
     await prisma.subscription.upsert({
@@ -747,6 +767,22 @@ const toggleCommentLike = async (req, res, next) => {
         likes: { select: { userId: true } },
       },
     });
+
+    // Notification — comment author ko batao (sirf new like pe)
+    if (hasLiked && comment.authorId && comment.authorId !== userId) {
+      const liker = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+      const post = await prisma.post.findUnique({ where: { id: comment.postId }, select: { title: true, slug: true } });
+      await prisma.notification.create({
+        data: {
+          userId: comment.authorId,
+          type: 'comment_liked',
+          title: 'Your comment was liked',
+          message: `${liker?.name || 'Someone'} liked your comment on "${post?.title || 'a post'}"`,
+          postId: comment.postId,
+          data: JSON.stringify({ commentId: id }),
+        },
+      }).catch(() => {});
+    }
 
     const io = req.app.get('io');
     io.to(`post:${comment.postId}`).emit('comment-updated', { postId: comment.postId });

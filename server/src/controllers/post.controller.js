@@ -671,6 +671,13 @@ const publishPost = async (req, res, next) => {
       },
     });
 
+    // Auto-subscribe author to their post on publish
+    await prisma.subscription.upsert({
+      where: { userId_postId: { userId: post.authorId, postId: id } },
+      create: { userId: post.authorId, postId: id },
+      update: {},
+    });
+
     res.json({ success: true, message: 'Post published.', data: { post: updatedPost } });
   } catch (error) {
     next(error);
