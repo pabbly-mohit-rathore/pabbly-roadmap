@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply, X } from 'lucide-react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply } from 'lucide-react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -66,7 +66,6 @@ export default function UserPostDetail() {
   const theme = useThemeStore((state) => state.theme);
   const { user: currentUser, isAuthenticated } = useAuthStore();
   const { votes, init, toggle } = useVoteStore();
-  const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
 
