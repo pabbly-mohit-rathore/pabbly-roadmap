@@ -203,6 +203,16 @@ const createBoard = async (req, res, next) => {
       });
     }
 
+    // Team member ka board main admin ke under create hoga
+    let ownerId = userId;
+    if (isTeamAdmin && teamAccess.boardId) {
+      const parentBoard = await prisma.board.findUnique({
+        where: { id: teamAccess.boardId },
+        select: { createdById: true },
+      });
+      if (parentBoard?.createdById) ownerId = parentBoard.createdById;
+    }
+
     const board = await prisma.board.create({
       data: {
         name,
@@ -211,7 +221,7 @@ const createBoard = async (req, res, next) => {
         icon: icon || '',
         color: color || '#6366f1',
         isPublic: isPublic !== false,
-        createdById: userId,
+        createdById: ownerId,
       },
     });
 
