@@ -58,9 +58,17 @@ const authenticate = async (req, res, next) => {
     }
 
     if (!user.isActive) {
+      // GET requests — allow banned users to browse (read-only), mark as banned
+      if (req.method === 'GET') {
+        res.setHeader('X-User-Banned', 'true');
+        req.user = { ...user, userId: user.id, isBanned: true };
+        return next();
+      }
+      // Write operations (POST, PUT, PATCH, DELETE) — block banned users
       return res.status(403).json({
         success: false,
-        message: 'Your account has been deactivated.',
+        message: 'Your account has been banned. For unban, contact our support team.',
+        code: 'ACCOUNT_BANNED',
       });
     }
 
@@ -132,7 +140,7 @@ const optionalAuth = async (req, res, next) => {
     });
 
     if (user) {
-      req.user = { ...user, userId: user.id };
+      req.user = { ...user, userId: user.id, isBanned: !user.isActive };
       // Team access check — same as authenticate
       const teamBoardId = req.headers['x-team-board-id'];
       if (teamBoardId && user.role !== 'admin') {

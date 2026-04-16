@@ -82,7 +82,8 @@ app.use(cors({
     "http://localhost:5173",
     process.env.CLIENT_URL
   ].filter(Boolean),
-  credentials: true
+  credentials: true,
+  exposedHeaders: ['X-User-Banned']
 }));
 
 // JSON — request body ko JSON format mein parse karo
