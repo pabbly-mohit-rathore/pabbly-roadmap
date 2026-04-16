@@ -500,10 +500,14 @@ export default function UserFeatureRequests() {
                       </td>
                       {/* Actions */}
                       <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '24px' }} onClick={(e) => e.stopPropagation()}>
-                        {isOwner && (
+                        {(() => {
+                          const isMainAdmin = user?.role === 'admin';
+                          const canAction = isMainAdmin || isOwner;
+                          return (
                           <div className="relative inline-block">
-                            <button onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
-                              className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
+                            <button onClick={() => canAction && setOpenMenuId(openMenuId === post.id ? null : post.id)}
+                              disabled={!canAction}
+                              className={`p-1.5 rounded-lg transition ${canAction ? (d ? 'hover:bg-gray-600' : 'hover:bg-gray-100') : 'opacity-30 cursor-not-allowed'}`}>
                               <MoreVertical className={`w-4 h-4 ${d ? 'text-gray-300' : 'text-gray-600'}`} />
                             </button>
                             {openMenuId === post.id && (
@@ -523,7 +527,8 @@ export default function UserFeatureRequests() {
                               </div>
                             )}
                           </div>
-                        )}
+                          );
+                        })()}
                       </td>
                     </tr>
                   );

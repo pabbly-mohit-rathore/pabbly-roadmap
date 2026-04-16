@@ -268,11 +268,20 @@ export default function Navbar() {
                       </span>
                     )}
                   </div>
-                  <span className={`text-sm font-medium ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
-                    {user?.name}
-                  </span>
+                  <div className="flex flex-col items-start">
+                    <span className={`text-sm font-medium leading-tight ${
+                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      {user?.name}
+                    </span>
+                    {user?.isBanned && (
+                      <span className={`text-[10px] font-semibold leading-tight px-1.5 py-0.5 rounded mt-0.5 ${
+                        theme === 'dark' ? 'text-red-400 bg-red-900/30' : 'text-red-500 bg-red-50'
+                      }`}>
+                        Account Banned
+                      </span>
+                    )}
+                  </div>
                   <ChevronDown className={`w-4 h-4 ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                   }`} />

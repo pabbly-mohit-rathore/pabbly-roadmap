@@ -36,9 +36,52 @@ const processQueue = (error: unknown, token: string | null = null) => {
 };
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Check if server says user is banned (GET requests pass through with header)
+    if (response.headers['x-user-banned'] === 'true') {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (!parsed.isBanned) {
+            parsed.isBanned = true;
+            localStorage.setItem('user', JSON.stringify(parsed));
+            window.dispatchEvent(new CustomEvent('user-banned'));
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
+
+    // Account banned — only show dialog when user tries to perform an action (write operation)
+    if (error.response?.status === 403 && error.response?.data?.code === 'ACCOUNT_BANNED') {
+      // Mark user as banned in localStorage (for header chip)
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (!parsed.isBanned) {
+            parsed.isBanned = true;
+            localStorage.setItem('user', JSON.stringify(parsed));
+          }
+        }
+      } catch { /* ignore */ }
+      // Notify store listeners
+      window.dispatchEvent(new CustomEvent('user-banned'));
+
+      // Show dialog only for write operations (POST, PUT, PATCH, DELETE)
+      const method = originalRequest?.method?.toUpperCase();
+      if (method && method !== 'GET') {
+        if (!(window as any).__bannedDialogShown) {
+          (window as any).__bannedDialogShown = true;
+          window.dispatchEvent(new CustomEvent('account-banned'));
+        }
+      }
+      return Promise.reject(error);
+    }
 
     // Team access revoked — server sends specific code when boardMember deleted
     if (error.response?.status === 403 && error.response?.data?.code === 'TEAM_ACCESS_REVOKED') {

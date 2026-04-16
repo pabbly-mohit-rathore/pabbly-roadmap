@@ -14,6 +14,7 @@ interface User {
   email: string;
   role: string;
   avatar: string | null;
+  isBanned?: boolean;
 }
 
 interface AuthState {
@@ -22,6 +23,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (user: User, accessToken: string, refreshToken: string) => void;
   logout: () => void;
+  setBanned: () => void;
 }
 
 const useAuthStore = create<AuthState>((set) => ({
@@ -45,6 +47,21 @@ const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem('refreshToken');
     set({ user: null, accessToken: null, isAuthenticated: false });
   },
+
+  // Mark user as banned
+  setBanned: () => {
+    set((state) => {
+      if (!state.user) return state;
+      const updatedUser = { ...state.user, isBanned: true };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return { user: updatedUser };
+    });
+  },
 }));
+
+// Listen for banned event from API interceptor (avoids circular import)
+window.addEventListener('user-banned', () => {
+  useAuthStore.getState().setBanned();
+});
 
 export default useAuthStore;

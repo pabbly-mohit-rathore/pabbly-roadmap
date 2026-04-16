@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, XCircle, Users, Shield, UserCog, FolderInput, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Search, X, XCircle, Users, Shield, UserCog, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
@@ -28,18 +28,10 @@ interface Board {
   color: string;
 }
 
-interface SharedBoard {
-  id: string;
-  accessLevel: string;
-  createdAt: string;
-  board: { id: string; name: string; slug: string; color: string; description?: string };
-}
-
 interface Stats {
   uniqueTeamMembers: number;
   adminAccessCount: number;
   managerAccessCount: number;
-  boardsSharedWithYou: number;
 }
 
 export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: number }) {
@@ -49,9 +41,8 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   const navigate = useNavigate();
   const d = theme === 'dark';
 
-  const [stats, setStats] = useState<Stats>({ uniqueTeamMembers: 0, adminAccessCount: 0, managerAccessCount: 0, boardsSharedWithYou: 0 });
+  const [stats, setStats] = useState<Stats>({ uniqueTeamMembers: 0, adminAccessCount: 0, managerAccessCount: 0 });
   const [members, setMembers] = useState<TeamMember[]>([]);
-  const [sharedWithMe, setSharedWithMe] = useState<SharedBoard[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -59,19 +50,12 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   const [updateAccessLevel, setUpdateAccessLevel] = useState<'admin' | 'manager'>('manager');
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [openSharedMenuId, setOpenSharedMenuId] = useState<string | null>(null);
 
   // Pagination for Team Members table
   const [tmPage, setTmPage] = useState(0);
   const [tmRowsPerPage, setTmRowsPerPage] = useState(10);
   const [tmDenseMode, setTmDenseMode] = useState(false);
   const [tmRowsDropOpen, setTmRowsDropOpen] = useState(false);
-
-  // Pagination for Shared With You table
-  const [swPage, setSwPage] = useState(0);
-  const [swRowsPerPage, setSwRowsPerPage] = useState(10);
-  const [swDenseMode, setSwDenseMode] = useState(false);
-  const [swRowsDropOpen, setSwRowsDropOpen] = useState(false);
 
   const [adding, setAdding] = useState(false);
   const [updatingAccess, setUpdatingAccess] = useState(false);
@@ -94,16 +78,14 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [statsRes, membersRes, sharedRes, boardsRes] = await Promise.all([
+      const [statsRes, membersRes, boardsRes] = await Promise.all([
         api.get('/team-members/stats'),
         api.get('/team-members'),
-        api.get('/team-members/shared-with-me'),
         api.get('/boards'),
       ]);
 
       if (statsRes.data.success) setStats(statsRes.data.data);
       if (membersRes.data.success) setMembers(membersRes.data.data.members);
-      if (sharedRes.data.success) setSharedWithMe(sharedRes.data.data.memberships);
       if (boardsRes.data.success) setBoards(boardsRes.data.data.boards);
     } catch (error) {
       console.error('Error fetching team data:', error);
@@ -196,21 +178,16 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   const tmTotalPages = Math.ceil(filteredMembers.length / tmRowsPerPage);
   const paginatedMembers = filteredMembers.slice(tmPage * tmRowsPerPage, (tmPage + 1) * tmRowsPerPage);
 
-  const swTotalPages = Math.ceil(sharedWithMe.length / swRowsPerPage);
-  const paginatedShared = sharedWithMe.slice(swPage * swRowsPerPage, (swPage + 1) * swRowsPerPage);
-
   const STAT_CONFIG: Record<string, { iconColor: string; glowColor: string }> = {
     'Unique Team Members Added': { iconColor: 'text-orange-400', glowColor: 'linear-gradient(180deg, rgba(251,146,60,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
     'Admin Access':              { iconColor: 'text-purple-500', glowColor: 'linear-gradient(180deg, rgba(168,85,247,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
     'Manager Access':            { iconColor: 'text-blue-500',   glowColor: 'linear-gradient(180deg, rgba(59,130,246,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
-    'Boards Shared With You':    { iconColor: 'text-green-500',  glowColor: 'linear-gradient(180deg, rgba(34,197,94,0.15) 0%, rgba(255,255,255,0.0) 100%)' },
   };
 
   const statCards = [
     { label: 'Unique Team Members Added', value: stats.uniqueTeamMembers, icon: Users },
     { label: 'Admin Access', value: stats.adminAccessCount, icon: Shield },
     { label: 'Manager Access', value: stats.managerAccessCount, icon: UserCog },
-    { label: 'Boards Shared With You', value: stats.boardsSharedWithYou, icon: FolderInput },
   ];
 
   if (loading) {
@@ -218,12 +195,11 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   }
 
   const TM_HEADERS = ['S.No', 'Team Member Email', 'Permission Type', 'Status', 'Actions'];
-  const SW_HEADERS = ['S.No', 'Shared On', 'Permission Type', 'Actions'];
 
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {statCards.map((card) => {
           const Icon = card.icon;
           const cfg = STAT_CONFIG[card.label];
@@ -432,126 +408,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
         {tmRowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setTmRowsDropOpen(false)} />}
       </div>
 
-      {/* Boards Shared With You Table */}
-      <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div style={{ padding: '24px 24px 16px 24px' }}>
-          <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Boards Shared With You</h2>
-        </div>
-
-        <table className="w-full" style={{ borderCollapse: 'collapse' }}>
-          <thead>
-            <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-              {SW_HEADERS.map((h, i) => (
-                <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
-                  style={{
-                    fontSize: '14px', color: d ? undefined : '#1C252E',
-                    textAlign: i === 3 ? 'right' as const : 'left' as const,
-                    width: i === 0 ? '80px' : i === 3 ? '160px' : undefined,
-                  }}>
-                  <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedShared.length > 0 ? paginatedShared.map((item, idx) => (
-              <tr key={item.id} className={`border-b border-dashed transition-colors ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
-                <td className={`${swDenseMode ? 'py-1.5' : 'py-4'} text-sm font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ paddingLeft: '24px' }}>
-                  {swPage * swRowsPerPage + idx + 1}
-                </td>
-                <td className={`px-4 ${swDenseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {new Date(item.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                </td>
-                <td className={`px-4 ${swDenseMode ? 'py-1.5' : 'py-4'}`}>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    item.accessLevel === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {item.accessLevel === 'admin' ? 'Full Access' : 'Manager Access'}
-                  </span>
-                </td>
-                <td className={`${swDenseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }}>
-                  <button
-                    onClick={() => {
-                      enterTeamAccess({
-                        accessLevel: item.accessLevel,
-                        boardId: item.board.id,
-                        boardName: item.board.name,
-                        memberName: user?.name || '',
-                      });
-                      navigate('/admin/dashboard');
-                    }}
-                    className={`whitespace-nowrap px-4 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                      d ? 'border-[#0c68e9] text-[#0c68e9] hover:bg-[#0c68e9]/10' : 'border-[#0c68e9] text-[#0c68e9] hover:bg-blue-50'
-                    }`}
-                  >
-                    Access Now
-                  </button>
-                </td>
-              </tr>
-            )) : (
-              <tr><td colSpan={4}>
-                <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <FolderInput className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
-                  </div>
-                  <p className={`text-base font-semibold mb-1 ${d ? 'text-gray-300' : 'text-gray-600'}`}>No Shared Boards</p>
-                  <p className={`text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>No boards have been shared with you yet.</p>
-                </div>
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setSwDenseMode(!swDenseMode)}
-              className={`relative w-9 h-5 rounded-full transition-colors ${swDenseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${swDenseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-            </button>
-            <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
-              <div className="relative">
-                <button onClick={() => setSwRowsDropOpen(!swRowsDropOpen)}
-                  className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
-                  {swRowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${swRowsDropOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {swRowsDropOpen && (
-                  <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
-                    {[10, 25, 50, 100].map(n => (
-                      <button key={n} onClick={() => { setSwRowsPerPage(n); setSwRowsDropOpen(false); setSwPage(0); }}
-                        className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
-                          swRowsPerPage === n ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
-                          : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
-                        }`}>{n}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
-              {sharedWithMe.length > 0 ? `${swPage * swRowsPerPage + 1}–${Math.min((swPage + 1) * swRowsPerPage, sharedWithMe.length)}` : '0–0'} of {sharedWithMe.length}
-            </span>
-            <div className="flex gap-1">
-              <button onClick={() => setSwPage(Math.max(0, swPage - 1))} disabled={swPage === 0}
-                className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button onClick={() => setSwPage(Math.min(swTotalPages - 1, swPage + 1))} disabled={swPage >= swTotalPages - 1}
-                className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-        {swRowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setSwRowsDropOpen(false)} />}
-      </div>
-
       {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
-      {openSharedMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenSharedMenuId(null)} />}
 
       {/* Add Team Member Modal */}
       {showAddModal && (

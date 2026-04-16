@@ -4,7 +4,6 @@ import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
-import CustomDropdown from '../../components/ui/CustomDropdown';
 
 interface BoardInfo { board: { id: string; name: string; slug: string; color: string; }; }
 interface User {
@@ -17,10 +16,8 @@ export default function AdminUsers() {
   const theme = useThemeStore((s) => s.theme);
   const d = theme === 'dark';
   const [users, setUsers] = useState<User[]>([]);
-  const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [boardFilter, setBoardFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [copiedField, setCopiedField] = useState('');
@@ -32,11 +29,7 @@ export default function AdminUsers() {
   const tabsRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
 
-  useEffect(() => { fetchUsers(); fetchBoards(); }, []);
-
-  const fetchBoards = async () => {
-    try { const r = await api.get('/boards'); if (r.data.success) setBoards(r.data.data.boards); } catch {}
-  };
+  useEffect(() => { fetchUsers(); }, []);
 
   useEffect(() => {
     const el = tabsRef.current[statusFilter];
@@ -55,7 +48,6 @@ export default function AdminUsers() {
     if (searchQuery && !u.name.toLowerCase().includes(searchQuery.toLowerCase()) && !u.email.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (statusFilter === 'active' && !u.isActive) return false;
     if (statusFilter === 'banned' && u.isActive) return false;
-    if (boardFilter !== 'all' && !u.boardAccess?.some(ba => ba.board.id === boardFilter)) return false;
     return true;
   });
 
@@ -82,15 +74,11 @@ export default function AdminUsers() {
               className={`bg-transparent text-sm outline-none w-full ${d ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`} />
           </div>
 
-          <CustomDropdown label="Board" value={boardFilter}
-            options={[{ value: 'all', label: 'All Boards' }, ...boards.map(b => ({ value: b.id, label: b.name }))]}
-            onChange={(v) => { setBoardFilter(v); setPage(0); }} />
-
-          {(searchQuery || boardFilter !== 'all') && (
-            <button onClick={() => { setSearchQuery(''); setBoardFilter('all'); setPage(0); }}
+          {searchQuery && (
+            <button onClick={() => { setSearchQuery(''); setPage(0); }}
               className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors"
               style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
-              <X className="w-5 h-5" /> Clear Filters
+              <X className="w-5 h-5" /> Clear
             </button>
           )}
         </div>

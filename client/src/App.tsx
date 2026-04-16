@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import CustomToaster from './components/ui/CustomToaster';
+import BannedDialog from './components/ui/BannedDialog';
 import { useEffect, lazy, Suspense } from 'react';
 import Navbar from './components/layout/Navbar';
 import AdminLayout from './components/admin/Layout';
@@ -164,6 +165,7 @@ function App() {
         </Routes>
       </Suspense>
       <CustomToaster />
+      <BannedDialog />
     </BrowserRouter>
   );
 }
