@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Toaster, resolveValue, toast as hotToast } from 'react-hot-toast';
 import type { Toast } from 'react-hot-toast';
-import { Check, X as XIcon } from 'lucide-react';
+import { Icon } from '@iconify/react';
+import { X as XIcon } from 'lucide-react';
 
 function getConfig(type: string) {
-  if (type === 'success') return { icon: Check, bg: '#22c55e' };
-  if (type === 'error') return { icon: XIcon, bg: '#ef4444' };
-  return { icon: Check, bg: '#64748b' };
+  if (type === 'success') return { icon: 'icon-park-solid:check-one', bg: '#c8fad6', border: '#5be49b', iconColor: '#118d57' };
+  if (type === 'error') return { icon: 'icon-park-solid:close-one', bg: '#ffe4de', border: '#ffac82', iconColor: '#b71d18' };
+  return { icon: 'icon-park-solid:check-one', bg: '#e0e0e0', border: '#bdbdbd', iconColor: '#616161' };
 }
 
 function SnackbarToast({ t }: { t: Toast }) {
   const [visible, setVisible] = useState(false);
   const config = getConfig(t.type);
-  const Icon = config.icon;
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(t.visible));
@@ -29,12 +29,12 @@ function SnackbarToast({ t }: { t: Toast }) {
         boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)',
       }}
     >
-      {/* Icon box — large rounded square */}
+      {/* Icon box */}
       <div
-        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-        style={{ backgroundColor: config.bg }}
+        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        style={{ backgroundColor: config.bg, border: `1.5px solid ${config.border}` }}
       >
-        <Icon className="w-5 h-5 text-white" strokeWidth={3} />
+        <Icon icon={config.icon} width={22} height={22} style={{ color: config.iconColor }} />
       </div>
 
       {/* Message */}
