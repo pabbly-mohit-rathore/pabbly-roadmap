@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, Edit2, Trash2, Search, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, FileText, Clock, Eye, Zap, Rocket, XCircle, PauseCircle, MessageSquare, Bug, Puzzle, Inbox, ArrowUpRight, TrendingUp, CheckCircle2, Download } from 'lucide-react';
+import { Plus, X, Edit2, Trash2, Search, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, FileText, Clock, Eye, Zap, Rocket, PauseCircle, MessageSquare, Bug, Puzzle, Inbox, ArrowUpRight, TrendingUp, CheckCircle2, Download } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
 import useAuthStore from '../../store/authStore';
@@ -47,7 +47,6 @@ const STATUS_CONFIG: Record<string, { dot: string; bg: string; text: string }> =
   planned: { dot: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-700' },
   in_progress: { dot: 'bg-orange-500', bg: 'bg-orange-50', text: 'text-orange-700' },
   live: { dot: 'bg-green-500', bg: 'bg-green-50', text: 'text-green-700' },
-  closed: { dot: 'bg-gray-500', bg: 'bg-gray-50', text: 'text-gray-700' },
   hold: { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-700' },
 };
 
@@ -58,7 +57,6 @@ const EMPTY_STATE_CONFIG: Record<string, { icon: React.ElementType; title: strin
   planned: { icon: Clock, title: 'No Planned Posts', description: 'No posts have been planned yet. Plan a post to see it here.' },
   in_progress: { icon: Zap, title: 'No Posts In Progress', description: 'No posts are currently in progress. Active work will appear here.' },
   live: { icon: Rocket, title: 'No Live Posts', description: 'No posts are live yet. Completed posts will show up here.' },
-  closed: { icon: XCircle, title: 'No Closed Posts', description: 'No posts have been closed. Resolved posts will appear here.' },
   hold: { icon: PauseCircle, title: 'No Posts On Hold', description: 'No posts are on hold right now. Paused posts will show up here.' },
 };
 
@@ -475,7 +473,7 @@ export default function AdminFeedback() {
           </div>
 
           <CustomDropdown label="Status" value={statusFilter}
-            options={[{ value: 'all', label: 'All Status' }, ...['open', 'under_review', 'planned', 'in_progress', 'live', 'closed', 'hold'].map(o => ({ value: o, label: o.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }))]}
+            options={[{ value: 'all', label: 'All Status' }, ...['open', 'under_review', 'planned', 'in_progress', 'live', 'hold'].map(o => ({ value: o, label: o.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }))]}
             onChange={(v) => { setStatusFilter(v); setPage(0); }} />
 
           <CustomDropdown label="Board" value={boardFilter}

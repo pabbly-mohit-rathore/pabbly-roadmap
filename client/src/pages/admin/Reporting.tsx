@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThumbsUp, Calendar, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageCircle, ArrowUpRight } from 'lucide-react';
-import useVoteStore from '../../store/voteStore';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
@@ -12,18 +11,6 @@ interface ActivityData {
   posts: { count: number; change: number };
   votes: { count: number; change: number };
   comments: { count: number; change: number };
-}
-
-interface NewPost {
-  id: string;
-  title: string;
-  slug: string;
-  description?: string;
-  status: string;
-  voteCount: number;
-  commentCount: number;
-  createdAt: string;
-  board: { name: string };
 }
 
 interface StalePost {
@@ -62,12 +49,11 @@ interface ActivityLog {
 export default function AdminReporting() {
   const theme = useThemeStore((state) => state.theme);
   const navigate = useNavigate();
-  const { init: initVote, toggle: toggleVote, votes } = useVoteStore();
   const [period, setPeriod] = useState('week');
   const [boardFilter, setBoardFilter] = useState('all');
   const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
   const [activity, setActivity] = useState<ActivityData | null>(null);
-  const [newPosts, setNewPosts] = useState<NewPost[]>([]);
+  const [statusPipeline, setStatusPipeline] = useState<{ status: string; count: number }[]>([]);
   const [stalePosts, setStalePosts] = useState<StalePost[]>([]);
   const [boardData, setBoardData] = useState<{ boards: BoardData[]; total: number }>({ boards: [], total: 0 });
   const [admins, setAdmins] = useState<AdminData[]>([]);
@@ -106,22 +92,18 @@ export default function AdminReporting() {
     setLoading(true);
     try {
       const bp = { period, boardId: boardFilter };
-      const [actRes, newRes, staleRes, boardRes, adminRes] = await Promise.all([
+      const [actRes, staleRes, boardRes, adminRes, pipelineRes] = await Promise.all([
         api.get('/reporting/activity-overview', { params: bp }),
-        api.get('/reporting/new-posts', { params: bp }),
         api.get('/reporting/stale-posts', { params: { boardId: boardFilter } }),
         api.get('/reporting/posts-by-board', { params: bp }),
         api.get('/reporting/admin-activity', { params: { period } }),
+        api.get('/reporting/status-pipeline'),
       ]);
       if (actRes.data.success) setActivity(actRes.data.data);
-      if (newRes.data.success) {
-        const posts = newRes.data.data.posts;
-        setNewPosts(posts);
-        posts.forEach((p: any) => initVote(p.id, p.voteCount ?? 0, p.hasVoted ?? false));
-      }
       if (staleRes.data.success) setStalePosts(staleRes.data.data.posts);
       if (boardRes.data.success) setBoardData(boardRes.data.data);
       if (adminRes.data.success) setAdmins(adminRes.data.data.admins);
+      if (pipelineRes.data.success) setStatusPipeline(pipelineRes.data.data.pipeline);
     } catch (error) {
       console.error('Error fetching reporting:', error);
     } finally {
@@ -266,7 +248,7 @@ export default function AdminReporting() {
                     isAnimationActive={false}
                   >
                     {boardData.boards.map((_, index) => (
-                      <Cell key={index} fill={['#004B50', '#007867', '#5BE49B', '#C8FAD6', '#22c55e', '#16a34a', '#059669', '#10b981'][index % 8]} />
+                      <Cell key={index} fill={['#136847', '#22c55e', '#1d9d8e', '#198ab6', '#6cc399', '#f97316'][index % 8]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -295,7 +277,7 @@ export default function AdminReporting() {
               {boardData.boards.slice(0, 5).map((board, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: ['#004B50', '#007867', '#5BE49B', '#C8FAD6', '#22c55e', '#16a34a', '#059669', '#10b981'][index % 8] }} />
+                    <div className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'][index % 8] }} />
                     <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{board.name}</span>
                   </div>
                   <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{board.count}</span>
@@ -308,55 +290,77 @@ export default function AdminReporting() {
           )}
         </div>
 
-        {/* New Posts */}
-        <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <div className="px-5 pt-5 pb-3">
-            <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>New Posts</h2>
+        {/* Status Pipeline — Column Chart */}
+        <div className={`rounded-lg border overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className="px-5 pt-5 pb-2">
+            <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Status Pipeline</h2>
+            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Posts distribution by status</p>
           </div>
-          {newPosts.length > 0 ? (
-            <table className="w-full" style={{ borderCollapse: 'collapse' }}>
-              <thead>
-                <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                  {['Upvote', 'Title', 'Status', 'Comments'].map((h, i) => (
-                    <th key={h} className={`py-2.5 text-xs font-semibold ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}
-                      style={{ textAlign: i === 3 ? 'right' : 'left', paddingLeft: i === 0 ? '16px' : '12px', paddingRight: i === 3 ? '16px' : '12px' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {newPosts.slice(0, 10).map((post) => {
-                  const sc: Record<string, string> = { open: 'text-blue-600', under_review: 'text-yellow-600', planned: 'text-purple-600', in_progress: 'text-orange-500', live: 'text-green-600', closed: 'text-gray-500', hold: 'text-red-500' };
-                  return (
-                    <tr key={post.id} onClick={() => navigate(`/admin/posts/${post.slug}`, { state: { from: '/admin/settings', source: 'settings' } })}
-                      className={`border-t border-dashed cursor-pointer transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
-                      <td className="py-3" style={{ paddingLeft: '16px', width: '70px' }} onClick={(e) => { e.stopPropagation(); toggleVote(post.id); }}>
-                        <div className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold cursor-pointer transition-all bg-transparent ${
-                          votes[post.id]?.voted ? 'border-[#059669] text-[#059669]' : (theme === 'dark' ? 'border-gray-600 text-gray-400 hover:border-gray-400' : 'border-gray-200 text-gray-500 hover:border-gray-400')
-                        }`} style={{ padding: '8px 14px', fontSize: '11px', gap: '6px' }}>
-                          <ArrowUpRight className="w-3 h-3 rotate-[-45deg]" />
-                          <span>{votes[post.id]?.count ?? post.voteCount}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 max-w-0 overflow-hidden">
-                        <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                        {post.description && <p className={`text-xs truncate mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{post.description}</p>}
-                      </td>
-                      <td className="py-3 px-3" style={{ width: '110px' }}>
-                        <span className={`text-xs font-semibold ${sc[post.status] || 'text-gray-500'}`}>
-                          {post.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                        </span>
-                      </td>
-                      <td className={`py-3 text-sm text-right ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ paddingRight: '16px', width: '80px' }}>
-                        {post.commentCount ?? 0}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <p className={`text-sm text-center py-12 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No new posts</p>
-          )}
+          {(() => {
+            const STATUS_LABELS: Record<string, string> = {
+              open: 'Open', under_review: 'Review', planned: 'Planned',
+              in_progress: 'Progress', live: 'Live', hold: 'Hold',
+            };
+            const chartData = statusPipeline.map(item => ({
+              name: STATUS_LABELS[item.status] || item.status,
+              count: item.count,
+            }));
+            const d = theme === 'dark';
+            return chartData.length > 0 ? (
+              <div className="flex-1 px-2 pb-4" style={{ minHeight: 280 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 20, right: 16, left: -10, bottom: 0 }} barCategoryGap="20%">
+                    <CartesianGrid strokeDasharray="3 3" stroke={d ? '#374151' : '#e8e8e8'} vertical={false} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false}
+                      tick={{ fontSize: 12, fontWeight: 500, fill: d ? '#9ca3af' : '#919eab' }} dy={8} />
+                    <YAxis axisLine={false} tickLine={false} allowDecimals={false}
+                      tick={{ fontSize: 12, fill: d ? '#6b7280' : '#919eab' }} dx={-4} />
+                    <Tooltip
+                      cursor={false}
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null;
+                        const val = payload[0].value;
+                        return (
+                          <div style={{
+                            backgroundColor: d ? '#1f2937' : '#fff',
+                            borderRadius: '10px',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                            padding: 0,
+                            minWidth: 120,
+                            overflow: 'hidden',
+                          }}>
+                            <div style={{
+                              padding: '8px 14px',
+                              backgroundColor: d ? '#374151' : '#f4f6f8',
+                              fontWeight: 700,
+                              fontSize: '13px',
+                              color: d ? '#fff' : '#212b36',
+                            }}>{label}</div>
+                            <div style={{
+                              borderTop: `1px dashed ${d ? '#4b5563' : '#e0e0e0'}`,
+                              padding: '8px 14px',
+                              fontSize: '13px',
+                              fontWeight: 600,
+                              color: d ? '#5be49b' : '#00a76f',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}>
+                              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#329284', display: 'inline-block' }} />
+                              {val} posts
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar dataKey="count" fill="#329284" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className={`text-sm text-center py-12 flex-1 ${d ? 'text-gray-500' : 'text-gray-400'}`}>No data</p>
+            );
+          })()}
         </div>
 
         {/* Stale Posts */}
@@ -377,7 +381,7 @@ export default function AdminReporting() {
               </thead>
               <tbody>
                 {stalePosts.slice(0, 10).map((post) => {
-                  const sc: Record<string, string> = { open: 'text-blue-600', under_review: 'text-yellow-600', planned: 'text-purple-600', in_progress: 'text-orange-500', live: 'text-green-600', closed: 'text-gray-500', hold: 'text-red-500' };
+                  const sc: Record<string, string> = { open: 'text-blue-600', under_review: 'text-yellow-600', planned: 'text-purple-600', in_progress: 'text-orange-500', live: 'text-green-600', hold: 'text-red-500' };
                   return (
                     <tr key={post.id} onClick={() => navigate(`/admin/posts/${post.slug}`, { state: { from: '/admin/settings', source: 'settings' } })}
                       className={`border-t border-dashed cursor-pointer transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>

@@ -127,7 +127,6 @@ export default function PostDetailPage() {
       planned: 'bg-purple-100 text-purple-800',
       in_progress: 'bg-orange-100 text-orange-800',
       live: 'bg-green-100 text-green-800',
-      closed: 'bg-gray-100 text-gray-800',
       hold: 'bg-red-100 text-red-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';

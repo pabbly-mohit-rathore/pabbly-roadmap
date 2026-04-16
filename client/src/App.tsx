@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import CustomToaster from './components/ui/CustomToaster';
 import { useEffect, lazy, Suspense } from 'react';
 import Navbar from './components/layout/Navbar';
 import AdminLayout from './components/admin/Layout';
@@ -67,24 +67,21 @@ function App() {
           <Route path="/board/:slug" element={
             isAuthenticated ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar /><BoardPage /><Toaster position="top-right" />
-              </div>
+                <Navbar /><BoardPage />              </div>
             ) : <Navigate to="/login" />
           } />
 
           <Route path="/post/:slug" element={
             isAuthenticated ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar /><PostDetailPage /><Toaster position="top-right" />
-              </div>
+                <Navbar /><PostDetailPage />              </div>
             ) : <Navigate to="/login" />
           } />
 
           <Route path="/roadmap" element={
             isAuthenticated ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar /><RoadmapPage /><Toaster position="top-right" />
-              </div>
+                <Navbar /><RoadmapPage />              </div>
             ) : <Navigate to="/login" />
           } />
 
@@ -94,8 +91,7 @@ function App() {
           <Route path="/admin/changelog/:id/edit" element={
             isAuthenticated && canAccessAdmin ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar /><ChangelogEditor /><Toaster position="top-right" />
-              </div>
+                <Navbar /><ChangelogEditor />              </div>
             ) : <Navigate to="/login" />
           } />
 
@@ -103,15 +99,14 @@ function App() {
           <Route path="/admin/posts/:id/edit" element={
             isAuthenticated && canAccessAdmin ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar /><PostEditor /><Toaster position="top-right" />
-              </div>
+                <Navbar /><PostEditor />              </div>
             ) : <Navigate to="/login" />
           } />
 
           {/* Changelog View */}
           <Route path="/admin/changelog/:id/view" element={
             isAuthenticated && canAccessAdmin ? (
-              <><AdminLayout><ChangelogView /></AdminLayout><Toaster position="top-right" /></>
+              <AdminLayout><ChangelogView /></AdminLayout>
             ) : <Navigate to="/login" />
           } />
 
@@ -135,27 +130,25 @@ function App() {
                     <Route path="profile-settings" element={<ProfileSettingsPage />} />
                   </Routes>
                 </AdminLayout>
-                <Toaster position="top-right" />
-              </>
+                              </>
             ) : <Navigate to="/login" />
           } />
 
           {/* User Routes - All Posts is accessible without login */}
           <Route path="/user/all-posts" element={
-            <><UserFeatureRequests /><Toaster position="top-right" /></>
+            <UserFeatureRequests />
           } />
           <Route path="/user/roadmap" element={
-            <><UserRoadmapPage /><Toaster position="top-right" /></>
+            <UserRoadmapPage />
           } />
           <Route path="/user/posts/:slug" element={
-            <><UserPostDetail /><Toaster position="top-right" /></>
+            <UserPostDetail />
           } />
           {/* User Post Editor - Full width, no sidebar (login required) */}
           <Route path="/user/posts/:id/edit" element={
             isAuthenticated ? (
               <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-                <Navbar /><PostEditor /><Toaster position="top-right" />
-              </div>
+                <Navbar /><PostEditor />              </div>
             ) : <Navigate to="/login" />
           } />
 
@@ -170,6 +163,7 @@ function App() {
           <Route path="*" element={<Navigate to={isAdmin ? "/admin/dashboard" : "/user/all-posts"} />} />
         </Routes>
       </Suspense>
+      <CustomToaster />
     </BrowserRouter>
   );
 }

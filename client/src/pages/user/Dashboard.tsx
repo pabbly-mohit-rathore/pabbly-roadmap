@@ -34,13 +34,12 @@ const STATUS_COLORS: Record<string, string> = {
   planned: 'bg-purple-100 text-purple-700',
   in_progress: 'bg-orange-100 text-orange-700',
   live: 'bg-green-100 text-green-700',
-  closed: 'bg-gray-100 text-gray-600',
   hold: 'bg-red-100 text-red-700',
 };
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Open', under_review: 'Under Review', planned: 'Planned',
-  in_progress: 'In Progress', live: 'Live', closed: 'Closed', hold: 'On Hold',
+  in_progress: 'In Progress', live: 'Live', hold: 'On Hold',
 };
 
 export default function UserDashboard() {

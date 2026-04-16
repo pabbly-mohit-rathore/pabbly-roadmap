@@ -868,7 +868,6 @@ export default function AdminPostDetail() {
                     planned:      { bg: 'bg-purple-100',  text: 'text-purple-700',  darkBg: 'bg-purple-900/40',  darkText: 'text-purple-300' },
                     in_progress:  { bg: 'bg-orange-100',  text: 'text-orange-700',  darkBg: 'bg-orange-900/40',  darkText: 'text-orange-300' },
                     live:         { bg: 'bg-green-100',   text: 'text-green-700',   darkBg: 'bg-green-900/40',   darkText: 'text-green-300' },
-                    closed:       { bg: 'bg-gray-100',    text: 'text-gray-700',    darkBg: 'bg-gray-700/60',    darkText: 'text-gray-300' },
                     hold:         { bg: 'bg-red-100',     text: 'text-red-700',     darkBg: 'bg-red-900/40',     darkText: 'text-red-300' },
                   };
                   const ss = statusChipStyles[post?.status || ''] || statusChipStyles.open;

@@ -40,7 +40,6 @@ const STATUS_CONFIG: Record<string, { dot: string; bg: string; text: string }> =
   planned: { dot: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-700' },
   in_progress: { dot: 'bg-orange-500', bg: 'bg-orange-50', text: 'text-orange-700' },
   live: { dot: 'bg-green-500', bg: 'bg-green-50', text: 'text-green-700' },
-  closed: { dot: 'bg-gray-500', bg: 'bg-gray-50', text: 'text-gray-700' },
   hold: { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-700' },
 };
 
@@ -327,7 +326,7 @@ export default function UserFeatureRequests() {
             </div>
 
             <CustomDropdown label="Status" value={statusFilter}
-              options={[{ value: 'all', label: 'All Status' }, ...['open', 'under_review', 'planned', 'in_progress', 'live', 'closed', 'hold'].map(o => ({ value: o, label: o.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }))]}
+              options={[{ value: 'all', label: 'All Status' }, ...['open', 'under_review', 'planned', 'in_progress', 'live', 'hold'].map(o => ({ value: o, label: o.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }))]}
               onChange={(v) => { setStatusFilter(v); setPage(0); }} />
 
             <CustomDropdown label="Board" value={boardFilter}

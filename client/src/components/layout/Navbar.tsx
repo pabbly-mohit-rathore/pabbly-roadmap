@@ -25,6 +25,7 @@ export default function Navbar() {
   const { unreadCount, notifications, fetchUnreadCount, fetchNotifications, markAsRead, markAllRead, acceptInvitation, rejectInvitation } = useNotificationStore();
   const navigate = useNavigate();
   const notifRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
   const { isAuthenticated, user, logout } = useAuthStore();
@@ -73,6 +74,18 @@ export default function Navbar() {
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [profileOpen]);
 
   return (
     <nav className={`sticky top-0 z-50 border-b transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
@@ -234,7 +247,7 @@ export default function Navbar() {
               </div>
 
               {/* Profile */}
-              <div className="relative ml-2">
+              <div className="relative ml-2" ref={profileRef}>
                 <button
                   onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors duration-200 ${
@@ -290,17 +303,15 @@ export default function Navbar() {
                       <p className={`text-xs font-semibold uppercase mb-2 ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                       }`}>Theme</p>
-                      <div className={`flex gap-2-50 p-1 rounded-lg gap-1 ${
-                        theme === 'dark' ? 'bg-gray-700' : 'bg-teal-50'
+                      <div className={`flex p-1 rounded-lg gap-1 ${
+                        theme === 'dark' ? 'bg-gray-700' : 'bg-emerald-50'
                       }`}>
                         <button
                           onClick={() => setTheme('light')}
                           className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                             theme === 'light'
-                              ? 'bg-teal-500 text-white'
-                              : theme === 'dark'
-                              ? 'bg-transparent text-gray-400 hover:bg-gray-600'
-                              : 'bg-transparent text-gray-600 hover:bg-teal-100'
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-transparent text-gray-400 hover:bg-gray-600'
                           }`}
                         >
                           <Sun className="w-3.5 h-3.5" />
@@ -311,7 +322,7 @@ export default function Navbar() {
                           className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                             theme === 'dark'
                               ? 'bg-gray-600 text-white'
-                              : 'bg-transparent text-gray-600 hover:bg-gray-200'
+                              : 'bg-transparent text-gray-600 hover:bg-emerald-100'
                           }`}
                         >
                           <Moon className="w-3.5 h-3.5" />
