@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Search, X, XCircle, Users, Shield, UserCog, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
-import useAuthStore from '../../store/authStore';
-import useTeamAccessStore from '../../store/teamAccessStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
@@ -36,9 +33,6 @@ interface Stats {
 
 export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: number }) {
   const theme = useThemeStore((state) => state.theme);
-  const { user } = useAuthStore();
-  const { enterTeamAccess } = useTeamAccessStore();
-  const navigate = useNavigate();
   const d = theme === 'dark';
 
   const [stats, setStats] = useState<Stats>({ uniqueTeamMembers: 0, adminAccessCount: 0, managerAccessCount: 0 });
