@@ -48,10 +48,10 @@ const useAuthStore = create<AuthState>((set) => ({
     set({ user: null, accessToken: null, isAuthenticated: false });
   },
 
-  // Mark user as banned
+  // Mark user as banned (no-op if already banned to prevent re-render loops)
   setBanned: () => {
     set((state) => {
-      if (!state.user) return state;
+      if (!state.user || state.user.isBanned) return state;
       const updatedUser = { ...state.user, isBanned: true };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       return { user: updatedUser };
@@ -60,7 +60,11 @@ const useAuthStore = create<AuthState>((set) => ({
 }));
 
 // Listen for banned event from API interceptor (avoids circular import)
+// Use a flag to ensure we only process once
+let _bannedHandled = false;
 window.addEventListener('user-banned', () => {
+  if (_bannedHandled) return;
+  _bannedHandled = true;
   useAuthStore.getState().setBanned();
 });
 

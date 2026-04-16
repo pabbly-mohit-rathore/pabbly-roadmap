@@ -135,15 +135,15 @@ function App() {
             ) : <Navigate to="/login" />
           } />
 
-          {/* User Routes - All Posts is accessible without login */}
+          {/* User Routes - Login required */}
           <Route path="/user/all-posts" element={
-            <UserFeatureRequests />
+            isAuthenticated ? <UserFeatureRequests /> : <Navigate to="/login" />
           } />
           <Route path="/user/roadmap" element={
-            <UserRoadmapPage />
+            isAuthenticated ? <UserRoadmapPage /> : <Navigate to="/login" />
           } />
           <Route path="/user/posts/:slug" element={
-            <UserPostDetail />
+            isAuthenticated ? <UserPostDetail /> : <Navigate to="/login" />
           } />
           {/* User Post Editor - Full width, no sidebar (login required) */}
           <Route path="/user/posts/:id/edit" element={

@@ -83,7 +83,6 @@ export default function UserPostDetail() {
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyingToName, setReplyingToName] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'comments' | 'activities'>('comments');
   const [commentMenuId, setCommentMenuId] = useState<string | null>(null);
   const [deleteCommentConfirm, setDeleteCommentConfirm] = useState<string | null>(null);
@@ -198,7 +197,7 @@ export default function UserPostDetail() {
   };
 
   const handleVote = () => {
-    if (!isAuthenticated) { setShowLoginModal(true); return; }
+
     if (!post) return;
     toggle(post.id);
     setAnimating(true);
@@ -206,7 +205,7 @@ export default function UserPostDetail() {
   };
 
   const handleAddComment = async (htmlContent?: string) => {
-    if (!isAuthenticated) { setShowLoginModal(true); return; }
+
 
     const content = htmlContent || commentText;
     if (!content.trim() || content === '<p></p>') {
@@ -284,7 +283,7 @@ export default function UserPostDetail() {
   };
 
   const handleLikeComment = async (commentId: string) => {
-    if (!isAuthenticated) { setShowLoginModal(true); return; }
+
 
     const wasLiked = likedCommentIds.has(commentId);
     const newLiked = new Set(likedCommentIds);
@@ -311,7 +310,7 @@ export default function UserPostDetail() {
   };
 
   const handleReply = async (parentId: string, htmlContent?: string) => {
-    if (!isAuthenticated) { setShowLoginModal(true); return; }
+
 
     let content = htmlContent || replyText;
     if (!content.trim() || content === '<p></p>') {
@@ -768,43 +767,6 @@ export default function UserPostDetail() {
           </div>
         </div>
 
-        {/* Login Required Modal */}
-        {showLoginModal && (
-          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-            <div className={`max-w-md w-full rounded-2xl ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
-              <div className="text-center py-12 px-6">
-                <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center mx-auto mb-6">
-                  <X className="w-6 h-6 text-white" />
-                </div>
-                <h2 className={`text-3xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Login Required
-                </h2>
-                <p className={`text-sm mb-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Sign in to vote or comment on this post
-                </p>
-                <button
-                  onClick={() => {
-                    localStorage.setItem('loginRedirect', window.location.pathname);
-                    navigate('/login');
-                  }}
-                  className="w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition font-semibold mb-3"
-                >
-                  Sign In
-                </button>
-                <button
-                  onClick={() => setShowLoginModal(false)}
-                  className={`w-full px-4 py-3 rounded-lg border transition font-medium ${
-                    theme === 'dark'
-                      ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                      : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <ConfirmDialog

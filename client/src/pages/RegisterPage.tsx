@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserRoundPlus } from 'lucide-react';
+import { UserRoundPlus, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
@@ -12,7 +12,9 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [role] = useState<'admin' | 'user'>('user');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -75,7 +77,7 @@ export default function RegisterPage() {
         <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-8">
           {/* Icon */}
           <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-[#059669] rounded-xl flex items-center justify-center">
               <UserRoundPlus className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -138,15 +140,24 @@ export default function RegisterPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Password
               </label>
-              <input
-                type="password"
-                placeholder="Min 8 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                className="w-full px-4 h-[52px] border-2 border-gray-200 rounded-2xl text-sm placeholder-gray-400 hover:border-neutral-400 focus:outline-none focus:border-neutral-400 transition-colors duration-200"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Min 8 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="w-full px-4 pr-12 h-[52px] border-2 border-gray-200 rounded-2xl text-sm placeholder-gray-400 hover:border-neutral-400 focus:outline-none focus:border-neutral-400 transition-colors duration-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             {/* Confirm Password */}
@@ -154,21 +165,30 @@ export default function RegisterPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Confirm password
               </label>
-              <input
-                type="password"
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                className="w-full px-4 h-[52px] border-2 border-gray-200 rounded-2xl text-sm placeholder-gray-400 hover:border-neutral-400 focus:outline-none focus:border-neutral-400 transition-colors duration-200"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="w-full px-4 pr-12 h-[52px] border-2 border-gray-200 rounded-2xl text-sm placeholder-gray-400 hover:border-neutral-400 focus:outline-none focus:border-neutral-400 transition-colors duration-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-neutral-900 text-white h-[52px] rounded-2xl text-sm font-medium hover:bg-neutral-800 hover:shadow-lg active:scale-[0.98] transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-[#059669] text-white h-[52px] rounded-2xl text-sm font-medium hover:bg-[#047857] hover:shadow-lg active:scale-[0.98] transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating account...' : 'Create account'}
             </button>
@@ -177,7 +197,7 @@ export default function RegisterPage() {
           {/* Footer link */}
           <p className="text-sm text-gray-500 text-center mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-neutral-900 font-medium hover:underline">
+            <Link to="/login" className="text-[#059669] font-medium hover:underline">
               Sign in
             </Link>
           </p>

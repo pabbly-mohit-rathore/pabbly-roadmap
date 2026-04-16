@@ -127,8 +127,6 @@ export default function UserFeatureRequests() {
   const [formData, setFormData] = useState({ title: '', type: 'feature', boardId: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-
   useEffect(() => { fetchData(); }, []);
 
   // Prefetch full content for the user's own posts in the background.
@@ -173,7 +171,6 @@ export default function UserFeatureRequests() {
   };
 
   const handleVote = (postId: string) => {
-    if (!isAuthenticated) { setShowLoginModal(true); return; }
     toggle(postId);
     setAnimatingPosts(prev => { const next = new Set(prev); next.add(postId); return next; });
     setTimeout(() => setAnimatingPosts(prev => { const next = new Set(prev); next.delete(postId); return next; }), 400);
@@ -306,7 +303,7 @@ export default function UserFeatureRequests() {
               {boardFilter !== 'all' ? (boards.find(b => b.id === boardFilter)?.description || `${posts.length} posts`) : 'Have something to say? Join the conversation.'}
             </p>
           </div>
-          <button onClick={() => { if (!isAuthenticated) { setShowLoginModal(true); return; } setShowCreateModal(true); setFormErrors({}); }}
+          <button onClick={() => { setShowCreateModal(true); setFormErrors({}); }}
             className="flex items-center gap-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition"
             style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
             <Plus className="w-5 h-5" /> Create Post
@@ -822,26 +819,6 @@ export default function UserFeatureRequests() {
         );
       })()}
 
-      {/* Login Modal */}
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-          <div className={`max-w-md w-full rounded-2xl ${d ? 'bg-gray-900' : 'bg-white'}`}>
-            <div className="text-center py-12 px-6">
-              <h2 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>Sign in</h2>
-              <p className={`text-sm mb-8 ${d ? 'text-gray-400' : 'text-gray-600'}`}>Sign in to vote, comment, and create posts</p>
-              <button onClick={() => { localStorage.setItem('loginRedirect', window.location.pathname); navigate('/login'); }}
-                className="w-full px-4 py-3 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition font-semibold mb-3">Continue with email</button>
-              <p className={`text-sm mt-4 ${d ? 'text-gray-500' : 'text-gray-400'}`}>
-                Don't have an account?{' '}
-                <button onClick={() => { localStorage.setItem('loginRedirect', window.location.pathname); navigate('/register'); }}
-                  className="text-[#0c68e9] font-medium hover:underline">Sign up</button>
-              </p>
-              <button onClick={() => setShowLoginModal(false)}
-                className={`mt-4 text-sm ${d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
     </UserLayout>
   );
 }

@@ -35,21 +35,32 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+// Flag to ensure banned store update only fires once
+let _bannedStoreNotified = false;
+
+function markUserBanned() {
+  try {
+    const stored = localStorage.getItem('user');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (!parsed.isBanned) {
+        parsed.isBanned = true;
+        localStorage.setItem('user', JSON.stringify(parsed));
+      }
+    }
+  } catch { /* ignore */ }
+  // Notify store only once
+  if (!_bannedStoreNotified) {
+    _bannedStoreNotified = true;
+    window.dispatchEvent(new CustomEvent('user-banned'));
+  }
+}
+
 api.interceptors.response.use(
   (response) => {
     // Check if server says user is banned (GET requests pass through with header)
     if (response.headers['x-user-banned'] === 'true') {
-      try {
-        const stored = localStorage.getItem('user');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (!parsed.isBanned) {
-            parsed.isBanned = true;
-            localStorage.setItem('user', JSON.stringify(parsed));
-            window.dispatchEvent(new CustomEvent('user-banned'));
-          }
-        }
-      } catch { /* ignore */ }
+      markUserBanned();
     }
     return response;
   },
@@ -58,19 +69,7 @@ api.interceptors.response.use(
 
     // Account banned — only show dialog when user tries to perform an action (write operation)
     if (error.response?.status === 403 && error.response?.data?.code === 'ACCOUNT_BANNED') {
-      // Mark user as banned in localStorage (for header chip)
-      try {
-        const stored = localStorage.getItem('user');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (!parsed.isBanned) {
-            parsed.isBanned = true;
-            localStorage.setItem('user', JSON.stringify(parsed));
-          }
-        }
-      } catch { /* ignore */ }
-      // Notify store listeners
-      window.dispatchEvent(new CustomEvent('user-banned'));
+      markUserBanned();
 
       // Show dialog only for write operations (POST, PUT, PATCH, DELETE)
       const method = originalRequest?.method?.toUpperCase();
