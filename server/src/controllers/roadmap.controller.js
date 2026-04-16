@@ -28,7 +28,7 @@ const getRoadmap = async (req, res, next) => {
     if (boardId) {
       board = await prisma.board.findUnique({
         where: { id: boardId },
-        select: { id: true, name: true, createdById: true },
+        select: { id: true, name: true, createdById: true, isPublic: true },
       });
       if (!board) {
         return res.status(404).json({ success: false, message: 'Board not found.' });
@@ -40,11 +40,14 @@ const getRoadmap = async (req, res, next) => {
           return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
         }
       } else {
-        const hasAccess = await prisma.userBoardAccess.findUnique({
-          where: { userId_boardId: { userId, boardId } },
-        });
-        if (!hasAccess) {
-          return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
+        // Regular user: public boards accessible + private boards via userBoardAccess
+        if (!board.isPublic) {
+          const hasAccess = await prisma.userBoardAccess.findUnique({
+            where: { userId_boardId: { userId, boardId } },
+          });
+          if (!hasAccess) {
+            return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
+          }
         }
       }
       boardFilter = { boardId };
@@ -56,9 +59,18 @@ const getRoadmap = async (req, res, next) => {
       } else if (role === 'admin') {
         const adminBoards = await prisma.board.findMany({ where: { createdById: userId }, select: { id: true } });
         boardFilter = { boardId: { in: adminBoards.map(b => b.id) } };
+      } else if (userId) {
+        // Regular user — public boards + invited private boards
+        const [userAccess, publicBoards] = await Promise.all([
+          prisma.userBoardAccess.findMany({ where: { userId }, select: { boardId: true } }),
+          prisma.board.findMany({ where: { isPublic: true }, select: { id: true } }),
+        ]);
+        const allIds = [...new Set([...userAccess.map(a => a.boardId), ...publicBoards.map(b => b.id)])];
+        boardFilter = allIds.length > 0 ? { boardId: { in: allIds } } : { boardId: 'none' };
       } else {
-        const userAccess = await prisma.userBoardAccess.findMany({ where: { userId }, select: { boardId: true } });
-        boardFilter = { boardId: { in: userAccess.map(a => a.boardId) } };
+        // Unauthenticated — only public boards
+        const publicBoards = await prisma.board.findMany({ where: { isPublic: true }, select: { id: true } });
+        boardFilter = publicBoards.length > 0 ? { boardId: { in: publicBoards.map(b => b.id) } } : { boardId: 'none' };
       }
     }
 
@@ -128,7 +140,6 @@ const getRoadmap = async (req, res, next) => {
       planned: [],
       in_progress: [],
       live: [],
-      closed: [],
       hold: [],
     };
 
@@ -145,7 +156,6 @@ const getRoadmap = async (req, res, next) => {
       planned: roadmapData.planned.length,
       in_progress: roadmapData.in_progress.length,
       live: roadmapData.live.length,
-      closed: roadmapData.closed.length,
       hold: roadmapData.hold.length,
       total: postsWithVoteStatus.length,
     };

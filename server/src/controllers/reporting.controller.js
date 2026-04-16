@@ -27,7 +27,7 @@ const calcChange = (curr, prev) => {
 const getActivityOverview = async (req, res, next) => {
   try {
     const { role } = req.user;
-    if (role !== 'admin') return res.status(403).json({ success: false, message: 'Admin only' });
+    if (role !== 'admin' && !req.user.teamAccess) return res.status(403).json({ success: false, message: 'Admin only' });
 
     const { period = 'week', boardId } = req.query;
     const { start, prevStart } = getDateRange(period);
@@ -69,7 +69,7 @@ const getActivityOverview = async (req, res, next) => {
 const getNewPosts = async (req, res, next) => {
   try {
     const { role } = req.user;
-    if (role !== 'admin') return res.status(403).json({ success: false, message: 'Admin only' });
+    if (role !== 'admin' && !req.user.teamAccess) return res.status(403).json({ success: false, message: 'Admin only' });
 
     const { period = 'week', boardId } = req.query;
     const { start } = getDateRange(period);
@@ -114,11 +114,11 @@ const getNewPosts = async (req, res, next) => {
 const getStalePosts = async (req, res, next) => {
   try {
     const { role } = req.user;
-    if (role !== 'admin') return res.status(403).json({ success: false, message: 'Admin only' });
+    if (role !== 'admin' && !req.user.teamAccess) return res.status(403).json({ success: false, message: 'Admin only' });
 
     const { boardId } = req.query;
     const staleDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const where = { updatedAt: { lt: staleDate }, status: { notIn: ['closed', 'live'] }, isDraft: false };
+    const where = { updatedAt: { lt: staleDate }, status: { notIn: ['live'] }, isDraft: false };
 
     // Filter by admin's own boards
     const adminBoards = await prisma.board.findMany({
@@ -148,7 +148,7 @@ const getStalePosts = async (req, res, next) => {
 const getPostsByBoard = async (req, res, next) => {
   try {
     const { role } = req.user;
-    if (role !== 'admin') return res.status(403).json({ success: false, message: 'Admin only' });
+    if (role !== 'admin' && !req.user.teamAccess) return res.status(403).json({ success: false, message: 'Admin only' });
 
     const { period = 'week', boardId } = req.query;
     const { start } = getDateRange(period);
@@ -175,7 +175,7 @@ const getPostsByBoard = async (req, res, next) => {
 const getAdminActivity = async (req, res, next) => {
   try {
     const { role } = req.user;
-    if (role !== 'admin') return res.status(403).json({ success: false, message: 'Admin only' });
+    if (role !== 'admin' && !req.user.teamAccess) return res.status(403).json({ success: false, message: 'Admin only' });
 
     const { period = 'week' } = req.query;
     const { start } = getDateRange(period);
@@ -198,4 +198,24 @@ const getAdminActivity = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { getActivityOverview, getNewPosts, getStalePosts, getPostsByBoard, getAdminActivity };
+// GET /reporting/status-pipeline
+const getStatusPipeline = async (req, res, next) => {
+  try {
+    const { role, teamAccess } = req.user;
+    if (role !== 'admin' && !teamAccess) return res.status(403).json({ success: false, message: 'Admin only' });
+
+    const boardFilter = teamAccess ? {} : { board: { createdById: req.user.userId } };
+
+    const statuses = ['open', 'under_review', 'planned', 'in_progress', 'live', 'hold'];
+    const counts = await Promise.all(
+      statuses.map(status => prisma.post.count({ where: { status, isDraft: false, ...boardFilter } }))
+    );
+
+    const pipeline = statuses.map((status, i) => ({ status, count: counts[i] }));
+    const total = counts.reduce((sum, c) => sum + c, 0);
+
+    res.json({ success: true, data: { pipeline, total } });
+  } catch (error) { next(error); }
+};
+
+module.exports = { getActivityOverview, getNewPosts, getStalePosts, getPostsByBoard, getAdminActivity, getStatusPipeline };

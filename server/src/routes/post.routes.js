@@ -73,7 +73,7 @@ const updatePostRules = [
 
 const changeStatusRules = [
   body('status')
-    .isIn(['open', 'under_review', 'planned', 'in_progress', 'live', 'closed', 'hold'])
+    .isIn(['open', 'under_review', 'planned', 'in_progress', 'live', 'hold'])
     .withMessage('Invalid status.'),
 ];
 

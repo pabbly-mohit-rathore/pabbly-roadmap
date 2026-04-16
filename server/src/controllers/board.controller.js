@@ -176,9 +176,10 @@ const getBoardBySlug = async (req, res, next) => {
 const createBoard = async (req, res, next) => {
   try {
     const { name, description, icon, color, isPublic } = req.body;
-    const { userId, role } = req.user;
+    const { userId, role, teamAccess } = req.user;
+    const isTeamAdmin = teamAccess && teamAccess.accessLevel === 'admin';
 
-    if (role !== 'admin') {
+    if (role !== 'admin' && !isTeamAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can create boards.',
@@ -389,10 +390,10 @@ const deleteBoard = async (req, res, next) => {
 const reorderBoards = async (req, res, next) => {
   try {
     const { boardIds } = req.body;
-    const { userId, role } = req.user;
+    const { userId, role, teamAccess } = req.user;
+    const isTeamAdmin = teamAccess && teamAccess.accessLevel === 'admin';
 
-    // Check: Kya user admin hai?
-    if (role !== 'admin') {
+    if (role !== 'admin' && !isTeamAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can reorder boards.',
