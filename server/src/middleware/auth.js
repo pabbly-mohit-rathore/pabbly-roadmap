@@ -87,6 +87,13 @@ const authenticate = async (req, res, next) => {
           canDeleteComment: boardMember.accessLevel === 'admin',
           canDeleteBoard: boardMember.accessLevel === 'admin',
         };
+      } else {
+        // Team access header sent but user is no longer a board member — access revoked
+        return res.status(403).json({
+          success: false,
+          message: 'Team access has been revoked.',
+          code: 'TEAM_ACCESS_REVOKED',
+        });
       }
     }
 
@@ -140,6 +147,12 @@ const optionalAuth = async (req, res, next) => {
             canDeleteComment: boardMember.accessLevel === 'admin',
             canDeleteBoard: boardMember.accessLevel === 'admin',
           };
+        } else {
+          return res.status(403).json({
+            success: false,
+            message: 'Team access has been revoked.',
+            code: 'TEAM_ACCESS_REVOKED',
+          });
         }
       }
     } else {
