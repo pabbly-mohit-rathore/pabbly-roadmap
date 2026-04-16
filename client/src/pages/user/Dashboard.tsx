@@ -7,6 +7,7 @@ import useAuthStore from '../../store/authStore';
 import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface Board {
   id: string;
@@ -185,9 +186,9 @@ export default function UserDashboard() {
           <table className="w-full table-fixed">
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                {['Upvote', 'Post', 'Board', 'Status', 'Comments'].map((h, i) => (
-                  <th key={h} className={`font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
-                    style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : i === 4 ? '24px' : '16px', width: i === 0 ? '120px' : i === 2 ? '300px' : i === 3 ? '180px' : i === 4 ? '200px' : undefined, textAlign: i === 4 ? 'right' as const : 'left' as const }}>{h}</th>
+                {[{ label: 'Upvote', tip: 'Total upvotes received' }, { label: 'Post', tip: 'Related post title' }, { label: 'Board', tip: 'Board name this item belongs to' }, { label: 'Status', tip: 'Current status of the item' }, { label: 'Comments', tip: 'Total number of comments' }].map((h, i) => (
+                  <th key={h.label} className={`font-semibold uppercase tracking-wider ${d ? 'text-gray-400' : ''}`}
+                    style={{ fontSize: '14px', color: d ? undefined : '#1C252E', padding: '16px', paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 0 ? '12px' : i === 4 ? '24px' : '16px', width: i === 0 ? '120px' : i === 2 ? '300px' : i === 3 ? '180px' : i === 4 ? '200px' : undefined, textAlign: i === 4 ? 'right' as const : 'left' as const }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></th>
                 ))}
               </tr>
             </thead>

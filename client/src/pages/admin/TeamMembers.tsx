@@ -6,6 +6,7 @@ import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import toast from 'react-hot-toast';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface TeamMember {
   id: string;
@@ -188,7 +189,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
     return <LoadingBar />;
   }
 
-  const TM_HEADERS = ['S.No', 'Team Member Email', 'Permission Type', 'Status', 'Actions'];
+  const TM_HEADERS = [{ label: 'S.No', tip: 'Serial number of the row' }, { label: 'Team Member Email', tip: 'Email of the team member' }, { label: 'Permission Type', tip: 'Access level granted' }, { label: 'Status', tip: 'Current status of the item' }, { label: 'Actions', tip: 'Available actions for this item' }];
 
   return (
     <div className="space-y-6">
@@ -257,13 +258,13 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
           <thead>
             <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
               {TM_HEADERS.map((h, i) => (
-                <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                <th key={h.label} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                   style={{
                     fontSize: '14px', color: d ? undefined : '#1C252E',
                     textAlign: i === 4 ? 'right' as const : 'left' as const,
                     width: i === 0 ? '80px' : i === 4 ? '70px' : undefined,
                   }}>
-                  <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
+                  <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
                 </th>
               ))}
             </tr>
@@ -358,14 +359,14 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
         <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <button onClick={() => setTmDenseMode(!tmDenseMode)}
-              className={`relative w-9 h-5 rounded-full transition-colors ${tmDenseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+              className={`relative w-9 h-5 rounded-full transition-colors ${tmDenseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${tmDenseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
             </button>
-            <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+            <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
               <div className="relative">
                 <button onClick={() => setTmRowsDropOpen(!tmRowsDropOpen)}
                   className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
@@ -384,9 +385,9 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 )}
               </div>
             </div>
-            <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+            <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
               {filteredMembers.length > 0 ? `${tmPage * tmRowsPerPage + 1}–${Math.min((tmPage + 1) * tmRowsPerPage, filteredMembers.length)}` : '0–0'} of {filteredMembers.length}
-            </span>
+            </span></Tooltip>
             <div className="flex gap-1">
               <button onClick={() => setTmPage(Math.max(0, tmPage - 1))} disabled={tmPage === 0}
                 className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>

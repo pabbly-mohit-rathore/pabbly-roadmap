@@ -9,6 +9,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface Tag {
   id: string;
@@ -294,7 +295,7 @@ export default function AdminBoardDetail() {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-[#0C68E9] text-white rounded-lg hover:bg-[#0b5dd0] transition"
+            className="flex items-center gap-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition"
             style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}
           >
             <Plus className="w-5 h-5" />
@@ -326,17 +327,18 @@ export default function AdminBoardDetail() {
           {/* Type Tabs */}
           <div className={`relative flex items-end border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`} style={{ height: '48px', paddingLeft: '24px', gap: '40px' }}>
             {[
-              { key: 'all', label: 'All', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
-              { key: 'feature', label: 'Feature', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
-              { key: 'bug', label: 'Bug', badgeBg: 'bg-red-100', badgeText: 'text-red-700', darkBadgeBg: 'bg-red-900/40', darkBadgeText: 'text-red-300' },
-              { key: 'improvement', label: 'Improvement', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', darkBadgeBg: 'bg-orange-900/40', darkBadgeText: 'text-orange-300' },
-              { key: 'integration', label: 'Integration', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', darkBadgeBg: 'bg-purple-900/40', darkBadgeText: 'text-purple-300' },
+              { key: 'all', label: 'All', tip: 'View all posts', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
+              { key: 'feature', label: 'Feature', tip: 'View all feature requests', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
+              { key: 'bug', label: 'Bug', tip: 'View all bug reports', badgeBg: 'bg-red-100', badgeText: 'text-red-700', darkBadgeBg: 'bg-red-900/40', darkBadgeText: 'text-red-300' },
+              { key: 'improvement', label: 'Improvement', tip: 'View all improvement suggestions', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', darkBadgeBg: 'bg-orange-900/40', darkBadgeText: 'text-orange-300' },
+              { key: 'integration', label: 'Integration', tip: 'View all integration requests', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', darkBadgeBg: 'bg-purple-900/40', darkBadgeText: 'text-purple-300' },
             ].map((tab) => {
               const d = theme === 'dark';
               const isActive = typeFilter === tab.key;
               const count = tab.key === 'all' ? posts.length : posts.filter(p => p.type === tab.key).length;
               return (
-                <button key={tab.key}
+                <Tooltip key={tab.key} title={tab.tip}>
+                <button
                   ref={(el) => { tabsRef.current[tab.key] = el; }}
                   onClick={() => { setTypeFilter(tab.key); setPage(0); }}
                   className={`flex items-center gap-1.5 pb-3 text-sm font-semibold transition-colors ${
@@ -347,6 +349,7 @@ export default function AdminBoardDetail() {
                     d ? `${tab.darkBadgeBg} ${tab.darkBadgeText}` : `${tab.badgeBg} ${tab.badgeText}`
                   }`}>{count}</span>
                 </button>
+                </Tooltip>
               );
             })}
             <div className={`absolute bottom-0 h-0.5 ${theme === 'dark' ? 'bg-white' : 'bg-gray-900'}`}
@@ -356,14 +359,14 @@ export default function AdminBoardDetail() {
             <table className="w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-                {['Upvote', 'Title', 'Status', 'Comments', 'Author', 'Created', 'Actions'].map((h, i) => (
-                  <th key={h} className={`font-semibold ${theme === 'dark' ? 'text-gray-400' : ''}`}
+                {[{ label: 'Upvote', tip: 'Total upvotes received' }, { label: 'Title', tip: 'Title of the post or entry' }, { label: 'Status', tip: 'Current status of the item' }, { label: 'Comments', tip: 'Total number of comments' }, { label: 'Author', tip: 'User who created this item' }, { label: 'Created', tip: 'Date when this item was created' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
+                  <th key={h.label} className={`font-semibold ${theme === 'dark' ? 'text-gray-400' : ''}`}
                     style={{
                       fontSize: '14px', color: theme === 'dark' ? undefined : '#1C252E',
                       textAlign: i === 3 ? 'center' as const : i === 6 ? 'right' as const : 'left' as const,
                       width: i === 0 ? '120px' : i === 2 ? '150px' : i === 3 ? '330px' : i === 4 ? '250px' : i === 5 ? '180px' : i === 6 ? '60px' : undefined,
                     }}>
-                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 6 ? '24px' : '16px' }}>{h}</div>
+                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 6 ? '24px' : '16px' }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
                   </th>
                 ))}
               </tr>
@@ -479,14 +482,14 @@ export default function AdminBoardDetail() {
           <div className="flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-3">
               <button onClick={() => setDenseMode(!denseMode)}
-                className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#0c68e9]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
               </button>
-              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                 <div className="relative">
                   <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                     className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
@@ -508,9 +511,9 @@ export default function AdminBoardDetail() {
                   )}
                 </div>
               </div>
-              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 {filteredPosts.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, filteredPosts.length)}` : '0–0'} of {filteredPosts.length}
-              </span>
+              </span></Tooltip>
               <div className="flex gap-1">
                 <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                   className={`p-1.5 rounded transition disabled:opacity-30 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
@@ -597,7 +600,7 @@ export default function AdminBoardDetail() {
                 <button onClick={() => { setShowCreateModal(false); setFormErrors({}); }}
                   className={`px-3 py-1.5 text-sm font-medium border transition-colors ${theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                 <LoadingButton onClick={handleCreatePost} loading={creating}
-                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Next</LoadingButton>
+                  className="px-3 py-1.5 bg-[#059669] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Next</LoadingButton>
               </div>
             </div>
           </div>
@@ -787,7 +790,7 @@ export default function AdminBoardDetail() {
                 </button>
                 <button
                   onClick={handleEditPost}
-                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors"
+                  className="px-4 py-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition-colors"
                 >
                   Update Post
                 </button>

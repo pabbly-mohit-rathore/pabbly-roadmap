@@ -6,6 +6,7 @@ import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface Board {
   id: string;
@@ -121,14 +122,14 @@ export default function UserBoardsPage() {
             <table className="w-full" style={{ borderCollapse: 'collapse' }}>
               <thead>
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-                  {['S.No', 'Board', 'Description', 'Created At', 'Actions'].map((h, i) => (
-                    <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                  {[{ label: 'S.No', tip: 'Serial number of the row' }, { label: 'Board', tip: 'Board name this item belongs to' }, { label: 'Description', tip: 'Short description of the item' }, { label: 'Created At', tip: 'Date when this item was created' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
+                    <th key={h.label} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                       style={{
                         fontSize: '14px', color: d ? undefined : '#1C252E',
                         textAlign: i === 4 ? 'right' as const : 'left' as const,
                         width: i === 0 ? '80px' : i === 3 ? '200px' : i === 4 ? '140px' : undefined,
                       }}>
-                      <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
+                      <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
                     </th>
                   ))}
                 </tr>
@@ -167,7 +168,7 @@ export default function UserBoardsPage() {
                       <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '24px' }}>
                         <button
                           onClick={(e) => { e.stopPropagation(); navigate(`/user/boards/${board.id}`, { state: { board } }); }}
-                          className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-[#0C68E9] text-white hover:bg-[#0b5dd0] transition-colors">
+                          className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-[#059669] text-white hover:bg-[#047857] transition-colors">
                           Access
                         </button>
                       </td>
@@ -191,14 +192,14 @@ export default function UserBoardsPage() {
             <div className="flex items-center justify-between px-6 py-3">
               <div className="flex items-center gap-3">
                 <button onClick={() => setDenseMode(!denseMode)}
-                  className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                  className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                 </button>
-                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                  <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                   <div className="relative">
                     <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                       className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
@@ -217,9 +218,9 @@ export default function UserBoardsPage() {
                     )}
                   </div>
                 </div>
-                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+                <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                   {boards.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, boards.length)}` : '0–0'} of {boards.length}
-                </span>
+                </span></Tooltip>
                 <div className="flex gap-1">
                   <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                     className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>

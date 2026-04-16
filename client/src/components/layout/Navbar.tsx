@@ -160,7 +160,7 @@ export default function Navbar() {
                     <div className={`flex items-center justify-between px-4 py-3 border-b shrink-0 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
                       <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Notifications</span>
                       {unreadCount > 0 && (
-                        <button onClick={markAllRead} className="flex items-center gap-1 text-xs font-medium text-[#0c68e9] hover:underline">
+                        <button onClick={markAllRead} className="flex items-center gap-1 text-xs font-medium text-[#059669] hover:underline">
                           <Check className="w-3 h-3" /> Mark all read
                         </button>
                       )}
@@ -194,7 +194,7 @@ export default function Navbar() {
                           {/* Dot */}
                           <div className="pt-1.5 shrink-0">
                             {!n.isRead ? (
-                              <div className="w-2 h-2 rounded-full bg-[#0c68e9]" />
+                              <div className="w-2 h-2 rounded-full bg-[#059669]" />
                             ) : (
                               <div className="w-2 h-2" />
                             )}

@@ -6,6 +6,7 @@ import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
 import CustomDropdown from '../../components/ui/CustomDropdown';
+import UITooltip from '../../components/ui/Tooltip';
 
 interface ActivityData {
   posts: { count: number; change: number };
@@ -29,12 +30,6 @@ interface BoardData {
   count: number;
 }
 
-interface AdminData {
-  id: string;
-  name: string;
-  email: string;
-  _count: { votes: number; posts: number; comments: number };
-}
 
 interface ActivityLog {
   id: string;
@@ -56,17 +51,12 @@ export default function AdminReporting() {
   const [statusPipeline, setStatusPipeline] = useState<{ status: string; count: number }[]>([]);
   const [stalePosts, setStalePosts] = useState<StalePost[]>([]);
   const [boardData, setBoardData] = useState<{ boards: BoardData[]; total: number }>({ boards: [], total: 0 });
-  const [admins, setAdmins] = useState<AdminData[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [logTotal, setLogTotal] = useState(0);
   const [logPage, setLogPage] = useState(0);
   const [logRowsPerPage, setLogRowsPerPage] = useState(10);
   const [logDenseMode, setLogDenseMode] = useState(false);
   const [logRowsDropOpen, setLogRowsDropOpen] = useState(false);
-  const [adminPage, setAdminPage] = useState(0);
-  const [adminRowsPerPage, setAdminRowsPerPage] = useState(10);
-  const [adminDenseMode, setAdminDenseMode] = useState(false);
-  const [adminRowsDropOpen, setAdminRowsDropOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -92,17 +82,15 @@ export default function AdminReporting() {
     setLoading(true);
     try {
       const bp = { period, boardId: boardFilter };
-      const [actRes, staleRes, boardRes, adminRes, pipelineRes] = await Promise.all([
+      const [actRes, staleRes, boardRes, pipelineRes] = await Promise.all([
         api.get('/reporting/activity-overview', { params: bp }),
         api.get('/reporting/stale-posts', { params: { boardId: boardFilter } }),
         api.get('/reporting/posts-by-board', { params: bp }),
-        api.get('/reporting/admin-activity', { params: { period } }),
         api.get('/reporting/status-pipeline'),
       ]);
       if (actRes.data.success) setActivity(actRes.data.data);
       if (staleRes.data.success) setStalePosts(staleRes.data.data.posts);
       if (boardRes.data.success) setBoardData(boardRes.data.data);
-      if (adminRes.data.success) setAdmins(adminRes.data.data.admins);
       if (pipelineRes.data.success) setStatusPipeline(pipelineRes.data.data.pipeline);
     } catch (error) {
       console.error('Error fetching reporting:', error);
@@ -373,9 +361,9 @@ export default function AdminReporting() {
             <table className="w-full" style={{ borderCollapse: 'collapse' }}>
               <thead>
                 <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                  {['Upvote', 'Title', 'Board', 'Status'].map((h, i) => (
-                    <th key={h} className={`py-2.5 text-xs font-semibold ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}
-                      style={{ textAlign: 'left', paddingLeft: i === 0 ? '16px' : '12px', paddingRight: i === 3 ? '16px' : '12px' }}>{h}</th>
+                  {[{ label: 'Upvote', tip: 'Total upvotes received' }, { label: 'Title', tip: 'Title of the post or entry' }, { label: 'Board', tip: 'Board name this item belongs to' }, { label: 'Status', tip: 'Current status of the item' }].map((h, i) => (
+                    <th key={h.label} className={`py-2.5 text-xs font-semibold ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}
+                      style={{ textAlign: 'left', paddingLeft: i === 0 ? '16px' : '12px', paddingRight: i === 3 ? '16px' : '12px' }}><UITooltip title={h.tip}><span>{h.label}</span></UITooltip></th>
                   ))}
                 </tr>
               </thead>
@@ -414,115 +402,28 @@ export default function AdminReporting() {
         </div>
       </div>
 
-      {/* Admin Activity Table */}
-      <div className={`rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div style={{ padding: '24px 24px 16px 24px' }}>
-          <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Admin Activity</h2>
-        </div>
-        <table className="w-full" style={{ borderCollapse: 'collapse' }}>
-          <thead>
-            <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-              {['Admin', 'Votes', 'Posts', 'Comments'].map((h, i) => (
-                <th key={h} className={`font-semibold ${theme === 'dark' ? 'text-gray-400' : ''}`}
-                  style={{ fontSize: '14px', color: theme === 'dark' ? undefined : '#1C252E', textAlign: i === 0 ? 'left' : 'center',
-                    width: i === 0 ? '400px' : '150px' }}>
-                  <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: '16px' }}>{h}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {(() => {
-              const paginatedAdmins = admins.slice(adminPage * adminRowsPerPage, (adminPage + 1) * adminRowsPerPage);
-              return paginatedAdmins.length > 0 ? paginatedAdmins.map((admin) => (
-                <tr key={admin.id} className={`border-b border-dashed transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
-                  <td className={adminDenseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px' }}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                        {admin.name[0].toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{admin.name}</p>
-                        <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{admin.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className={`px-4 ${adminDenseMode ? 'py-1.5' : 'py-4'} text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>{admin._count.votes || '—'}</td>
-                  <td className={`px-4 ${adminDenseMode ? 'py-1.5' : 'py-4'} text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>{admin._count.posts || '—'}</td>
-                  <td className={`px-4 ${adminDenseMode ? 'py-1.5' : 'py-4'} text-center text-sm font-semibold ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>{admin._count.comments || '—'}</td>
-                </tr>
-              )) : (
-                <tr><td colSpan={4}>
-                  <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '200px' }}>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>No admin activity</p>
-                  </div>
-                </td></tr>
-              );
-            })()}
-          </tbody>
-        </table>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setAdminDenseMode(!adminDenseMode)}
-              className={`relative w-9 h-5 rounded-full transition-colors ${adminDenseMode ? 'bg-[#0c68e9]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${adminDenseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-            </button>
-            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
-              <div className="relative">
-                <button onClick={() => setAdminRowsDropOpen(!adminRowsDropOpen)}
-                  className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                  {adminRowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${adminRowsDropOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {adminRowsDropOpen && (
-                  <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
-                    {[10, 25, 50, 100].map(n => (
-                      <button key={n} onClick={() => { setAdminRowsPerPage(n); setAdminRowsDropOpen(false); setAdminPage(0); }}
-                        className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
-                          adminRowsPerPage === n ? (theme === 'dark' ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
-                          : (theme === 'dark' ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
-                        }`}>{n}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              {admins.length > 0 ? `${adminPage * adminRowsPerPage + 1}–${Math.min((adminPage + 1) * adminRowsPerPage, admins.length)}` : '0–0'} of {admins.length}
-            </span>
-            <div className="flex gap-1">
-              <button onClick={() => setAdminPage(Math.max(0, adminPage - 1))} disabled={adminPage === 0}
-                className={`p-1.5 rounded transition disabled:opacity-30 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button onClick={() => setAdminPage(Math.min(Math.ceil(admins.length / adminRowsPerPage) - 1, adminPage + 1))} disabled={adminPage >= Math.ceil(admins.length / adminRowsPerPage) - 1}
-                className={`p-1.5 rounded transition disabled:opacity-30 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-        {adminRowsDropOpen && <div className="fixed inset-0 z-40" onClick={() => setAdminRowsDropOpen(false)} />}
-      </div>
-
       {/* Activity Log Table */}
-      <div className={`rounded-xl border mt-6 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className={`rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div style={{ padding: '24px 24px 16px 24px' }}>
           <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Activity Log</h2>
         </div>
         <table className="w-full" style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-              {['User', 'Action', 'Description', 'Post', 'Board', 'Time'].map((h, i) => (
-                <th key={h} className={`font-semibold ${theme === 'dark' ? 'text-gray-400' : ''}`}
-                  style={{ fontSize: '14px', color: theme === 'dark' ? undefined : '#1C252E', textAlign: 'left',
+              {[
+                { label: 'User', tip: 'Who performed the action' },
+                { label: 'Action', tip: 'Type of action performed' },
+                { label: 'Description', tip: 'Details about the action' },
+                { label: 'Post', tip: 'Related post, if any' },
+                { label: 'Board', tip: 'Related board, if any' },
+                { label: 'Time', tip: 'When the action was performed' },
+              ].map((h, i) => (
+                <th key={h.label} className={`font-semibold ${theme === 'dark' ? 'text-gray-400' : ''}`}
+                  style={{ fontSize: '14px', color: theme === 'dark' ? undefined : '#1C252E', textAlign: i === 5 ? 'right' : 'left',
                     width: i === 0 ? '220px' : i === 1 ? '120px' : i === 2 ? '250px' : i === 3 ? '180px' : i === 4 ? '130px' : '160px' }}>
-                  <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: '16px' }}>{h}</div>
+                  <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 5 ? '24px' : '16px' }}>
+                    <UITooltip title={h.tip}><span>{h.label}</span></UITooltip>
+                  </div>
                 </th>
               ))}
             </tr>
@@ -549,7 +450,7 @@ export default function AdminReporting() {
                 <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm max-w-[250px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{log.description}</td>
                 <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm truncate max-w-[180px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{log.post?.title || '—'}</td>
                 <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{log.board?.name || '—'}</td>
-                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm whitespace-nowrap ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                <td className={`${logDenseMode ? 'py-1.5' : 'py-4'} text-sm whitespace-nowrap text-right ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} style={{ paddingRight: '24px', paddingLeft: '16px' }}>
                   {new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </td>
               </tr>
@@ -567,14 +468,14 @@ export default function AdminReporting() {
         <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <button onClick={() => setLogDenseMode(!logDenseMode)}
-              className={`relative w-9 h-5 rounded-full transition-colors ${logDenseMode ? 'bg-[#0c68e9]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
+              className={`relative w-9 h-5 rounded-full transition-colors ${logDenseMode ? 'bg-[#059669]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${logDenseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
             </button>
-            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}><UITooltip title="Switch to reduce the table size."><span>Dense</span></UITooltip></span>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}><UITooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></UITooltip></span>
               <div className="relative">
                 <button onClick={() => setLogRowsDropOpen(!logRowsDropOpen)}
                   className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
@@ -593,9 +494,9 @@ export default function AdminReporting() {
                 )}
               </div>
             </div>
-            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            <UITooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               {logTotal > 0 ? `${logPage * logRowsPerPage + 1}–${Math.min((logPage + 1) * logRowsPerPage, logTotal)}` : '0–0'} of {logTotal}
-            </span>
+            </span></UITooltip>
             <div className="flex gap-1">
               <button onClick={() => setLogPage(Math.max(0, logPage - 1))} disabled={logPage === 0}
                 className={`p-1.5 rounded transition disabled:opacity-30 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface Tag { id: string; name: string; slug: string; color: string; boardId: string; }
 interface Board { id: string; name: string; }
@@ -108,14 +109,14 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
           <table className="w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-                {['S.No', 'Tag Name', 'Color', 'Slug', 'Board', 'Actions'].map((h, i) => (
-                  <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                {[{ label: 'S.No', tip: 'Serial number of the row' }, { label: 'Tag Name', tip: 'Name of the tag' }, { label: 'Color', tip: 'Color assigned to the tag' }, { label: 'Slug', tip: 'URL-friendly identifier' }, { label: 'Board', tip: 'Board name this item belongs to' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
+                  <th key={h.label} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                     style={{
                       fontSize: '14px', color: d ? undefined : '#1C252E',
                       textAlign: i === 5 ? 'right' as const : i === 2 ? 'center' as const : 'left' as const,
                       width: i === 0 ? '80px' : i === 2 ? '280px' : i === 3 ? '250px' : i === 4 ? '200px' : i === 5 ? '70px' : undefined,
                     }}>
-                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 5 ? '24px' : '16px' }}>{h}</div>
+                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 5 ? '24px' : '16px' }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
                   </th>
                 ))}
               </tr>
@@ -187,14 +188,14 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
           <div className="flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-3">
               <button onClick={() => setDenseMode(!denseMode)}
-                className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
               </button>
-              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                 <div className="relative">
                   <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                     className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
@@ -213,9 +214,9 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
                   )}
                 </div>
               </div>
-              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+              <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                 {filteredTags.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, filteredTags.length)}` : '0–0'} of {filteredTags.length}
-              </span>
+              </span></Tooltip>
               <div className="flex gap-1">
                 <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                   className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
@@ -272,7 +273,7 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
                 <button onClick={() => setShowCreateModal(false)}
                   className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                 <LoadingButton onClick={handleCreateTag} loading={creating}
-                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Create</LoadingButton>
+                  className="px-3 py-1.5 bg-[#059669] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Create</LoadingButton>
               </div>
             </div>
           </div>
@@ -317,7 +318,7 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
                 <button onClick={() => { setShowEditModal(false); setSelectedTag(null); }}
                   className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                 <LoadingButton onClick={handleUpdateTag} loading={updating}
-                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update</LoadingButton>
+                  className="px-3 py-1.5 bg-[#059669] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update</LoadingButton>
               </div>
             </div>
           </div>

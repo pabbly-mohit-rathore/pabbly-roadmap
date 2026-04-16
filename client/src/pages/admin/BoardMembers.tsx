@@ -158,7 +158,7 @@ export default function AdminBoardMembers() {
           <button
             onClick={() => setShowAddModal(true)}
             disabled={!selectedBoard || availableUsers.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Member
@@ -346,7 +346,7 @@ export default function AdminBoardMembers() {
                 <LoadingButton
                   onClick={handleAddMember}
                   loading={adding}
-                  className="px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors disabled:opacity-70"
+                  className="px-4 py-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition-colors disabled:opacity-70"
                 >
                   Add Member
                 </LoadingButton>

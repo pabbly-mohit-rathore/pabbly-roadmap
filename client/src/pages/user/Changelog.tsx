@@ -7,6 +7,7 @@ import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
 import toast from 'react-hot-toast';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface ChangelogEntry {
   id: string;
@@ -107,7 +108,7 @@ export default function UserChangelog() {
   const totalPages = Math.ceil(filteredEntries.length / rowsPerPage);
   const paginatedEntries = filteredEntries.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
-  const HEADERS = ['Title', 'Type', 'Boards', 'Published', 'Likes'];
+  const HEADERS = [{ label: 'Title', tip: 'Title of the post or entry' }, { label: 'Type', tip: 'Category type of the item' }, { label: 'Boards', tip: 'Boards associated with this item' }, { label: 'Published', tip: 'Date when the entry was published' }, { label: 'Likes', tip: 'Total number of likes received' }];
 
   return (
     <UserLayout>
@@ -130,15 +131,16 @@ export default function UserChangelog() {
             {/* Type Tabs */}
             <div className={`relative flex items-end border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ height: '48px', paddingLeft: '24px', gap: '40px' }}>
               {[
-                { key: 'all', label: 'All', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
-                { key: 'new', label: 'New', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', darkBadgeBg: 'bg-emerald-900/40', darkBadgeText: 'text-emerald-300' },
-                { key: 'improved', label: 'Improved', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
-                { key: 'fixed', label: 'Fixed', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', darkBadgeBg: 'bg-orange-900/40', darkBadgeText: 'text-orange-300' },
+                { key: 'all', label: 'All', tip: 'View all changelog entries', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
+                { key: 'new', label: 'New', tip: 'View new feature entries', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', darkBadgeBg: 'bg-emerald-900/40', darkBadgeText: 'text-emerald-300' },
+                { key: 'improved', label: 'Improved', tip: 'View improved feature entries', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
+                { key: 'fixed', label: 'Fixed', tip: 'View bug fix entries', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', darkBadgeBg: 'bg-orange-900/40', darkBadgeText: 'text-orange-300' },
               ].map((tab) => {
                 const isActive = typeTabFilter === tab.key;
                 const count = tab.key === 'all' ? entries.length : entries.filter(e => e.type === tab.key).length;
                 return (
-                  <button key={tab.key} ref={(el) => { tabsRef.current[tab.key] = el; }}
+                  <Tooltip key={tab.key} title={tab.tip}>
+                  <button ref={(el) => { tabsRef.current[tab.key] = el; }}
                     onClick={() => { setTypeTabFilter(tab.key); setPage(0); }}
                     className={`flex items-center gap-1.5 pb-3 text-sm font-semibold transition-colors ${
                       isActive ? (d ? 'text-white' : 'text-gray-900') : (d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')
@@ -148,6 +150,7 @@ export default function UserChangelog() {
                       d ? `${tab.darkBadgeBg} ${tab.darkBadgeText}` : `${tab.badgeBg} ${tab.badgeText}`
                     }`}>{count}</span>
                   </button>
+                  </Tooltip>
                 );
               })}
               <div className={`absolute bottom-0 h-0.5 ${d ? 'bg-white' : 'bg-gray-900'}`}
@@ -158,13 +161,13 @@ export default function UserChangelog() {
               <thead>
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
                   {HEADERS.map((h, i) => (
-                    <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                    <th key={h.label} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                       style={{
                         fontSize: '14px', color: d ? undefined : '#1C252E',
                         textAlign: i === 4 ? 'center' as const : 'left' as const,
                         width: i === 4 ? '100px' : undefined,
                       }}>
-                      <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: '16px' }}>{h}</div>
+                      <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: '16px' }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
                     </th>
                   ))}
                 </tr>
@@ -229,14 +232,14 @@ export default function UserChangelog() {
             <div className="flex items-center justify-between px-6 py-3">
               <div className="flex items-center gap-3">
                 <button onClick={() => setDenseMode(!denseMode)}
-                  className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                  className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                 </button>
-                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                  <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                   <div className="relative">
                     <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                       className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
@@ -255,9 +258,9 @@ export default function UserChangelog() {
                     )}
                   </div>
                 </div>
-                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+                <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                   {filteredEntries.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, filteredEntries.length)}` : '0–0'} of {filteredEntries.length}
-                </span>
+                </span></Tooltip>
                 <div className="flex gap-1">
                   <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                     className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>

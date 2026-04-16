@@ -48,7 +48,7 @@ export default function InvitePage() {
             </div>
             <h1 className={`text-2xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Invalid Invite</h1>
             <p className={`mb-6 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{error}</p>
-            <a href="/user/all-posts" className="inline-block px-6 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors font-medium">
+            <a href="/user/all-posts" className="inline-block px-6 py-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition-colors font-medium">
               Go to All Posts
             </a>
           </div>
@@ -60,7 +60,7 @@ export default function InvitePage() {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'} flex items-center justify-center`}>
       <div className="text-center">
-        <div className="w-12 h-12 border-4 border-gray-300 border-t-[#0c68e9] rounded-full animate-spin mx-auto mb-4"></div>
+        <div className="w-12 h-12 border-4 border-gray-300 border-t-[#059669] rounded-full animate-spin mx-auto mb-4"></div>
         <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Redirecting...</p>
       </div>
     </div>

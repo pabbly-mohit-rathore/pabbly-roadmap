@@ -445,7 +445,7 @@ export default function ChangelogEditor() {
             <Clock className="w-4 h-4" /> Schedule
           </button>
           <LoadingButton loading={publishing} onClick={handlePublish}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#0c68e9] text-white hover:bg-[#0b5dd0] transition disabled:opacity-70">
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#059669] text-white hover:bg-[#047857] transition disabled:opacity-70">
             <Send className="w-4 h-4" /> Publish
           </LoadingButton>
         </div>
@@ -674,7 +674,7 @@ export default function ChangelogEditor() {
                   theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
                 }`} />
               <button onClick={() => setShowColorPicker(false)}
-                className="px-2 py-1 text-xs bg-[#0c68e9] text-white rounded hover:bg-[#0b5dd0]">Done</button>
+                className="px-2 py-1 text-xs bg-[#059669] text-white rounded hover:bg-[#047857]">Done</button>
             </div>
           </div>
         </>
@@ -702,7 +702,7 @@ export default function ChangelogEditor() {
                   theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
                 }`} />
               <button onClick={() => setShowHighlightPicker(false)}
-                className="px-2 py-1 text-xs bg-[#0c68e9] text-white rounded hover:bg-[#0b5dd0]">Done</button>
+                className="px-2 py-1 text-xs bg-[#059669] text-white rounded hover:bg-[#047857]">Done</button>
             </div>
           </div>
         </>
@@ -722,7 +722,7 @@ export default function ChangelogEditor() {
               <button onClick={() => setShowScheduleModal(false)}
                 className={`flex-1 px-4 py-2 rounded-lg border ${theme === 'dark' ? 'border-gray-700 text-gray-300' : 'border-gray-200'}`}>Cancel</button>
               <LoadingButton loading={scheduling} onClick={handleSchedule}
-                className="flex-1 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] font-semibold disabled:opacity-70">Schedule</LoadingButton>
+                className="flex-1 px-4 py-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] font-semibold disabled:opacity-70">Schedule</LoadingButton>
             </div>
           </div>
         </div>

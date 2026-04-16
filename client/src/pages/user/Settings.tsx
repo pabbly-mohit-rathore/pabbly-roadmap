@@ -7,6 +7,7 @@ import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import Tooltip from '../../components/ui/Tooltip';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
@@ -171,14 +172,14 @@ export default function UserSettings() {
                 <table className="w-full" style={{ borderCollapse: 'collapse' }}>
                   <thead>
                     <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-                      {['S.No', 'Shared On', 'Board Name', 'Permission Type', 'Actions'].map((h, i) => (
-                        <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                      {[{ label: 'S.No', tip: 'Serial number of the row' }, { label: 'Shared On', tip: 'Date when access was shared' }, { label: 'Board Name', tip: 'Name of the shared board' }, { label: 'Permission Type', tip: 'Access level granted' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
+                        <th key={h.label} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                           style={{
                             fontSize: '14px', color: d ? undefined : '#1C252E',
                             textAlign: i === 4 ? 'right' as const : 'left' as const,
                             width: i === 0 ? '80px' : i === 4 ? '160px' : undefined,
                           }}>
-                          <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
+                          <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
                         </th>
                       ))}
                     </tr>
@@ -211,7 +212,7 @@ export default function UserSettings() {
                             <button
                               onClick={() => handleAccessBoard(item)}
                               className={`whitespace-nowrap px-4 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                                d ? 'border-[#0c68e9] text-[#0c68e9] hover:bg-[#0c68e9]/10' : 'border-[#0c68e9] text-[#0c68e9] hover:bg-blue-50'
+                                d ? 'border-[#059669] text-[#059669] hover:bg-[#059669]/10' : 'border-[#059669] text-[#059669] hover:bg-emerald-50'
                               }`}
                             >
                               Access Now
@@ -237,14 +238,14 @@ export default function UserSettings() {
                 <div className="flex items-center justify-between px-6 py-3">
                   <div className="flex items-center gap-3">
                     <button onClick={() => setSwDenseMode(!swDenseMode)}
-                      className={`relative w-9 h-5 rounded-full transition-colors ${swDenseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                      className={`relative w-9 h-5 rounded-full transition-colors ${swDenseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                       <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${swDenseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                     </button>
-                    <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+                    <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                      <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                       <div className="relative">
                         <button onClick={() => setSwRowsDropOpen(!swRowsDropOpen)}
                           className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
@@ -263,9 +264,9 @@ export default function UserSettings() {
                         )}
                       </div>
                     </div>
-                    <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                       {sharedBoards.length > 0 ? `${swPage * swRowsPerPage + 1}–${Math.min((swPage + 1) * swRowsPerPage, sharedBoards.length)}` : '0–0'} of {sharedBoards.length}
-                    </span>
+                    </span></Tooltip>
                     <div className="flex gap-1">
                       <button onClick={() => setSwPage(Math.max(0, swPage - 1))} disabled={swPage === 0}
                         className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
@@ -399,12 +400,12 @@ export default function UserSettings() {
                       <button onClick={() => setTheme('light')}
                         style={{ height: '52px', minWidth: '100px' }}
                         className={`flex-1 rounded-lg text-sm font-medium transition-colors ${
-                          theme === 'light' ? 'bg-[#0c68e9] text-white' : d ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          theme === 'light' ? 'bg-[#059669] text-white' : d ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}>Light</button>
                       <button onClick={() => setTheme('dark')}
                         style={{ height: '52px', minWidth: '100px' }}
                         className={`flex-1 rounded-lg text-sm font-medium transition-colors ${
-                          theme === 'dark' ? 'bg-[#0c68e9] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          theme === 'dark' ? 'bg-[#059669] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}>Dark</button>
                     </div>
                   </div>

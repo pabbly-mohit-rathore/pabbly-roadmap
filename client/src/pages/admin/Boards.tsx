@@ -7,6 +7,7 @@ import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface Board {
   id: string;
@@ -175,14 +176,14 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
           <table className="w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-                {['S.No', 'Board', 'Description', 'Created At', 'Actions'].map((h, i) => (
-                  <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                {[{ label: 'S.No', tip: 'Serial number of the row' }, { label: 'Board', tip: 'Board name this item belongs to' }, { label: 'Description', tip: 'Short description of the item' }, { label: 'Created At', tip: 'Date when this item was created' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
+                  <th key={h.label} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                     style={{
                       fontSize: '14px', color: d ? undefined : '#1C252E',
                       textAlign: i === 4 ? 'right' as const : 'left' as const,
                       width: i === 0 ? '80px' : i === 3 ? '200px' : i === 4 ? '100px' : undefined,
                     }}>
-                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}>{h}</div>
+                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
                   </th>
                 ))}
               </tr>
@@ -252,7 +253,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                     <p className={`text-base font-semibold mb-1 ${d ? 'text-gray-300' : 'text-gray-600'}`}>No Boards Created</p>
                     <p className={`text-sm mb-4 ${d ? 'text-gray-500' : 'text-gray-400'}`}>Create your first board to get started.</p>
                     <button onClick={() => setShowCreateModal(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#0c68e9] text-white rounded-lg hover:bg-[#0b5dd0] transition-colors text-sm font-medium">
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition-colors text-sm font-medium">
                       <Plus className="w-4 h-4" /> Create First Board
                     </button>
                   </div>
@@ -265,14 +266,14 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
           <div className="flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-3">
               <button onClick={() => setDenseMode(!denseMode)}
-                className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
               </button>
-              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                 <div className="relative">
                   <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                     className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
@@ -291,9 +292,9 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                   )}
                 </div>
               </div>
-              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+              <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                 {boards.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, boards.length)}` : '0–0'} of {boards.length}
-              </span>
+              </span></Tooltip>
               <div className="flex gap-1">
                 <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                   className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
@@ -384,7 +385,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                 <button onClick={() => { setShowCreateModal(false); setFormData({ name: '', description: '', color: '#6366f1' }); }}
                   className={`px-3 py-1.5 text-sm font-medium border transition-colors ${theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                 <LoadingButton onClick={handleCreateBoard} loading={creatingBoard}
-                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Create Board</LoadingButton>
+                  className="px-3 py-1.5 bg-[#059669] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Create Board</LoadingButton>
               </div>
             </div>
           </div>
@@ -462,7 +463,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                   <button onClick={() => { setShowEditModal(false); setSelectedBoard(null); }}
                     className={`px-3 py-1.5 text-sm font-medium border transition-colors ${theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                   <LoadingButton onClick={handleUpdateBoard} loading={updatingBoard}
-                    className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update Board</LoadingButton>
+                    className="px-3 py-1.5 bg-[#059669] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update Board</LoadingButton>
                 </div>
               </div>
             </div>

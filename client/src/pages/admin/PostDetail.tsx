@@ -627,7 +627,7 @@ export default function AdminPostDetail() {
 
                               {replyingToId === comment.id && (
                                 <div className="mt-3">
-                                  <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Replying to <span className="text-[#0c68e9] font-semibold">@{comment.author.name}</span></p>
+                                  <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Replying to <span className="text-[#059669] font-semibold">@{comment.author.name}</span></p>
                                   <CommentEditor onSubmit={(html) => handleReply(comment.id, html)} placeholder={`Reply to @${comment.author.name}...`} buttonLabel="Reply" submitting={submittingReply} compact />
                                 </div>
                               )}
@@ -698,7 +698,7 @@ export default function AdminPostDetail() {
                                           {reply.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">Official Response</p>}
                                           {replyingToId === reply.id && (
                                             <div className="mt-3">
-                                              <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Replying to <span className="text-[#0c68e9] font-semibold">@{reply.author.name}</span></p>
+                                              <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Replying to <span className="text-[#059669] font-semibold">@{reply.author.name}</span></p>
                                               <CommentEditor onSubmit={(html) => handleReply(comment.id, html)} placeholder={`Reply to @${reply.author.name}...`} buttonLabel="Reply" submitting={submittingReply} compact />
                                             </div>
                                           )}
@@ -727,7 +727,7 @@ export default function AdminPostDetail() {
                   <div className="px-6 pt-6 pb-6">
                     {activitiesLoading ? (
                       <div className="flex justify-center py-12">
-                        <div className="w-6 h-6 border-2 border-gray-200 border-t-[#0c68e9] rounded-full animate-spin" />
+                        <div className="w-6 h-6 border-2 border-gray-200 border-t-[#059669] rounded-full animate-spin" />
                       </div>
                     ) : activities.length > 0 ? (
                       <div className="space-y-0">

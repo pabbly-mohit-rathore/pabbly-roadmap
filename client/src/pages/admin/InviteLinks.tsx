@@ -59,7 +59,7 @@ export default function AdminInviteLinks({ triggerCreate: _triggerCreate }: { tr
             className={`flex items-center gap-2 px-5 rounded-lg text-sm font-medium transition-colors shrink-0 ${
               copied
                 ? 'bg-green-600 text-white'
-                : 'bg-[#0c68e9] text-white hover:bg-[#0b5dd0]'
+                : 'bg-[#059669] text-white hover:bg-[#047857]'
             }`} style={{ height: '48px' }}>
             {copied ? <><Check className="w-4 h-4" /> Copied!</> : <><Copy className="w-4 h-4" /> Copy Link</>}
           </button>

@@ -443,7 +443,7 @@ export default function AdminFeedback() {
 
   return (
     <div>
-      <style>{`@keyframes slideUpCount { 0% { opacity: 0; transform: translateY(8px) scale(0.85); } 60% { opacity: 1; transform: translateY(-2px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } } @keyframes previewFadeIn { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } } .mui-checkbox { width: 18px; height: 18px; border-radius: 3px; border: 2px solid #919eab; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; flex-shrink: 0; } .mui-checkbox:hover { border-color: #637381; } .mui-checkbox.checked { background: #0c68e9; border-color: #0c68e9; } .mui-checkbox.indeterminate { background: #0c68e9; border-color: #0c68e9; }`}</style>
+      <style>{`@keyframes slideUpCount { 0% { opacity: 0; transform: translateY(8px) scale(0.85); } 60% { opacity: 1; transform: translateY(-2px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } } @keyframes previewFadeIn { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } } .mui-checkbox { width: 18px; height: 18px; border-radius: 3px; border: 2px solid #919eab; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; flex-shrink: 0; } .mui-checkbox:hover { border-color: #637381; } .mui-checkbox.checked { background: #059669; border-color: #059669; } .mui-checkbox.indeterminate { background: #059669; border-color: #059669; }`}</style>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -550,16 +550,17 @@ export default function AdminFeedback() {
           {/* Type Tabs */}
           <div className={`relative flex items-end border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ height: '48px', paddingLeft: '24px', gap: '40px' }}>
             {[
-              { key: 'all', label: 'All', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
-              { key: 'feature', label: 'Feature', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
-              { key: 'bug', label: 'Bug', badgeBg: 'bg-red-100', badgeText: 'text-red-700', darkBadgeBg: 'bg-red-900/40', darkBadgeText: 'text-red-300' },
-              { key: 'improvement', label: 'Improvement', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', darkBadgeBg: 'bg-orange-900/40', darkBadgeText: 'text-orange-300' },
-              { key: 'integration', label: 'Integration', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', darkBadgeBg: 'bg-purple-900/40', darkBadgeText: 'text-purple-300' },
+              { key: 'all', label: 'All', tip: 'View all posts', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
+              { key: 'feature', label: 'Feature', tip: 'View all feature requests', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
+              { key: 'bug', label: 'Bug', tip: 'View all bug reports', badgeBg: 'bg-red-100', badgeText: 'text-red-700', darkBadgeBg: 'bg-red-900/40', darkBadgeText: 'text-red-300' },
+              { key: 'improvement', label: 'Improvement', tip: 'View all improvement suggestions', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', darkBadgeBg: 'bg-orange-900/40', darkBadgeText: 'text-orange-300' },
+              { key: 'integration', label: 'Integration', tip: 'View all integration requests', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', darkBadgeBg: 'bg-purple-900/40', darkBadgeText: 'text-purple-300' },
             ].map((tab) => {
               const isActive = typeFilter === tab.key;
               const count = tab.key === 'all' ? baseFilteredPosts.length : baseFilteredPosts.filter(p => p.type === tab.key).length;
               return (
-                <button key={tab.key}
+                <Tooltip key={tab.key} title={tab.tip}>
+                <button
                   ref={(el) => { tabsRef.current[tab.key] = el; }}
                   onClick={() => { setTypeFilter(tab.key); setPage(0); }}
                   className={`flex items-center gap-1.5 pb-3 text-sm font-semibold transition-colors cursor-pointer ${
@@ -572,6 +573,7 @@ export default function AdminFeedback() {
                     d ? `${tab.darkBadgeBg} ${tab.darkBadgeText}` : `${tab.badgeBg} ${tab.badgeText}`
                   }`}>{count}</span>
                 </button>
+                </Tooltip>
               );
             })}
             {/* Sliding indicator */}
@@ -591,7 +593,7 @@ export default function AdminFeedback() {
           {selectedPosts.size > 0 && (
             <div className={`absolute top-0 right-0 z-10 flex items-center ${d ? 'bg-gray-700/50' : 'bg-gray-50'}`}
               style={{ left: '44px', height: '56.5px', paddingLeft: '16px' }}>
-              <span className={`text-sm font-semibold ${d ? 'text-blue-300' : 'text-blue-600'}`}>{selectedPosts.size} selected</span>
+              <span className={`text-sm font-semibold ${d ? 'text-emerald-300' : 'text-emerald-600'}`}>{selectedPosts.size} selected</span>
             </div>
           )}
           <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
@@ -613,8 +615,8 @@ export default function AdminFeedback() {
                     </div>
                   </div>
                 </th>
-                {['Upvote', 'Title', 'Status', 'Board', 'Type', 'Actions'].map((h, i) => (
-                  <th key={h}
+                {[{ label: 'Upvote', tip: 'Total upvotes received' }, { label: 'Title', tip: 'Title of the post or entry' }, { label: 'Status', tip: 'Current status of the item' }, { label: 'Board', tip: 'Board name this item belongs to' }, { label: 'Type', tip: 'Category type of the item' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
+                  <th key={h.label}
                     className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                     style={{
                       fontSize: '14px',
@@ -625,7 +627,7 @@ export default function AdminFeedback() {
                     <div style={{
                       paddingLeft: i === 0 ? '12px' : '16px',
                       paddingRight: i === 5 ? '24px' : '16px',
-                    }}>{h}</div>
+                    }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
                   </th>
                 ))}
               </tr>
@@ -635,7 +637,7 @@ export default function AdminFeedback() {
                 <tr>
                   <td colSpan={7}>
                     <div className={`flex items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
-                      <div className="w-8 h-8 border-[3px] border-gray-200 border-t-[#0c68e9] rounded-full animate-spin" />
+                      <div className="w-8 h-8 border-[3px] border-gray-200 border-t-[#059669] rounded-full animate-spin" />
                     </div>
                   </td>
                 </tr>
@@ -820,14 +822,14 @@ export default function AdminFeedback() {
           <div className="flex items-center justify-between px-6 py-3">
               <div className="flex items-center gap-3">
                 <button onClick={() => setDenseMode(!denseMode)}
-                  className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                  className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                 </button>
-                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                  <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                   <div className="relative" ref={rowsDropdownRef}>
                     <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                       className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
@@ -849,9 +851,9 @@ export default function AdminFeedback() {
                     )}
                   </div>
                 </div>
-                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+                <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                   {sortedPosts.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, sortedPosts.length)}` : '0–0'} of {sortedPosts.length}
-                </span>
+                </span></Tooltip>
                 <div className="flex gap-1">
                   <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                     className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
@@ -926,7 +928,7 @@ export default function AdminFeedback() {
                   Cancel
                 </button>
                 <LoadingButton onClick={() => exportPostsCSV(postsForExport)} disabled={postsForExport.length === 0 || exporting} loading={exporting}
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-[#0c68e9] text-white hover:bg-[#0b5dd0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-[#059669] text-white hover:bg-[#047857] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   <Download className="w-4 h-4" /> Export
                 </LoadingButton>
               </div>
@@ -1039,7 +1041,7 @@ export default function AdminFeedback() {
                   <button onClick={() => { setShowCreateModal(false); setFormErrors({}); }}
                     className={`px-5 py-2.5 text-sm font-medium rounded-lg border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancel</button>
                   <LoadingButton onClick={() => handleCreatePost()} loading={creating}
-                    className="px-5 py-2.5 bg-[#0C68E9] text-white text-sm font-semibold rounded-lg hover:bg-[#0b5dd0] transition-colors disabled:opacity-70">Publish Post</LoadingButton>
+                    className="px-5 py-2.5 bg-[#059669] text-white text-sm font-semibold rounded-lg hover:bg-[#047857] transition-colors disabled:opacity-70">Publish Post</LoadingButton>
                 </div>
               </div>
             </div>
@@ -1119,7 +1121,7 @@ export default function AdminFeedback() {
                   <button onClick={() => { setShowEditModal(false); setSelectedPost(null); setPostContent(''); }}
                     className={`px-5 py-2.5 text-sm font-medium rounded-lg border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancel</button>
                   <LoadingButton loading={updating} onClick={handleUpdatePost}
-                    className="px-5 py-2.5 bg-[#0C68E9] text-white text-sm font-semibold rounded-lg hover:bg-[#0b5dd0] transition-colors disabled:opacity-70">Save Changes</LoadingButton>
+                    className="px-5 py-2.5 bg-[#059669] text-white text-sm font-semibold rounded-lg hover:bg-[#047857] transition-colors disabled:opacity-70">Save Changes</LoadingButton>
                 </div>
               </div>
             </div>

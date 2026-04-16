@@ -8,6 +8,7 @@ import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface Board {
   id: string;
@@ -239,15 +240,16 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
           {/* Type Tabs */}
           <div className={`relative flex items-end border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ height: '48px', paddingLeft: '24px', gap: '40px' }}>
             {[
-              { key: 'all', label: 'All', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
-              { key: 'new', label: 'New', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', darkBadgeBg: 'bg-emerald-900/40', darkBadgeText: 'text-emerald-300' },
-              { key: 'improved', label: 'Improved', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
-              { key: 'fixed', label: 'Fixed', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', darkBadgeBg: 'bg-orange-900/40', darkBadgeText: 'text-orange-300' },
+              { key: 'all', label: 'All', tip: 'View all changelog entries', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
+              { key: 'new', label: 'New', tip: 'View new feature entries', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', darkBadgeBg: 'bg-emerald-900/40', darkBadgeText: 'text-emerald-300' },
+              { key: 'improved', label: 'Improved', tip: 'View improved feature entries', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
+              { key: 'fixed', label: 'Fixed', tip: 'View bug fix entries', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', darkBadgeBg: 'bg-orange-900/40', darkBadgeText: 'text-orange-300' },
             ].map((tab) => {
               const isActive = typeTabFilter === tab.key;
               const count = tab.key === 'all' ? entries.length : entries.filter(e => e.type === tab.key).length;
               return (
-                <button key={tab.key} ref={(el) => { tabsRef.current[tab.key] = el; }}
+                <Tooltip key={tab.key} title={tab.tip}>
+                <button ref={(el) => { tabsRef.current[tab.key] = el; }}
                   onClick={() => { setTypeTabFilter(tab.key); setPage(0); }}
                   className={`flex items-center gap-1.5 pb-3 text-sm font-semibold transition-colors ${
                     isActive ? (d ? 'text-white' : 'text-gray-900') : (d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')
@@ -257,6 +259,7 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                     d ? `${tab.darkBadgeBg} ${tab.darkBadgeText}` : `${tab.badgeBg} ${tab.badgeText}`
                   }`}>{count}</span>
                 </button>
+                </Tooltip>
               );
             })}
             <div className={`absolute bottom-0 h-0.5 ${d ? 'bg-white' : 'bg-gray-900'}`}
@@ -266,14 +269,14 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
           <table className="w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-                {['Title', 'Type', 'Status', 'Boards', 'Likes', 'Author', 'Created', 'Actions'].map((h, i) => (
-                  <th key={h} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
+                {[{ label: 'Title', tip: 'Title of the post or entry' }, { label: 'Type', tip: 'Category type of the item' }, { label: 'Status', tip: 'Current status of the item' }, { label: 'Boards', tip: 'Boards associated with this item' }, { label: 'Likes', tip: 'Total number of likes received' }, { label: 'Author', tip: 'User who created this item' }, { label: 'Created', tip: 'Date when this item was created' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
+                  <th key={h.label} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                     style={{
                       fontSize: '14px', color: d ? undefined : '#1C252E',
                       textAlign: i === 4 ? 'center' as const : i === 7 ? 'right' as const : 'left' as const,
                       width: i === 0 ? '280px' : i === 1 ? '180px' : i === 2 ? '180px' : i === 3 ? '150px' : i === 4 ? '120px' : i === 5 ? '200px' : i === 6 ? '180px' : i === 7 ? '70px' : undefined,
                     }}>
-                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 7 ? '24px' : '16px' }}>{h}</div>
+                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 7 ? '24px' : '16px' }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
                   </th>
                 ))}
               </tr>
@@ -362,14 +365,14 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
           <div className="flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-3">
               <button onClick={() => setDenseMode(!denseMode)}
-                className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#0c68e9]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
+                className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
               </button>
-              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Dense</span>
+              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>Rows per page:</span>
+                <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                 <div className="relative">
                   <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                     className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
@@ -390,9 +393,9 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                   )}
                 </div>
               </div>
-              <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
+              <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                 {filteredEntries.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, filteredEntries.length)}` : '0–0'} of {filteredEntries.length}
-              </span>
+              </span></Tooltip>
               <div className="flex gap-1">
                 <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                   className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
@@ -521,7 +524,7 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                 <button onClick={() => setShowModal(false)}
                   className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
                 <LoadingButton loading={creating} onClick={handleCreate}
-                  className="px-3 py-1.5 bg-[#0C68E9] text-white text-sm font-medium hover:bg-[#0b5dd0] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Next</LoadingButton>
+                  className="px-3 py-1.5 bg-[#059669] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Next</LoadingButton>
               </div>
             </div>
           </div>

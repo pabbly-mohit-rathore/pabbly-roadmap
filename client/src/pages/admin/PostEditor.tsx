@@ -552,7 +552,7 @@ export default function PostEditor() {
               <input type="text" value={fontColor}
                 onChange={(e) => { setFontColor(e.target.value); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) editor?.chain().focus().setColor(e.target.value).run(); }}
                 className={`flex-1 px-2 py-1 rounded text-xs border font-mono ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`} />
-              <button onClick={() => setShowColorPicker(false)} className="px-2 py-1 text-xs bg-[#0c68e9] text-white rounded hover:bg-[#0b5dd0]">Done</button>
+              <button onClick={() => setShowColorPicker(false)} className="px-2 py-1 text-xs bg-[#059669] text-white rounded hover:bg-[#047857]">Done</button>
             </div>
           </div>
         </>
@@ -573,7 +573,7 @@ export default function PostEditor() {
               <input type="text" value={highlightColor}
                 onChange={(e) => { setHighlightColor(e.target.value); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) editor?.chain().focus().toggleHighlight({ color: e.target.value }).run(); }}
                 className={`flex-1 px-2 py-1 rounded text-xs border font-mono ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`} />
-              <button onClick={() => setShowHighlightPicker(false)} className="px-2 py-1 text-xs bg-[#0c68e9] text-white rounded hover:bg-[#0b5dd0]">Done</button>
+              <button onClick={() => setShowHighlightPicker(false)} className="px-2 py-1 text-xs bg-[#059669] text-white rounded hover:bg-[#047857]">Done</button>
             </div>
           </div>
         </>
