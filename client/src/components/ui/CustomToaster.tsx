@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Toaster, resolveValue, toast as hotToast } from 'react-hot-toast';
 import type { Toast } from 'react-hot-toast';
-import { Check, X as XIcon, AlertTriangle, Info } from 'lucide-react';
+import { Check, X as XIcon } from 'lucide-react';
 
 function getConfig(type: string) {
   if (type === 'success') return { icon: Check, bg: '#22c55e' };
   if (type === 'error') return { icon: XIcon, bg: '#ef4444' };
-  return { icon: Info, bg: '#64748b' };
+  return { icon: Check, bg: '#64748b' };
 }
 
 function SnackbarToast({ t }: { t: Toast }) {
