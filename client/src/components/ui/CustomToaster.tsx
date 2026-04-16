@@ -5,9 +5,9 @@ import { Icon } from '@iconify/react';
 import { X as XIcon } from 'lucide-react';
 
 function getConfig(type: string) {
-  if (type === 'success') return { icon: 'icon-park-solid:check-one', bg: '#c8fad6', border: '#5be49b', iconColor: '#118d57' };
-  if (type === 'error') return { icon: 'icon-park-solid:close-one', bg: '#ffe4de', border: '#ffac82', iconColor: '#b71d18' };
-  return { icon: 'icon-park-solid:check-one', bg: '#e0e0e0', border: '#bdbdbd', iconColor: '#616161' };
+  if (type === 'success') return { icon: 'icon-park-solid:check-one', bg: '#118d57', border: '#118d57', iconColor: '#ffffff' };
+  if (type === 'error') return { icon: 'icon-park-solid:close-one', bg: '#b71d18', border: '#b71d18', iconColor: '#ffffff' };
+  return { icon: 'icon-park-solid:check-one', bg: '#616161', border: '#616161', iconColor: '#ffffff' };
 }
 
 function SnackbarToast({ t }: { t: Toast }) {
@@ -57,7 +57,7 @@ export default function CustomToaster() {
   return (
     <Toaster
       position="top-right"
-      containerStyle={{ top: 16, right: 16 }}
+      containerStyle={{ top: 16, right: 16, pointerEvents: 'none' }}
       toastOptions={{
         duration: 4000,
         style: { background: 'transparent', boxShadow: 'none', padding: 0, margin: 0 },
