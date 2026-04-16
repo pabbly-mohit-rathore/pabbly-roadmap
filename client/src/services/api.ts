@@ -40,6 +40,13 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Team access revoked — server sends specific code when boardMember deleted
+    if (error.response?.status === 403 && error.response?.data?.code === 'TEAM_ACCESS_REVOKED') {
+      localStorage.removeItem('teamAccess');
+      window.location.href = '/user/roadmap';
+      return Promise.reject(error);
+    }
+
     // Skip refresh for auth endpoints
     if (
       error.response?.status !== 401 ||
