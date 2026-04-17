@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import LoadingButton from './LoadingButton';
+import Tooltip from './Tooltip';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -27,7 +28,7 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'De
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100] p-4" onClick={onCancel}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onCancel}>
       <div className={`rounded-xl w-full shadow-xl ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '500px' }}
         onClick={(e) => e.stopPropagation()}>
         <div style={{ padding: '28px' }}>
@@ -39,10 +40,10 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'De
           </div>
           <p className={`text-sm leading-relaxed ${d ? 'text-gray-400' : 'text-gray-500'}`}>{message}</p>
           <div className="flex gap-3 justify-end mt-8">
-            <button onClick={onCancel} disabled={loading}
+            <Tooltip title="Click here to cancel and close."><button onClick={onCancel} disabled={loading}
               className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}>{cancelLabel}</button>
+              }`}>{cancelLabel}</button></Tooltip>
             <LoadingButton onClick={onConfirm} loading={loading}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60">
               {confirmLabel}

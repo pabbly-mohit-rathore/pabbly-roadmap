@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ArrowUpRight } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import Tooltip from '../../components/ui/Tooltip';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
@@ -49,6 +50,7 @@ export default function UserRoadmapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('');
   const [columnSearches, setColumnSearches] = useState<Record<string, string>>({});
+  const [showFilters, setShowFilters] = useState(false);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -110,20 +112,33 @@ export default function UserRoadmapPage() {
     <UserLayout>
       <div>
         {/* Header */}
-        <div className="mb-6">
-          <h1 className={`text-2xl font-bold mb-2 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>
-            Roadmap
-          </h1>
-          <p className={`text-base ${
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-          }`}>
-            View your product roadmap by status
-          </p>
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className={`text-2xl font-bold mb-2 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
+              Roadmap
+            </h1>
+            <p className={`text-base ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>
+              View your product roadmap by status
+            </p>
+          </div>
+          <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+              showFilters
+                ? 'border-[#059669] text-[#059669]'
+                : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
+            }`}
+            style={{ height: '48px' }}>
+            <Icon icon="iconoir:filter" width={16} height={16} />
+            Filters
+          </button></Tooltip>
         </div>
 
         {/* Filter Bar */}
+        {showFilters && (
         <div className={`p-4 rounded-lg border mb-4 ${
           theme === 'dark'
             ? 'bg-gray-800 border-gray-700'
@@ -172,20 +187,21 @@ export default function UserRoadmapPage() {
 
             {/* Clear Filters */}
             {hasActiveFilters && (
-              <button onClick={clearFilters}
+              <Tooltip title="Click here to clear all filters."><button onClick={clearFilters}
                 className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors"
                 style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
                 <X className="w-5 h-5" /> Clear Filters
-              </button>
+              </button></Tooltip>
             )}
           </div>
         </div>
+        )}
 
         {/* Kanban Board */}
         {loading ? (
           <LoadingBar />
         ) : (
-          <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 230px)' }}>
+          <div className="overflow-x-auto pb-4" style={{ height: showFilters ? 'calc(100vh - 300px)' : 'calc(100vh - 210px)' }}>
             <div className="grid gap-4 h-full" style={{
               gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
               height: '100%',

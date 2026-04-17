@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Edit2, Send, X, Search, MoreVertical, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
@@ -45,6 +46,7 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [typeTabFilter, setTypeTabFilter] = useState('all');
@@ -179,9 +181,9 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
     if (el) {
       const parent = el.parentElement;
       if (parent) {
-        const parentRect = parent.getBoundingClientRect();
-        const elRect = el.getBoundingClientRect();
-        setIndicatorStyle({ left: elRect.left - parentRect.left, width: elRect.width });
+        
+        
+        setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
       }
     }
   }, [typeTabFilter, loading]);
@@ -196,10 +198,23 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
 
   return (
     <div>
-      {/* Count */}
-      <p className={`text-sm mb-4 ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredEntries.length} entries</p>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{filteredEntries.length} entries</p>
+        <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
+          className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+            showFilters
+              ? 'border-[#059669] text-[#059669]'
+              : d ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
+          }`}
+          style={{ height: '48px' }}>
+          <Icon icon="iconoir:filter" width={16} height={16} />
+          Filters
+        </button></Tooltip>
+      </div>
 
       {/* Filters */}
+      {showFilters && (
       <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="flex flex-wrap items-center gap-4">
           <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[180px] max-w-[380px] ${
@@ -217,14 +232,15 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
             options={[{value:'',label:'All Types'},{value:'new',label:'New'},{value:'improved',label:'Improved'},{value:'fixed',label:'Fixed'}]}
             onChange={(v) => { setFilterType(v); setPage(0); }} />
           {hasFilters && (
-            <button onClick={() => { setSearchQuery(''); setFilterStatus(''); setFilterType(''); setPage(0); }}
+            <Tooltip title="Click here to clear all filters."><button onClick={() => { setSearchQuery(''); setFilterStatus(''); setFilterType(''); setPage(0); }}
               className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors"
               style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
               <X className="w-5 h-5" /> Clear Filters
-            </button>
+            </button></Tooltip>
           )}
         </div>
       </div>
+      )}
 
       {/* Table */}
       {loading ? (
@@ -313,32 +329,32 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                     </td>
                     <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }} onClick={(e) => e.stopPropagation()}>
                       <div className="relative inline-block">
-                        <button onClick={() => setOpenMenuId(openMenuId === entry.id ? null : entry.id)}
+                        <Tooltip title="Click to see options."><button onClick={() => setOpenMenuId(openMenuId === entry.id ? null : entry.id)}
                           className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
                           <MoreVertical className="w-4 h-4 text-gray-400" />
-                        </button>
+                        </button></Tooltip>
                         {openMenuId === entry.id && (
                           <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${
                             d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'
                           }`} style={{ minWidth: '160px' }}>
                             <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
-                            <button onClick={() => { navigate(`/admin/changelog/${entry.id}/edit`); setOpenMenuId(null); }}
+                            <Tooltip title="Click here to edit this post."><button onClick={() => { navigate(`/admin/changelog/${entry.id}/edit`); setOpenMenuId(null); }}
                               className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
-                              <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
-                            </button>
+                              <Edit2 className="w-[18px] h-[18px] text-amber-500" />  Edit
+                            </button></Tooltip>
                             {entry.status === 'draft' && (
                               <>
-                                <button onClick={() => { handlePublish(entry.id); setOpenMenuId(null); }}
+                                <Tooltip title="Click here to publish this entry."><button onClick={() => { handlePublish(entry.id); setOpenMenuId(null); }}
                                   className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-green-400 hover:bg-green-500/10' : 'text-green-600 hover:bg-green-50'}`}>
-                                  <Send className="w-[18px] h-[18px]" /> Publish
-                                </button>
+                                  <Send className="w-[18px] h-[18px]" />  Publish
+                                </button></Tooltip>
                               </>
                             )}
                             <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
-                            <button onClick={() => { setDeleteConfirm({ id: entry.id, title: entry.title }); setOpenMenuId(null); }}
+                            <Tooltip title="Click here to delete this post."><button onClick={() => { setDeleteConfirm({ id: entry.id, title: entry.title }); setOpenMenuId(null); }}
                               className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
-                              <Trash2 className="w-[18px] h-[18px]" /> Delete
-                            </button>
+                              <Trash2 className="w-[18px] h-[18px]" />  Delete
+                            </button></Tooltip>
                           </div>
                         )}
                       </div>
@@ -364,30 +380,30 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
           {/* Pagination */}
           <div className="flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-3">
-              <button onClick={() => setDenseMode(!denseMode)}
+              <Tooltip title="Toggle compact view."><button onClick={() => setDenseMode(!denseMode)}
                 className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-              </button>
+              </button></Tooltip>
               <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                 <div className="relative">
-                  <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
+                  <Tooltip title="Click to change rows per page."><button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                     className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
                     {rowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${rowsDropOpen ? 'rotate-180' : ''}`} />
-                  </button>
+                  </button></Tooltip>
                   {rowsDropOpen && (
                     <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${
                       d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
                     }`}>
                       {[10, 25, 50, 100].map(n => (
-                        <button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
+                        <Tooltip title="Select the number of rows per page."><button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
                           className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
                             rowsPerPage === n ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
                             : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
-                          }`}>{n}</button>
+                          }`}>{n}</button></Tooltip>
                       ))}
                     </div>
                   )}
@@ -397,14 +413,14 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                 {filteredEntries.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, filteredEntries.length)}` : '0–0'} of {filteredEntries.length}
               </span></Tooltip>
               <div className="flex gap-1">
-                <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
+                <Tooltip title="Go to the previous page."><button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                   className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                   <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
+                </button></Tooltip>
+                <Tooltip title="Go to the next page."><button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
                   className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                   <ChevronRight className="w-4 h-4" />
-                </button>
+                </button></Tooltip>
               </div>
             </div>
           </div>
@@ -426,13 +442,13 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
 
       {/* Create Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
             <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Create Changelog Entry</h2>
-              <button onClick={() => setShowModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
+              <Tooltip title="Click here to close."><button onClick={() => setShowModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
-              </button>
+              </button></Tooltip>
             </div>
             <div className="space-y-5" style={{ padding: '24px' }}>
               {/* Title */}
@@ -521,8 +537,8 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
               </div>
 
               <div className="flex gap-3 justify-end pt-2">
-                <button onClick={() => setShowModal(false)}
-                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
+                <Tooltip title="Click here to cancel and close."><button onClick={() => setShowModal(false)}
+                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button></Tooltip>
                 <LoadingButton loading={creating} onClick={handleCreate}
                   className="px-3 py-1.5 bg-[#059669] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Next</LoadingButton>
               </div>

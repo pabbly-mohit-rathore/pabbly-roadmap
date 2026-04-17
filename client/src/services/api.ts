@@ -2,8 +2,11 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  timeout: 30000, // 30s timeout
+  timeout: 120000, // 120s — Render free tier cold-starts + Neon DB wake-up can take 30-60s
 });
+
+// Retry config for timeout/network errors (Render cold start + Neon wake-up)
+const MAX_RETRIES = 1;
 
 // Request interceptor - har request me token aur team access info lagao
 api.interceptors.request.use((config) => {
@@ -66,6 +69,16 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+
+    // Retry on timeout or network error (Render cold start / Neon DB wake-up)
+    if (
+      (error.code === 'ECONNABORTED' || !error.response) &&
+      originalRequest &&
+      (originalRequest._retryCount || 0) < MAX_RETRIES
+    ) {
+      originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+      return api(originalRequest);
+    }
 
     // Account banned — only show dialog when user tries to perform an action (write operation)
     if (error.response?.status === 403 && error.response?.data?.code === 'ACCOUNT_BANNED') {

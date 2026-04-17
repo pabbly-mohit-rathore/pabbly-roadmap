@@ -14,7 +14,6 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const BoardPage = lazy(() => import('./pages/BoardPage'));
 const PostDetailPage = lazy(() => import('./pages/PostDetailPage'));
 const RoadmapPage = lazy(() => import('./pages/RoadmapPage'));
-const InvitePage = lazy(() => import('./pages/InvitePage'));
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
 const AdminFeedback = lazy(() => import('./pages/admin/Feedback'));
 const AdminRoadmap = lazy(() => import('./pages/admin/Roadmap'));
@@ -49,6 +48,12 @@ function App() {
     }
   }, [theme]);
 
+  // Warm up backend on app load (Render cold start can take 30-60s)
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    fetch(`${apiBase.replace('/api', '')}/health`).catch(() => {});
+  }, []);
+
   return (
     <BrowserRouter>
       <Suspense fallback={null}>
@@ -56,7 +61,6 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={!isAuthenticated ? <LoginPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/roadmap" />} />
           <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : isAdmin ? <Navigate to="/admin/dashboard" /> : <Navigate to="/user/roadmap" />} />
-          <Route path="/invite/:token" element={<InvitePage />} />
 
           {/* Root redirect */}
           <Route path="/" element={

@@ -3,6 +3,7 @@ import { PauseCircle, Rocket } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import CommentEditor from '../CommentEditor';
 import LoadingButton from './LoadingButton';
+import Tooltip from './Tooltip';
 
 interface StatusReasonDialogProps {
   open: boolean;
@@ -58,7 +59,7 @@ export default function StatusReasonDialog({ open, status, onConfirm, onCancel, 
   const canSubmit = plainTextLength(reasonHtml) >= 3 && !loading;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100] p-4" onClick={onCancel}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onCancel}>
       <div className={`rounded-xl w-full shadow-xl ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}
         onClick={(e) => e.stopPropagation()}>
         <div style={{ padding: '28px' }}>
@@ -90,10 +91,10 @@ export default function StatusReasonDialog({ open, status, onConfirm, onCancel, 
           />
 
           <div className="flex gap-3 justify-end mt-6">
-            <button onClick={onCancel} disabled={loading}
+            <Tooltip title="Click here to cancel and close."><button onClick={onCancel} disabled={loading}
               className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 ${
                 d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}>Cancel</button>
+              }`}>Cancel</button></Tooltip>
             <LoadingButton onClick={() => canSubmit && onConfirm(reasonHtml)} disabled={!canSubmit} loading={loading}
               className={`px-4 py-2 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${confirmBtn}`}>
               {confirmLabel}

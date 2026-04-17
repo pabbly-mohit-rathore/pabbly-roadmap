@@ -3,6 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import Tooltip from '../../components/ui/Tooltip';
 
 export default function ChangePasswordSettings() {
   const d = useThemeStore((state) => state.theme) === 'dark';
@@ -62,10 +63,10 @@ export default function ChangePasswordSettings() {
             show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} onChange={v => setData({ ...data, confirmPassword: v })} />
         </div>
         <div className="mt-6 flex justify-end">
-          <button onClick={handleSubmit} disabled={saving}
+          <Tooltip title="Click here to submit."><button onClick={handleSubmit} disabled={saving}
             className="px-6 py-2.5 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors">
             {saving ? 'Updating...' : 'Update Password'}
-          </button>
+          </button></Tooltip>
         </div>
       </div>
     </div>

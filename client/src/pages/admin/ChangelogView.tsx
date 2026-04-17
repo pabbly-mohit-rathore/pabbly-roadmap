@@ -5,6 +5,7 @@ import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface ChangelogEntry {
   id: string;
@@ -83,12 +84,12 @@ export default function ChangelogView() {
 
         <div className="flex items-center gap-2">
           {user?.role === 'admin' && entry.status === 'draft' && (
-            <button onClick={() => navigate(`/admin/changelog/${id}/edit`)}
+            <Tooltip title="Click here to open the editor."><button onClick={() => navigate(`/admin/changelog/${id}/edit`)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition ${
                 theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-200 hover:bg-gray-50'
               }`}>
-              <Edit2 className="w-4 h-4" /> Edit
-            </button>
+              <Edit2 className="w-4 h-4" />  Edit
+            </button></Tooltip>
           )}
 
           <button onClick={handleLike}

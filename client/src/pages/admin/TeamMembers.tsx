@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, X, XCircle, Users, Shield, UserCog, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
@@ -7,6 +8,7 @@ import LoadingButton from '../../components/ui/LoadingButton';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import toast from 'react-hot-toast';
 import Tooltip from '../../components/ui/Tooltip';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface TeamMember {
   id: string;
@@ -55,6 +57,8 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   const [adding, setAdding] = useState(false);
   const [updatingAccess, setUpdatingAccess] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeConfirm, setRemoveConfirm] = useState<{ id: string; type: 'member' | 'invitation' } | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -110,13 +114,13 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!confirm('Are you sure you want to remove access for this team member?')) return;
     setRemovingId(memberId);
     try {
       const res = await api.delete(`/team-members/${memberId}`);
       if (res.data.success) {
         toast.success('Access removed successfully');
         setOpenMenuId(null);
+        setRemoveConfirm(null);
         fetchAll();
       }
     } catch (error) {
@@ -127,12 +131,12 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   };
 
   const handleCancelInvitation = async (invitationId: string) => {
-    if (!confirm('Are you sure you want to cancel this invitation?')) return;
     setRemovingId(invitationId);
     try {
       const res = await api.delete(`/team-members/invitations/${invitationId}`);
       if (res.data.success) {
         toast.success('Invitation cancelled');
+        setRemoveConfirm(null);
         fetchAll();
       }
     } catch (error) {
@@ -232,8 +236,23 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
         })}
       </div>
 
+      {/* Filter Toggle */}
+      <div className="flex items-center justify-end mb-4">
+        <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
+          className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+            showFilters
+              ? 'border-[#059669] text-[#059669]'
+              : d ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
+          }`}
+          style={{ height: '48px' }}>
+          <Icon icon="iconoir:filter" width={16} height={16} />
+          Filters
+        </button></Tooltip>
+      </div>
+
       {/* Filter Bar */}
-      <div className={`p-4 rounded-lg border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      {showFilters && (
+      <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="flex flex-wrap items-center gap-4">
           <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[180px] max-w-[380px] ${d ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`} style={{ padding: '0 14px', height: '48px' }}>
             <Search className="w-4 h-4 text-gray-400" />
@@ -247,6 +266,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
             onChange={(v) => { setAccessFilter(v); setTmPage(0); }} />
         </div>
       </div>
+      )}
 
       {/* Team Members Table */}
       <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
@@ -301,19 +321,18 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 </td>
                 <td className={`${tmDenseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }}>
                   <div className="relative inline-block">
-                    <button onClick={() => setOpenMenuId(openMenuId === member.id ? null : member.id)}
+                    <Tooltip title="Click to see options."><button onClick={() => setOpenMenuId(openMenuId === member.id ? null : member.id)}
                       className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
                       <MoreVertical className="w-4 h-4 text-gray-400" />
-                    </button>
+                    </button></Tooltip>
                     {openMenuId === member.id && (
                       <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 whitespace-nowrap ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px' }}>
                         <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
                         {member.status === 'pending' ? (
-                          <button onClick={() => { setOpenMenuId(null); handleCancelInvitation(member.id); }}
-                            disabled={removingId === member.id}
-                            className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'} ${removingId === member.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                            <XCircle className="w-[18px] h-[18px] shrink-0" /> {removingId === member.id ? 'Cancelling...' : 'Cancel Invite'}
-                          </button>
+                          <Tooltip title="Click here to cancel this invitation."><button onClick={() => { setOpenMenuId(null); setRemoveConfirm({ id: member.id, type: 'invitation' }); }}
+                            className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
+                            <XCircle className="w-[18px] h-[18px] shrink-0" />  Cancel Invite
+                          </button></Tooltip>
                         ) : (
                           <>
                             <button onClick={() => {
@@ -325,11 +344,10 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                               <Edit2 className="w-[18px] h-[18px] shrink-0 text-amber-500" /> Update Access
                             </button>
                             <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
-                            <button onClick={() => handleRemoveMember(member.id)}
-                              disabled={removingId === member.id}
-                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'} ${removingId === member.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                              <Trash2 className="w-[18px] h-[18px] shrink-0" /> {removingId === member.id ? 'Removing...' : 'Remove Access'}
-                            </button>
+                            <Tooltip title="Click here to remove this member."><button onClick={() => { setOpenMenuId(null); setRemoveConfirm({ id: member.id, type: 'member' }); }}
+                              className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
+                              <Trash2 className="w-[18px] h-[18px] shrink-0" />  Remove Access
+                            </button></Tooltip>
                           </>
                         )}
                       </div>
@@ -358,28 +376,28 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
         {/* Pagination */}
         <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <button onClick={() => setTmDenseMode(!tmDenseMode)}
+            <Tooltip title="Toggle compact view."><button onClick={() => setTmDenseMode(!tmDenseMode)}
               className={`relative w-9 h-5 rounded-full transition-colors ${tmDenseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${tmDenseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-            </button>
+            </button></Tooltip>
             <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
               <div className="relative">
-                <button onClick={() => setTmRowsDropOpen(!tmRowsDropOpen)}
+                <Tooltip title="Click to change rows per page."><button onClick={() => setTmRowsDropOpen(!tmRowsDropOpen)}
                   className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
                   {tmRowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${tmRowsDropOpen ? 'rotate-180' : ''}`} />
-                </button>
+                </button></Tooltip>
                 {tmRowsDropOpen && (
                   <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
                     {[10, 25, 50, 100].map(n => (
-                      <button key={n} onClick={() => { setTmRowsPerPage(n); setTmRowsDropOpen(false); setTmPage(0); }}
+                      <Tooltip title="Select the number of rows per page."><button key={n} onClick={() => { setTmRowsPerPage(n); setTmRowsDropOpen(false); setTmPage(0); }}
                         className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
                           tmRowsPerPage === n ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
                           : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
-                        }`}>{n}</button>
+                        }`}>{n}</button></Tooltip>
                     ))}
                   </div>
                 )}
@@ -389,14 +407,14 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
               {filteredMembers.length > 0 ? `${tmPage * tmRowsPerPage + 1}–${Math.min((tmPage + 1) * tmRowsPerPage, filteredMembers.length)}` : '0–0'} of {filteredMembers.length}
             </span></Tooltip>
             <div className="flex gap-1">
-              <button onClick={() => setTmPage(Math.max(0, tmPage - 1))} disabled={tmPage === 0}
+              <Tooltip title="Go to the previous page."><button onClick={() => setTmPage(Math.max(0, tmPage - 1))} disabled={tmPage === 0}
                 className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                 <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button onClick={() => setTmPage(Math.min(tmTotalPages - 1, tmPage + 1))} disabled={tmPage >= tmTotalPages - 1}
+              </button></Tooltip>
+              <Tooltip title="Go to the previous page."><button onClick={() => setTmPage(Math.min(tmTotalPages - 1, tmPage + 1))} disabled={tmPage >= tmTotalPages - 1}
                 className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                 <ChevronRight className="w-4 h-4" />
-              </button>
+              </button></Tooltip>
             </div>
           </div>
         </div>
@@ -407,13 +425,13 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
 
       {/* Add Team Member Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
             <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Add Team Member</h2>
-              <button onClick={() => setShowAddModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
+              <Tooltip title="Click here to close."><button onClick={() => setShowAddModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
-              </button>
+              </button></Tooltip>
             </div>
             <div className="space-y-5" style={{ padding: '24px' }}>
               {/* Email */}
@@ -454,8 +472,8 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
               </div>
 
               <div className="flex gap-3 justify-end pt-2">
-                <button onClick={() => { setShowAddModal(false); setFormData({ email: '', boardId: '', accessLevel: 'manager' }); }}
-                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
+                <Tooltip title="Click here to add a new member."><button onClick={() => { setShowAddModal(false); setFormData({ email: '', boardId: '', accessLevel: 'manager' }); }}
+                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button></Tooltip>
                 <LoadingButton onClick={handleAddMember} loading={adding}
                   className="px-3 py-1.5 bg-[#009966] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Add Member</LoadingButton>
               </div>
@@ -466,13 +484,13 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
 
       {/* Update Access Modal */}
       {showUpdateModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
             <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Update Access</h2>
-              <button onClick={() => setShowUpdateModal(null)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
+              <Tooltip title="Click here to update access level."><button onClick={() => setShowUpdateModal(null)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
-              </button>
+              </button></Tooltip>
             </div>
             <div className="space-y-5" style={{ padding: '24px' }}>
               {/* Member Info (read-only) */}
@@ -504,8 +522,8 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
               </div>
 
               <div className="flex gap-3 justify-end pt-2">
-                <button onClick={() => setShowUpdateModal(null)}
-                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
+                <Tooltip title="Click here to update access level."><button onClick={() => setShowUpdateModal(null)}
+                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button></Tooltip>
                 <LoadingButton onClick={handleUpdateAccess} loading={updatingAccess}
                   className="px-3 py-1.5 bg-[#009966] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update Access</LoadingButton>
               </div>
@@ -513,6 +531,21 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!removeConfirm}
+        title={removeConfirm?.type === 'invitation' ? 'Cancel Invitation' : 'Remove Team Member'}
+        message={removeConfirm?.type === 'invitation'
+          ? 'Are you sure you want to cancel this invitation?'
+          : 'Are you sure you want to remove access for this team member?'}
+        confirmLabel={removeConfirm?.type === 'invitation' ? 'Cancel Invite' : 'Remove'}
+        onConfirm={() => {
+          if (removeConfirm?.type === 'invitation') handleCancelInvitation(removeConfirm.id);
+          else if (removeConfirm) handleRemoveMember(removeConfirm.id);
+        }}
+        onCancel={() => setRemoveConfirm(null)}
+        loading={!!removingId}
+      />
     </div>
   );
 }

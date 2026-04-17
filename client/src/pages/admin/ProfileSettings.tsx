@@ -3,6 +3,7 @@ import { Camera } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import Tooltip from '../../components/ui/Tooltip';
 
 interface UserProfile {
   id: string;
@@ -165,10 +166,10 @@ export default function ProfileSettings() {
 
           {/* Save Button */}
           <div className={`mt-6 pt-5 border-t flex justify-end ${d ? 'border-gray-700' : 'border-gray-100'}`}>
-            <button onClick={handleSave} disabled={saving}
+            <Tooltip title="Click here to save as draft."><button onClick={handleSave} disabled={saving}
               className="px-6 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors">
               {saving ? 'Saving...' : 'Save changes'}
-            </button>
+            </button></Tooltip>
           </div>
         </div>
       </div>

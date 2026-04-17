@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import InputDialog from './ui/InputDialog';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExt from '@tiptap/extension-underline';
@@ -9,7 +10,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading2,
   List, ListOrdered, Code, Link as LinkIcon,
-  Image as ImageIcon, Video, Upload, MousePointerClick,
+  Image as ImageIcon, Video, MousePointerClick,
   AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
 // @ts-expect-error -- JSX module without type declarations
@@ -19,9 +20,9 @@ import LoadingButton from './ui/LoadingButton';
 import { ButtonExtension, type ButtonAttributes } from './ButtonExtension';
 import ButtonConfigModal from './ButtonConfigModal';
 
-function TB({ icon: Icon, action, active, title, dark }: { icon: React.ComponentType<{ className?: string }>; action: () => void; active?: boolean; title: string; dark?: boolean }) {
+function TB({ icon: Icon, action, active, dark }: { icon: React.ComponentType<{ className?: string }>; action: () => void; active?: boolean; title?: string; dark?: boolean }) {
   return (
-    <button onClick={action} title={title} type="button"
+    <button onClick={action} type="button"
       className={`p-1 rounded transition ${
         active
           ? dark ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-900'
@@ -59,6 +60,7 @@ export default function CommentEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showButtonModal, setShowButtonModal] = useState(false);
   const [editingButtonAttrs, setEditingButtonAttrs] = useState<Partial<ButtonAttributes> | undefined>(undefined);
+  const editingButtonPos = useRef<number | null>(null);
   const d = theme === 'dark';
   const isReply = buttonLabel === 'Reply' || compact;
 
@@ -84,7 +86,7 @@ export default function CommentEditor({
       attributes: {
         // When maxEditorHeight is set, override the global .tiptap min-height: 400px
         // so the editor starts compact and grows with content up to max.
-        class: `outline-none px-4 py-3 text-sm ${maxEditorHeight ? '!min-h-0' : (isReply ? 'comment-editor-compact' : 'comment-editor-full')}`,
+        class: `outline-none px-4 py-3 text-sm ${maxEditorHeight ? 'dialog-editor' : (isReply ? 'comment-editor-compact' : 'comment-editor-full')}`,
       },
     },
   });
@@ -109,9 +111,15 @@ export default function CommentEditor({
     editor.commands.clearContent();
   };
 
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+
   const addLink = () => {
-    const url = prompt('Enter URL:');
+    setShowLinkDialog(true);
+  };
+
+  const handleLinkConfirm = (url: string) => {
     if (url && editor) editor.chain().focus().setLink({ href: url }).run();
+    setShowLinkDialog(false);
   };
 
   const addImage = () => fileInputRef.current?.click();
@@ -186,7 +194,14 @@ export default function CommentEditor({
 
   const handleInsertButton = (attrs: ButtonAttributes) => {
     if (!editor) return;
-    editor.chain().focus().insertButton(attrs).run();
+    if (editingButtonPos.current !== null) {
+      // Update existing button node at the saved position
+      const pos = editingButtonPos.current;
+      editor.chain().focus().setNodeSelection(pos).deleteSelection().insertButton(attrs).run();
+      editingButtonPos.current = null;
+    } else {
+      editor.chain().focus().insertButton(attrs).run();
+    }
   };
 
   // Listen for double-click edit events on button nodes
@@ -197,7 +212,14 @@ export default function CommentEditor({
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.attrs) {
-        setEditingButtonAttrs(detail.attrs);
+        const a = detail.attrs;
+        // Normalize booleans — TipTap may store as strings after HTML round-trip
+        setEditingButtonAttrs({
+          ...a,
+          fullWidth: a.fullWidth === true || a.fullWidth === 'true',
+          openInNewTab: a.openInNewTab === true || a.openInNewTab === 'true',
+        });
+        editingButtonPos.current = detail.pos ?? null;
         setShowButtonModal(true);
       }
     };
@@ -205,10 +227,12 @@ export default function CommentEditor({
     return () => el.removeEventListener('edit-button-node', handler);
   }, []);
 
-  const addVideo = () => {
-    const url = prompt('Enter video URL (YouTube/Vimeo):');
+  const [showVideoDialog, setShowVideoDialog] = useState(false);
+
+  const addVideo = () => setShowVideoDialog(true);
+
+  const handleVideoConfirm = (url: string) => {
     if (url && editor) {
-      // Convert YouTube URL to embed
       let embedUrl = url;
       const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
       if (ytMatch) embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
@@ -217,6 +241,7 @@ export default function CommentEditor({
         `<div class="my-2"><iframe src="${embedUrl}" width="100%" height="315" frameborder="0" allowfullscreen style="border-radius: 8px;"></iframe></div>`
       ).run();
     }
+    setShowVideoDialog(false);
   };
 
   if (!editor) return null;
@@ -240,8 +265,7 @@ export default function CommentEditor({
           <TB dark={d} icon={LinkIcon} title="Link" action={addLink} active={editor.isActive('link')} />
           <TB dark={d} icon={ImageIcon} title="Image" action={addImage} />
           <TB dark={d} icon={Video} title="Video" action={addVideo} />
-          <TB dark={d} icon={Upload} title="Upload" action={addImage} />
-          <TB dark={d} icon={MousePointerClick} title="Button" action={() => { setEditingButtonAttrs(undefined); setShowButtonModal(true); }} />
+          <TB dark={d} icon={MousePointerClick} title="Button" action={() => { setEditingButtonAttrs(undefined); editingButtonPos.current = null; setShowButtonModal(true); }} />
           <div className={`w-px h-4 mx-1 ${d ? 'bg-gray-600' : 'bg-gray-200'}`} />
           <TB dark={d} icon={AlignLeft} title="Align Left" action={() => {
             if (editor.isActive('image')) { editor.chain().focus().updateAttributes('image', { align: 'left' }).run(); }
@@ -272,6 +296,24 @@ export default function CommentEditor({
         onClose={() => setShowButtonModal(false)}
         onInsert={handleInsertButton}
         initialAttrs={editingButtonAttrs}
+      />
+
+      <InputDialog
+        open={showLinkDialog}
+        title="Enter URL"
+        placeholder="https://example.com"
+        confirmLabel="Add Link"
+        onConfirm={handleLinkConfirm}
+        onCancel={() => setShowLinkDialog(false)}
+      />
+
+      <InputDialog
+        open={showVideoDialog}
+        title="Enter Video URL"
+        placeholder="https://youtube.com/watch?v=..."
+        confirmLabel="Add Video"
+        onConfirm={handleVideoConfirm}
+        onCancel={() => setShowVideoDialog(false)}
       />
     </div>
   );

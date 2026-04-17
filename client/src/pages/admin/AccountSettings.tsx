@@ -3,6 +3,7 @@ import { LogOut, Trash2 } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import Tooltip from '../../components/ui/Tooltip';
 
 export default function AccountSettings() {
   const d = useThemeStore((state) => state.theme) === 'dark';
@@ -32,9 +33,9 @@ export default function AccountSettings() {
             <p className="text-sm font-bold text-red-600">Delete account permanently</p>
             <p className={`text-xs mt-0.5 ${d ? 'text-red-400/70' : 'text-red-500/70'}`}>This permanently deletes your account. Your posts, comments, and votes will be disassociated.</p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-red-300 text-red-600 hover:bg-red-100 transition-colors shrink-0">
+          <Tooltip title="Click here to delete your account."><button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-red-300 text-red-600 hover:bg-red-100 transition-colors shrink-0">
             <Trash2 className="w-4 h-4" /> Delete Account
-          </button>
+          </button></Tooltip>
         </div>
       </div>
 

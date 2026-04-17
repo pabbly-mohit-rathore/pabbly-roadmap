@@ -1,11 +1,12 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import InputDialog from '../../components/ui/InputDialog';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Save, Send, Clock, ChevronLeft,
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, Link as LinkIcon, Image as ImageIcon,
   Code, Heading1, Heading2, Quote, Minus, Undo2, Redo2, Code2,
-  Upload, AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Table as TableIcon, RemoveFormatting, Palette, Highlighter
 } from 'lucide-react';
 import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
@@ -60,6 +61,7 @@ import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import toast from 'react-hot-toast';
+import Tooltip from '../../components/ui/Tooltip';
 
 // Resizable Image Component with alignment
 function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewProps) {
@@ -319,17 +321,18 @@ export default function ChangelogEditor() {
     finally { setScheduling(false); }
   };
 
-  const addLink = () => {
-    const url = prompt('Enter URL:');
-    if (url && editor) editor.chain().focus().setLink({ href: url }).run();
-  };
+  const [linkDialog, setLinkDialog] = useState<'link' | 'image' | null>(null);
 
-  const addImageFromUrl = () => {
-    const url = prompt('Enter image URL:');
-    if (url && editor) editor.chain().focus().insertContent({ type: 'resizableImage', attrs: { src: url } }).run();
-  };
+  const addLink = () => setLinkDialog('link');
+  const addImageFromUrl = () => setLinkDialog('image');
 
-  const addImageFromFile = () => fileInputRef.current?.click();
+  const handleUrlConfirm = useCallback((url: string) => {
+    if (!editor) return;
+    if (linkDialog === 'link') editor.chain().focus().setLink({ href: url }).run();
+    else if (linkDialog === 'image') editor.chain().focus().insertContent({ type: 'resizableImage', attrs: { src: url } }).run();
+    setLinkDialog(null);
+  }, [editor, linkDialog]);
+
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -397,8 +400,8 @@ export default function ChangelogEditor() {
 
   if (loading) return <LoadingBar />;
 
-  const TB = ({ icon: Icon, action, active, title: t }: { icon: any; action: () => void; active?: boolean; title: string }) => (
-    <button onClick={action} title={t}
+  const TB = ({ icon: Icon, action, active }: { icon: any; action: () => void; active?: boolean; title?: string }) => (
+    <button onClick={action}
       className={`p-1.5 rounded transition ${
         active
           ? theme === 'dark' ? 'bg-gray-600 text-white' : 'bg-gray-300 text-gray-900'
@@ -417,10 +420,10 @@ export default function ChangelogEditor() {
         theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
       }`}>
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/admin/board-management', { state: { tab: 'changelog' } })}
+          <Tooltip title="Click here to go back."><button onClick={() => navigate('/admin/board-management', { state: { tab: 'changelog' } })}
             className={`flex items-center gap-1 text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             <ChevronLeft className="w-4 h-4" /> Back
-          </button>
+          </button></Tooltip>
           {entry && (
             <div className="flex items-center gap-2">
               <span className={`px-2 py-0.5 rounded text-xs font-bold capitalize ${getStatusBadge(entry.status)}`}>{entry.status}</span>
@@ -434,19 +437,19 @@ export default function ChangelogEditor() {
               Auto-saved {lastSaved}
             </span>
           )}
-          <button onClick={handleSave} disabled={saving}
+          <Tooltip title="Click here to save as draft."><button onClick={handleSave} disabled={saving}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition ${
               theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
             }`}>
             <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save'}
-          </button>
-          <button onClick={() => setShowScheduleModal(true)}
+          </button></Tooltip>
+          <Tooltip title="Click here to schedule publication."><button onClick={() => setShowScheduleModal(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition">
             <Clock className="w-4 h-4" /> Schedule
-          </button>
+          </button></Tooltip>
           <LoadingButton loading={publishing} onClick={handlePublish}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#059669] text-white hover:bg-[#047857] transition disabled:opacity-70">
-            <Send className="w-4 h-4" /> Publish
+            <Send className="w-4 h-4" />  Publish
           </LoadingButton>
         </div>
       </div>
@@ -525,7 +528,7 @@ export default function ChangelogEditor() {
               {/* Font Color */}
               <div>
                 <button id="fontColorBtn" onClick={() => { setShowColorPicker(!showColorPicker); setShowHighlightPicker(false); }}
-                  title="Font Color"
+                 
                   className={`p-1.5 rounded transition flex items-center gap-1 ${theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-200'}`}>
                   <Palette className="w-4 h-4" />
                   <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: fontColor }} />
@@ -535,7 +538,7 @@ export default function ChangelogEditor() {
               {/* Highlight Color */}
               <div>
                 <button id="highlightColorBtn" onClick={() => { setShowHighlightPicker(!showHighlightPicker); setShowColorPicker(false); }}
-                  title="Highlight"
+                 
                   className={`p-1.5 rounded transition flex items-center gap-1 ${
                     editor?.isActive('highlight')
                       ? theme === 'dark' ? 'bg-gray-600 text-white' : 'bg-gray-300 text-gray-900'
@@ -573,7 +576,6 @@ export default function ChangelogEditor() {
               <Sep />
 
               <TB icon={LinkIcon} title="Link" action={addLink} active={editor?.isActive('link')} />
-              <TB icon={Upload} title="Upload Image" action={addImageFromFile} />
               <TB icon={ImageIcon} title="Image URL" action={addImageFromUrl} />
 
               <Sep />
@@ -713,20 +715,29 @@ export default function ChangelogEditor() {
 
       {/* Schedule Modal */}
       {showScheduleModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className={`max-w-sm w-full mx-4 p-6 rounded-xl ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
             <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Schedule Publish</h3>
             <input type="datetime-local" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)}
               className={`w-full px-4 py-2.5 rounded-lg border mb-4 ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`} />
             <div className="flex gap-3">
-              <button onClick={() => setShowScheduleModal(false)}
-                className={`flex-1 px-4 py-2 rounded-lg border ${theme === 'dark' ? 'border-gray-700 text-gray-300' : 'border-gray-200'}`}>Cancel</button>
+              <Tooltip title="Click here to cancel and close."><button onClick={() => setShowScheduleModal(false)}
+                className={`flex-1 px-4 py-2 rounded-lg border ${theme === 'dark' ? 'border-gray-700 text-gray-300' : 'border-gray-200'}`}>Cancel</button></Tooltip>
               <LoadingButton loading={scheduling} onClick={handleSchedule}
                 className="flex-1 px-4 py-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] font-semibold disabled:opacity-70">Schedule</LoadingButton>
             </div>
           </div>
         </div>
       )}
+
+      <InputDialog
+        open={!!linkDialog}
+        title={linkDialog === 'image' ? 'Enter Image URL' : 'Enter URL'}
+        placeholder={linkDialog === 'image' ? 'https://example.com/image.png' : 'https://example.com'}
+        confirmLabel={linkDialog === 'image' ? 'Add Image' : 'Add Link'}
+        onConfirm={handleUrlConfirm}
+        onCancel={() => setLinkDialog(null)}
+      />
     </div>
   );
 }

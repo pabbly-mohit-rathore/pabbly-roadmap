@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Icon } from '@iconify/react';
 import useThemeStore from '../store/themeStore';
+import Tooltip from '../components/ui/Tooltip';
 import api from '../services/api';
 
 interface Post {
@@ -21,6 +23,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -67,22 +70,35 @@ export default function HomePage() {
       <div className={`border-b ${
         theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
       }`}>
-        <div className="max-w-6xl mx-auto px-4 py-12">
-          <h1 className={`text-4xl font-bold mb-2 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>
-            Feature Requests & Feedback
-          </h1>
-          <p className={`text-sm ${
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-          }`}>
-            Share your ideas and upvote features you'd like to see
-          </p>
+        <div className="max-w-6xl mx-auto px-4 py-12 flex items-center justify-between">
+          <div>
+            <h1 className={`text-4xl font-bold mb-2 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
+              Feature Requests & Feedback
+            </h1>
+            <p className={`text-sm ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>
+              Share your ideas and upvote features you'd like to see
+            </p>
+          </div>
+          <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+              showFilters
+                ? 'border-[#059669] text-[#059669]'
+                : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
+            }`}
+            style={{ height: '48px' }}>
+            <Icon icon="iconoir:filter" width={16} height={16} />
+            Filters
+          </button></Tooltip>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Filters */}
+        {showFilters && (
         <div className={`p-4 rounded-lg border mb-8 grid grid-cols-1 md:grid-cols-4 gap-3 ${
           theme === 'dark'
             ? 'bg-gray-800 border-gray-700'
@@ -144,6 +160,7 @@ export default function HomePage() {
             Reset
           </button>
         </div>
+        )}
 
         {/* Posts */}
         {loading ? (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import CustomDropdown from '../../components/ui/CustomDropdown';
@@ -93,7 +94,7 @@ export default function AdminBoardMembers() {
 
   const handleAddMember = async () => {
     if (!selectedUserId) {
-      alert('Please select a user');
+      toast.error('Please select a user');
       return;
     }
 
@@ -110,7 +111,7 @@ export default function AdminBoardMembers() {
       }
     } catch (error) {
       console.error('Error adding member:', error);
-      alert('Failed to add member');
+      toast.error('Failed to add member');
     } finally {
       setAdding(false);
     }
@@ -128,7 +129,7 @@ export default function AdminBoardMembers() {
       }
     } catch (error) {
       console.error('Error removing member:', error);
-      alert('Failed to remove member');
+      toast.error('Failed to remove member');
     } finally {
       setRemovingId(null);
     }

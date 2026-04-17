@@ -49,8 +49,6 @@ export default function RoadmapPage() {
   const [columnSearches, setColumnSearches] = useState<Record<string, string>>({});
 
   const boardId = searchParams.get('board');
-  const inviteToken = searchParams.get('invite');
-  const isInviteMode = !!inviteToken && !isAuthenticated;
 
   // Redirect admin users to dashboard
   useEffect(() => {
@@ -91,21 +89,6 @@ export default function RoadmapPage() {
     fetchPosts();
   }, [fetchPosts]);
 
-  // Auto-redeem invite link when authenticated user arrives
-  useEffect(() => {
-    if (isAuthenticated && inviteToken && boardId) {
-      const redeemInvite = async () => {
-        try {
-          await api.post('/invite-links/redeem', { token: inviteToken });
-          navigate(`/?board=${boardId}`, { replace: true });
-        } catch (error) {
-          console.error('Error redeeming invite link:', error);
-        }
-      };
-      redeemInvite();
-    }
-  }, [isAuthenticated, inviteToken, boardId, navigate]);
-
   const postsByStatus = STATUS_ORDER.reduce((acc, status) => {
     acc[status] = posts.filter(post => post.status === status);
     return acc;
@@ -122,10 +105,6 @@ export default function RoadmapPage() {
   };
 
   const handlePostClick = (post: Post) => {
-    if (isInviteMode) {
-      setShowLoginModal(true);
-      return;
-    }
     window.location.href = `/post/${post.slug}`;
   };
 
@@ -141,17 +120,6 @@ export default function RoadmapPage() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-      {/* Invite Mode Banner */}
-      {isInviteMode && (
-        <div className="bg-blue-100 border-b border-blue-300">
-          <div className="max-w-7xl mx-auto px-4 py-3">
-            <p className="text-sm text-blue-900">
-              🔒 Preview mode: You can view this board's posts, but need to log in to vote or comment.
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">

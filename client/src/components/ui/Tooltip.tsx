@@ -36,14 +36,13 @@ export default function Tooltip({ title, children }: TooltipProps) {
 
   return (
     <>
-      <div
+      <span
         ref={triggerRef}
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
-        style={{ display: 'inline-flex', maxWidth: '100%', overflow: 'hidden' }}
       >
         {children}
-      </div>
+      </span>
       {show && (
         <div
           ref={tipRef}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply, X, Copy, Check } from 'lucide-react';
+import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply, X, Copy, Check, ChevronDown } from 'lucide-react';
 import StatusReasonDialog from '../../components/ui/StatusReasonDialog';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -9,9 +9,10 @@ import useVoteStore from '../../store/voteStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import CommentEditor from '../../components/CommentEditor';
-import LoadingBar from '../../components/ui/LoadingBar';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import Tooltip from '../../components/ui/Tooltip';
+import LoadingBar from '../../components/ui/LoadingBar';
 import useSocket from '../../hooks/useSocket';
 
 interface Tag {
@@ -69,7 +70,8 @@ export default function AdminPostDetail() {
   const theme = useThemeStore((state) => state.theme);
   const { user: currentUser } = useAuthStore();
   const { isTeamAccess, accessLevel } = useTeamAccessStore();
-  const isTeamManager = isTeamAccess && accessLevel === 'manager';
+  const isMainAdmin = currentUser?.role === 'admin';
+  const isTeamManager = isTeamAccess && accessLevel === 'manager' && !isMainAdmin;
   const { votes, init, toggle } = useVoteStore();
   const { postId } = useParams<{ postId: string }>();
   const { state } = useLocation();
@@ -93,6 +95,7 @@ export default function AdminPostDetail() {
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const [deleteCommentConfirm, setDeleteCommentConfirm] = useState<string | null>(null);
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [replyingToName, setReplyingToName] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedCommentUser, setSelectedCommentUser] = useState<any>(null);
@@ -424,6 +427,7 @@ export default function AdminPostDetail() {
           fetchComments();
         }
         setPost(prev => prev ? { ...prev, commentCount: prev.commentCount + 1 } : null);
+        setExpandedReplies(prev => new Set(prev).add(parentId));
         toast.success('Reply added');
       }
     } catch (error) {
@@ -480,12 +484,12 @@ export default function AdminPostDetail() {
     <div className={`${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
       {/* Content */}
       <div className="mx-auto px-4 py-6" style={{ maxWidth: 'calc(100% - 207px)' }}>
+        {loading ? (
+          <LoadingBar />
+        ) : (
         <div className="grid grid-cols-[1fr_340px] gap-4 items-start">
           {/* Main Content */}
           <div>
-            {loading ? (
-              <LoadingBar />
-            ) : (
               <>
                 {/* Post Card */}
                 <div className={`rounded-t-xl border border-b-0 p-6 ${
@@ -583,17 +587,17 @@ export default function AdminPostDetail() {
                                 </div>
                                 {!comment.isSpam && (
                                   <div className="relative">
-                                    <button onClick={() => setCommentMenuId(commentMenuId === comment.id ? null : comment.id)}
+                                    <Tooltip title="Click to see options."><button onClick={() => setCommentMenuId(commentMenuId === comment.id ? null : comment.id)}
                                       className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
                                       <MoreHorizontal className="w-4 h-4" />
-                                    </button>
+                                    </button></Tooltip>
                                     {commentMenuId === comment.id && (
                                       <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-lg z-50 p-1 ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '130px' }}>
-                                        <button onClick={() => { setEditingCommentId(comment.id); setCommentMenuId(null); }}
-                                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button>
+                                        <Tooltip title="Click here to edit this post."><button onClick={() => { setEditingCommentId(comment.id); setCommentMenuId(null); }}
+                                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button></Tooltip>
                                         {!isTeamManager && (
-                                        <button onClick={() => { setDeleteCommentConfirm(comment.id); setCommentMenuId(null); }}
-                                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button>
+                                        <Tooltip title="Click here to delete this post."><button onClick={() => { setDeleteCommentConfirm(comment.id); setCommentMenuId(null); }}
+                                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button></Tooltip>
                                         )}
                                       </div>
                                     )}
@@ -603,7 +607,7 @@ export default function AdminPostDetail() {
                               {editingCommentId === comment.id ? (
                                 <div className="mt-2">
                                   <CommentEditor onSubmit={(html) => handleEditComment(comment.id, html)} placeholder="Edit comment..." buttonLabel="Save" submitting={editingComment} initialContent={comment.content} />
-                                  <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>Cancel</button>
+                                  <Tooltip title="Click here to edit this post."><button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>Cancel</button></Tooltip>
                                 </div>
                               ) : (
                                 <div className={`mt-1 text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -612,17 +616,34 @@ export default function AdminPostDetail() {
                               )}
                               {!comment.isSpam && (
                                 <div className="flex items-center gap-4 mt-2">
-                                  <button onClick={() => handleLikeComment(comment.id)}
+                                  <Tooltip title="Click here to like this comment."><button onClick={() => handleLikeComment(comment.id)}
                                     className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${likedCommentIds.has(comment.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
                                     <Heart className="w-3.5 h-3.5" fill={likedCommentIds.has(comment.id) ? 'currentColor' : 'none'} /> {comment.likeCount || ''}
-                                  </button>
-                                  <button onClick={() => { setReplyingToId(replyingToId === comment.id ? null : comment.id); setReplyingToName(replyingToId === comment.id ? null : comment.author.name); }}
+                                  </button></Tooltip>
+                                  <button onClick={() => {
+                                      const toggling = replyingToId === comment.id;
+                                      setReplyingToId(toggling ? null : comment.id);
+                                      setReplyingToName(toggling ? null : comment.author.name);
+                                      if (!toggling) setExpandedReplies(prev => new Set(prev).add(comment.id));
+                                    }}
                                     className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${replyingToId === comment.id ? 'text-blue-600' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
                                     <Reply className="w-3.5 h-3.5" /> Reply
                                   </button>
+                                  {comment.replies && comment.replies.length > 0 && (
+                                    <button
+                                      onClick={() => setExpandedReplies(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(comment.id)) next.delete(comment.id); else next.add(comment.id);
+                                        return next;
+                                      })}
+                                      className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${theme === 'dark' ? 'text-emerald-400 hover:text-emerald-300' : 'text-[#059669] hover:text-[#047857]'}`}>
+                                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedReplies.has(comment.id) ? 'rotate-180' : ''}`} />
+                                      {comment.replies.length} {comment.replies.length === 1 ? 'Reply' : 'Replies'}
+                                    </button>
+                                  )}
                                 </div>
                               )}
-                              {comment.isSpam && <button onClick={() => handleMarkNotSpam(comment.id)} className="text-xs text-blue-600 hover:underline mt-2">Mark not spam</button>}
+                              {comment.isSpam && <button onClick={() => handleMarkNotSpam(comment.id)} title="Click here to mark as not spam." className="text-xs text-blue-600 hover:underline mt-2">Mark not spam</button>}
                               {comment.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">Official Response</p>}
 
                               {replyingToId === comment.id && (
@@ -634,11 +655,13 @@ export default function AdminPostDetail() {
 
                               {/* Replies */}
                               {comment.replies && comment.replies.length > 0 && (
-                                <div className="mt-3 space-y-3">
+                                <div className="mt-3">
+                                  {expandedReplies.has(comment.id) && (
+                                  <div className="space-y-3">
                                   {comment.replies.map((reply) => {
                                     const rAvatarUrl = reply.author.avatar ? (reply.author.avatar.startsWith('http') ? reply.author.avatar : `${API_BASE}${reply.author.avatar}`) : null;
                                     return (
-                                    <div key={reply.id} id={`comment-${reply.id}`} className={`pl-4 py-3 border-l-[3px] transition-all ${reply.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border-l-red-500' : 'bg-red-50 border-l-red-400') : (theme === 'dark' ? 'border-l-emerald-600' : 'border-l-emerald-500')}`}>
+                                    <div key={reply.id} id={`comment-${reply.id}`} className={`pl-4 py-3 border-l-[3px] transition-all ${reply.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border-l-red-500' : 'bg-red-50 border-l-red-400') : (theme === 'dark' ? 'border-l-gray-600' : 'border-l-gray-300')}`}>
                                       <div className="flex gap-3">
                                         {rAvatarUrl ? (
                                           <img src={rAvatarUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
@@ -655,17 +678,17 @@ export default function AdminPostDetail() {
                                             </div>
                                             {!reply.isSpam && (
                                               <div className="relative">
-                                                <button onClick={() => setCommentMenuId(commentMenuId === reply.id ? null : reply.id)}
+                                                <Tooltip title="Click to see options."><button onClick={() => setCommentMenuId(commentMenuId === reply.id ? null : reply.id)}
                                                   className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
                                                   <MoreHorizontal className="w-3.5 h-3.5" />
-                                                </button>
+                                                </button></Tooltip>
                                                 {commentMenuId === reply.id && (
                                                   <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-lg z-50 p-1 ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '130px' }}>
-                                                    <button onClick={() => { setEditingCommentId(reply.id); setCommentMenuId(null); }}
-                                                      className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button>
+                                                    <Tooltip title="Click here to edit this post."><button onClick={() => { setEditingCommentId(reply.id); setCommentMenuId(null); }}
+                                                      className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button></Tooltip>
                                                     {!isTeamManager && (
-                                                    <button onClick={() => { setDeleteCommentConfirm(reply.id); setCommentMenuId(null); }}
-                                                      className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button>
+                                                    <Tooltip title="Click here to delete this post."><button onClick={() => { setDeleteCommentConfirm(reply.id); setCommentMenuId(null); }}
+                                                      className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button></Tooltip>
                                                     )}
                                                   </div>
                                                 )}
@@ -675,7 +698,7 @@ export default function AdminPostDetail() {
                                           {editingCommentId === reply.id ? (
                                             <div className="mt-2">
                                               <CommentEditor onSubmit={(html) => handleEditComment(reply.id, html)} placeholder="Edit reply..." buttonLabel="Save" submitting={editingComment} initialContent={reply.content} compact />
-                                              <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Cancel</button>
+                                              <Tooltip title="Click here to edit this post."><button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Cancel</button></Tooltip>
                                             </div>
                                           ) : (
                                             <div className={`mt-1 text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -684,17 +707,17 @@ export default function AdminPostDetail() {
                                           )}
                                           {!reply.isSpam && (
                                             <div className="flex items-center gap-4 mt-2">
-                                              <button onClick={() => handleLikeComment(reply.id)}
+                                              <Tooltip title="Click here to like this comment."><button onClick={() => handleLikeComment(reply.id)}
                                                 className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${likedCommentIds.has(reply.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
                                                 <Heart className="w-3 h-3" fill={likedCommentIds.has(reply.id) ? 'currentColor' : 'none'} /> {reply.likeCount || ''}
-                                              </button>
-                                              <button onClick={() => { setReplyingToId(replyingToId === reply.id ? null : reply.id); setReplyingToName(replyingToId === reply.id ? null : reply.author.name); }}
+                                              </button></Tooltip>
+                                              <Tooltip title="Click here to reply to this comment."><button onClick={() => { setReplyingToId(replyingToId === reply.id ? null : reply.id); setReplyingToName(replyingToId === reply.id ? null : reply.author.name); }}
                                                 className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${replyingToId === reply.id ? 'text-blue-600' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
                                                 <Reply className="w-3 h-3" /> Reply
-                                              </button>
+                                              </button></Tooltip>
                                             </div>
                                           )}
-                                          {reply.isSpam && <button onClick={() => handleMarkNotSpam(reply.id)} className="text-xs text-blue-600 hover:underline mt-2">Mark not spam</button>}
+                                          {reply.isSpam && <button onClick={() => handleMarkNotSpam(reply.id)} title="Click here to mark as not spam." className="text-xs text-blue-600 hover:underline mt-2">Mark not spam</button>}
                                           {reply.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">Official Response</p>}
                                           {replyingToId === reply.id && (
                                             <div className="mt-3">
@@ -707,6 +730,8 @@ export default function AdminPostDetail() {
                                     </div>
                                     );
                                   })}
+                                  </div>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -785,7 +810,6 @@ export default function AdminPostDetail() {
                   )}
                 </div>
               </>
-            )}
           </div>
 
           {/* Sidebar - Right */}
@@ -823,6 +847,26 @@ export default function AdminPostDetail() {
                     onChange={(v) => handleChangeStatus(v)}
                     minWidth="100%"
                   />
+                </div>
+
+                {/* Author */}
+                <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                  {(() => {
+                    const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+                    const av = post?.author.avatar;
+                    const url = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
+                    return url ? (
+                      <img src={url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                        {post?.author.name?.[0]?.toUpperCase()}
+                      </div>
+                    );
+                  })()}
+                  <div>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Author</p>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.author.name}</p>
+                  </div>
                 </div>
 
                 {/* Board */}
@@ -886,29 +930,11 @@ export default function AdminPostDetail() {
                   );
                 })()}
 
-                {/* Author */}
-                <div className={`flex items-center gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
-                  {(() => {
-                    const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-                    const av = post?.author.avatar;
-                    const url = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
-                    return url ? (
-                      <img src={url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                        {post?.author.name?.[0]?.toUpperCase()}
-                      </div>
-                    );
-                  })()}
-                  <div>
-                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Author</p>
-                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post?.author.name}</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* User Detail Drawer */}
@@ -924,10 +950,10 @@ export default function AdminPostDetail() {
             className={`fixed top-16 right-0 z-50 h-[calc(100vh-64px)] w-[380px] border-l shadow-2xl overflow-y-auto transition-transform duration-300 ease-out ${userDrawerOpen ? 'translate-x-0' : 'translate-x-full'} ${d ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}
           >
             {/* Close */}
-            <button onClick={closeUserDrawer}
+            <Tooltip title="Click here to close."><button onClick={closeUserDrawer}
               className={`absolute top-5 right-5 p-1.5 rounded-full transition z-10 ${d ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
               <X className="w-5 h-5" />
-            </button>
+            </button></Tooltip>
 
             {userDetailLoading || !selectedCommentUser ? (
               /* Loading skeleton */

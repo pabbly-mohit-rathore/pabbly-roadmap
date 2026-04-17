@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ArrowUpRight, MessageSquare, Plus, Edit2, Trash2, MoreVertical, ChevronLeft, ChevronRight, ChevronDown, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import UserLayout from '../../components/user/Layout';
 import useThemeStore from '../../store/themeStore';
 import useVoteStore from '../../store/voteStore';
@@ -113,20 +114,28 @@ export default function UserFeatureRequests() {
   const contentCacheRef = useRef<Record<string, string>>({});
   const [, forceCacheBump] = useState(0);
 
-  useEffect(() => {
+  const updateIndicator = () => {
     const el = tabsRef.current[typeFilter];
     if (el?.parentElement) {
-      const pr = el.parentElement.getBoundingClientRect();
-      const er = el.getBoundingClientRect();
-      setIndicatorStyle({ left: er.left - pr.left, width: er.width });
+      setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
     }
+  };
+
+  useEffect(() => {
+    updateIndicator();
   }, [typeFilter, loading]);
+
+  useEffect(() => {
+    window.addEventListener('resize', updateIndicator);
+    return () => window.removeEventListener('resize', updateIndicator);
+  }, [typeFilter]);
 
   // Create modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formData, setFormData] = useState({ title: '', type: 'feature', boardId: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   useEffect(() => { fetchData(); }, []);
 
   // Prefetch full content for the user's own posts in the background.
@@ -303,14 +312,27 @@ export default function UserFeatureRequests() {
               {boardFilter !== 'all' ? (boards.find(b => b.id === boardFilter)?.description || `${posts.length} posts`) : 'Have something to say? Join the conversation.'}
             </p>
           </div>
-          <button onClick={() => { setShowCreateModal(true); setFormErrors({}); }}
-            className="flex items-center gap-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition"
-            style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
-            <Plus className="w-5 h-5" /> Create Post
-          </button>
+          <div className="flex items-center gap-3">
+              <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+                  showFilters
+                    ? 'border-[#059669] text-[#059669]'
+                    : d ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
+                }`}
+                style={{ height: '48px' }}>
+                <Icon icon="iconoir:filter" width={16} height={16} />
+                Filters
+              </button></Tooltip>
+            <Tooltip title="Click here to create a new post."><button onClick={() => { setShowCreateModal(true); setFormErrors({}); }}
+              className="flex items-center gap-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition"
+              style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+              <Plus className="w-5 h-5" /> Create Post
+            </button></Tooltip>
+          </div>
         </div>
 
         {/* Filters */}
+        {showFilters && (
         <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div className="flex flex-wrap items-center gap-4">
             <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[180px] max-w-[380px] ${
@@ -342,10 +364,10 @@ export default function UserFeatureRequests() {
             )}
 
             {hasFilters && (
-              <button onClick={clearFilters} className="flex items-center gap-2 font-medium text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+              <Tooltip title="Click here to clear all filters."><button onClick={clearFilters} className="flex items-center gap-2 font-medium text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
                 style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
                 <X className="w-5 h-5" /> Clear Filters
-              </button>
+              </button></Tooltip>
             )}
 
             {/* Sort Buttons */}
@@ -368,6 +390,7 @@ export default function UserFeatureRequests() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Table */}
         {loading ? <LoadingBar /> : (
@@ -504,25 +527,25 @@ export default function UserFeatureRequests() {
                           const canAction = isMainAdmin || isOwner;
                           return (
                           <div className="relative inline-block">
-                            <button onClick={() => canAction && setOpenMenuId(openMenuId === post.id ? null : post.id)}
+                            <Tooltip title="Click to see options."><button onClick={() => canAction && setOpenMenuId(openMenuId === post.id ? null : post.id)}
                               disabled={!canAction}
                               className={`p-1.5 rounded-lg transition ${canAction ? (d ? 'hover:bg-gray-600' : 'hover:bg-gray-100') : 'opacity-30 cursor-not-allowed'}`}>
                               <MoreVertical className={`w-4 h-4 ${d ? 'text-gray-300' : 'text-gray-600'}`} />
-                            </button>
+                            </button></Tooltip>
                             {openMenuId === post.id && (
                               <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${
                                 d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'
                               }`} style={{ minWidth: '160px' }}>
                                 <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
-                                <button onClick={() => { openEditModal(post); setOpenMenuId(null); }}
+                                <Tooltip title="Click here to edit this post."><button onClick={() => { openEditModal(post); setOpenMenuId(null); }}
                                   className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
-                                  <Edit2 className="w-[18px] h-[18px] text-amber-500" /> Edit
-                                </button>
+                                  <Edit2 className="w-[18px] h-[18px] text-amber-500" />  Edit
+                                </button></Tooltip>
                                 <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
-                                <button onClick={() => { setDeleteConfirm({ id: post.id, title: post.title }); setOpenMenuId(null); }}
+                                <Tooltip title="Click here to delete this post."><button onClick={() => { setDeleteConfirm({ id: post.id, title: post.title }); setOpenMenuId(null); }}
                                   className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
-                                  <Trash2 className="w-[18px] h-[18px]" /> Delete
-                                </button>
+                                  <Trash2 className="w-[18px] h-[18px]" />  Delete
+                                </button></Tooltip>
                               </div>
                             )}
                           </div>
@@ -548,30 +571,30 @@ export default function UserFeatureRequests() {
             {/* Pagination */}
             <div className="flex items-center justify-between px-6 py-3">
               <div className="flex items-center gap-3">
-                <button onClick={() => setDenseMode(!denseMode)}
+                <Tooltip title="Toggle compact view."><button onClick={() => setDenseMode(!denseMode)}
                   className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-                </button>
+                </button></Tooltip>
                 <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                   <div className="relative" ref={rowsDropdownRef}>
-                    <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
+                    <Tooltip title="Click to change rows per page."><button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                       className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
                       {rowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${rowsDropOpen ? 'rotate-180' : ''}`} />
-                    </button>
+                    </button></Tooltip>
                     {rowsDropOpen && (
                       <div className={`absolute bottom-full mb-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${
                         d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
                       }`}>
                         {[10, 25, 50, 100].map(n => (
-                          <button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
+                          <Tooltip title="Select the number of rows per page."><button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
                             className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
                               rowsPerPage === n ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
                               : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
-                            }`}>{n}</button>
+                            }`}>{n}</button></Tooltip>
                         ))}
                       </div>
                     )}
@@ -581,14 +604,14 @@ export default function UserFeatureRequests() {
                   {sortedPosts.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, sortedPosts.length)}` : '0–0'} of {sortedPosts.length}
                 </span></Tooltip>
                 <div className="flex gap-1">
-                  <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
+                  <Tooltip title="Go to the previous page."><button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                     className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                     <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
+                  </button></Tooltip>
+                  <Tooltip title="Go to the next page."><button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
                     className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                     <ChevronRight className="w-4 h-4" />
-                  </button>
+                  </button></Tooltip>
                 </div>
               </div>
             </div>
@@ -610,13 +633,13 @@ export default function UserFeatureRequests() {
 
       {/* Create Post Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px', maxHeight: 'calc(100vh - 32px)' }}>
             <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Create New Post</h2>
-              <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
+              <Tooltip title="Click here to close."><button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
-              </button>
+              </button></Tooltip>
             </div>
             <div className="overflow-y-auto" style={{ padding: '24px' }}>
               <div className="space-y-4">
@@ -653,7 +676,7 @@ export default function UserFeatureRequests() {
                     buttonLabel="Publish Post"
                     submitting={creating}
                     hideButton
-                    maxEditorHeight="450px"
+                    maxEditorHeight="550px"
                     onContentChange={(html) => { setPostContent(html); if (formErrors.content) setFormErrors(prev => { const n = { ...prev }; delete n.content; return n; }); }}
                   />
                   <p className={`text-xs ${formErrors.content ? 'text-red-500' : (d ? 'text-gray-500' : 'text-gray-400')}`} style={{ margin: '8px 14px 0' }}>
@@ -685,10 +708,10 @@ export default function UserFeatureRequests() {
 
                 {/* Cancel + Publish */}
                 <div className="flex gap-3 justify-end pt-2">
-                  <button onClick={() => { setShowCreateModal(false); setFormErrors({}); }}
-                    className={`px-5 py-2.5 text-sm font-medium rounded-lg border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancel</button>
-                  <LoadingButton onClick={() => handleCreatePost()} loading={creating}
-                    className="px-5 py-2.5 bg-[#059669] text-white text-sm font-semibold rounded-lg hover:bg-[#047857] transition-colors disabled:opacity-70">Publish Post</LoadingButton>
+                  <Tooltip title="Click here to cancel and close."><button onClick={() => { setShowCreateModal(false); setFormErrors({}); }}
+                    className={`px-5 py-2.5 text-sm font-medium rounded-lg border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancel</button></Tooltip>
+                  <Tooltip title="Click here to publish your post."><LoadingButton onClick={() => handleCreatePost()} loading={creating}
+                    className="px-5 py-2.5 bg-[#059669] text-white text-sm font-semibold rounded-lg hover:bg-[#047857] transition-colors disabled:opacity-70">Publish Post</LoadingButton></Tooltip>
                 </div>
               </div>
             </div>
@@ -698,13 +721,13 @@ export default function UserFeatureRequests() {
 
       {/* Edit Post Modal */}
       {showEditModal && editingPost && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl w-full flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '800px', maxHeight: 'calc(100vh - 32px)' }}>
             <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Edit Post</h2>
-              <button onClick={() => { setShowEditModal(false); setEditingPost(null); setEditContent(''); }} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
+              <Tooltip title="Click here to edit this post."><button onClick={() => { setShowEditModal(false); setEditingPost(null); setEditContent(''); }} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
-              </button>
+              </button></Tooltip>
             </div>
             <div className="overflow-y-auto" style={{ padding: '24px' }}>
               <div className="space-y-4">
@@ -736,7 +759,7 @@ export default function UserFeatureRequests() {
                     buttonLabel="Save"
                     submitting={updating}
                     hideButton
-                    maxEditorHeight="450px"
+                    maxEditorHeight="550px"
                     onContentChange={(html) => setEditContent(html)}
                   />
                   <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Minimum 10 characters required.</p>
@@ -763,8 +786,8 @@ export default function UserFeatureRequests() {
 
                 {/* Cancel + Save */}
                 <div className="flex gap-3 justify-end pt-2">
-                  <button onClick={() => { setShowEditModal(false); setEditingPost(null); setEditContent(''); }}
-                    className={`px-5 py-2.5 text-sm font-medium rounded-lg border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancel</button>
+                  <Tooltip title="Click here to edit this post."><button onClick={() => { setShowEditModal(false); setEditingPost(null); setEditContent(''); }}
+                    className={`px-5 py-2.5 text-sm font-medium rounded-lg border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancel</button></Tooltip>
                   <LoadingButton loading={updating} onClick={handleUpdatePost}
                     className="px-5 py-2.5 bg-[#059669] text-white text-sm font-semibold rounded-lg hover:bg-[#047857] transition-colors disabled:opacity-70">Save Changes</LoadingButton>
                 </div>

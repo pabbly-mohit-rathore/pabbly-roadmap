@@ -7,7 +7,8 @@ export interface ButtonAttributes {
   alignment: 'left' | 'center' | 'right';
   fullWidth: boolean;
   openInNewTab: boolean;
-  customCSS: string;
+  color: string;
+  textColor: string;
 }
 
 declare module '@tiptap/core' {
@@ -18,6 +19,13 @@ declare module '@tiptap/core' {
   }
 }
 
+function btnCSS(btnStyle: string, color: string, textColor: string, fullWidth: boolean) {
+  const base = btnStyle === 'primary'
+    ? `background-color:${color};color:${textColor};border:none;`
+    : `background-color:transparent;color:${color};border:2px solid ${color};`;
+  return `display:inline-block;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;text-decoration:none;cursor:pointer;${base}${fullWidth ? 'width:100%;text-align:center;box-sizing:border-box;' : ''}`;
+}
+
 export const ButtonExtension = Node.create({
   name: 'button',
   group: 'block',
@@ -26,13 +34,47 @@ export const ButtonExtension = Node.create({
 
   addAttributes() {
     return {
-      text: { default: 'Button title' },
-      url: { default: '' },
-      style: { default: 'primary' },
-      alignment: { default: 'left' },
-      fullWidth: { default: false },
-      openInNewTab: { default: true },
-      customCSS: { default: '' },
+      text: {
+        default: 'Button title',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-text') || 'Button title',
+        renderHTML: (attrs: Record<string, unknown>) => ({ 'data-text': attrs.text }),
+      },
+      url: {
+        default: '',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-url') || '',
+        renderHTML: (attrs: Record<string, unknown>) => ({ 'data-url': attrs.url }),
+      },
+      // Named "buttonStyle" internally to avoid collision with HTML "style" attribute
+      buttonStyle: {
+        default: 'primary',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-style') || 'primary',
+        renderHTML: (attrs: Record<string, unknown>) => ({ 'data-style': attrs.buttonStyle }),
+      },
+      alignment: {
+        default: 'left',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-alignment') || 'left',
+        renderHTML: (attrs: Record<string, unknown>) => ({ 'data-alignment': attrs.alignment }),
+      },
+      fullWidth: {
+        default: false,
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-full-width') === 'true',
+        renderHTML: (attrs: Record<string, unknown>) => ({ 'data-full-width': String(attrs.fullWidth) }),
+      },
+      openInNewTab: {
+        default: true,
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-open-new-tab') !== 'false',
+        renderHTML: (attrs: Record<string, unknown>) => ({ 'data-open-new-tab': String(attrs.openInNewTab) }),
+      },
+      color: {
+        default: '#059669',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-color') || '#059669',
+        renderHTML: (attrs: Record<string, unknown>) => ({ 'data-color': attrs.color }),
+      },
+      textColor: {
+        default: '#ffffff',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-text-color') || '#ffffff',
+        renderHTML: (attrs: Record<string, unknown>) => ({ 'data-text-color': attrs.textColor }),
+      },
     };
   },
 
@@ -41,36 +83,14 @@ export const ButtonExtension = Node.create({
   },
 
   renderHTML({ node }) {
-    const { text, url, style, alignment, fullWidth, openInNewTab, customCSS } = node.attrs;
-
-    const alignMap: Record<string, string> = {
-      left: 'flex-start',
-      center: 'center',
-      right: 'flex-end',
-    };
-
-    const baseStyle =
-      style === 'primary'
-        ? 'background-color:#4f46e5;color:#fff;border:none;'
-        : 'background-color:transparent;color:#4f46e5;border:2px solid #4f46e5;';
-
-    const btnStyle =
-      `display:inline-block;padding:10px 24px;border-radius:6px;font-weight:600;font-size:14px;text-decoration:none;cursor:pointer;${baseStyle}${fullWidth ? 'width:100%;text-align:center;box-sizing:border-box;' : ''}${customCSS}`;
-
-    const wrapperStyle = `display:flex;justify-content:${alignMap[alignment] || 'flex-start'};`;
+    const { text, url, buttonStyle, alignment, fullWidth, openInNewTab, color, textColor } = node.attrs;
+    const alignMap: Record<string, string> = { left: 'flex-start', center: 'center', right: 'flex-end' };
 
     return [
       'div',
       mergeAttributes({
         'data-type': 'editor-button',
-        'data-text': text,
-        'data-url': url,
-        'data-style': style,
-        'data-alignment': alignment,
-        'data-full-width': String(fullWidth),
-        'data-open-new-tab': String(openInNewTab),
-        'data-custom-css': customCSS,
-        style: wrapperStyle,
+        style: `display:flex;justify-content:${alignMap[alignment] || 'flex-start'};`,
       }),
       [
         'a',
@@ -78,7 +98,7 @@ export const ButtonExtension = Node.create({
           href: url,
           target: openInNewTab ? '_blank' : '_self',
           rel: openInNewTab ? 'noopener noreferrer' : undefined,
-          style: btnStyle,
+          style: btnCSS(buttonStyle, color || '#059669', textColor || '#ffffff', fullWidth),
         },
         text,
       ],
@@ -90,10 +110,9 @@ export const ButtonExtension = Node.create({
       insertButton:
         (attrs) =>
         ({ commands }) => {
-          return commands.insertContent({
-            type: this.name,
-            attrs,
-          });
+          // Map "style" from the UI to "buttonStyle" for TipTap
+          const { style: btnStyle, ...rest } = attrs as ButtonAttributes & { style: string };
+          return commands.insertContent({ type: this.name, attrs: { ...rest, buttonStyle: btnStyle } });
         },
     };
   },
@@ -101,13 +120,8 @@ export const ButtonExtension = Node.create({
   addNodeView() {
     return ({ node, getPos, editor }) => {
       const dom = document.createElement('div');
-      const { text, url, style, alignment, fullWidth, openInNewTab, customCSS } = node.attrs;
-
-      const alignMap: Record<string, string> = {
-        left: 'flex-start',
-        center: 'center',
-        right: 'flex-end',
-      };
+      const { text, url, buttonStyle, alignment, fullWidth, openInNewTab, color, textColor } = node.attrs;
+      const alignMap: Record<string, string> = { left: 'flex-start', center: 'center', right: 'flex-end' };
 
       dom.setAttribute('data-type', 'editor-button');
       dom.style.display = 'flex';
@@ -119,28 +133,26 @@ export const ButtonExtension = Node.create({
       btn.textContent = text || 'Button title';
       btn.target = openInNewTab ? '_blank' : '_self';
       if (openInNewTab) btn.rel = 'noopener noreferrer';
-      btn.style.cssText = `display:inline-block;padding:10px 24px;border-radius:6px;font-weight:600;font-size:14px;text-decoration:none;cursor:pointer;${
-        style === 'primary'
-          ? 'background-color:#4f46e5;color:#fff;border:none;'
-          : 'background-color:transparent;color:#4f46e5;border:2px solid #4f46e5;'
-      }${fullWidth ? 'width:100%;text-align:center;box-sizing:border-box;' : ''}${customCSS}`;
+      btn.style.cssText = btnCSS(buttonStyle, color || '#059669', textColor || '#ffffff', fullWidth);
 
       btn.addEventListener('click', (e) => {
         e.preventDefault();
-        // Select the node on click in editor
         if (typeof getPos === 'function') {
           editor.commands.setNodeSelection(getPos() as number);
         }
       });
 
-      // Double-click to edit
+      // Track latest attrs so dblclick always reads current values
+      let currentAttrs = node.attrs;
+
       btn.addEventListener('dblclick', (e) => {
         e.preventDefault();
-        const event = new CustomEvent('edit-button-node', {
-          detail: { pos: typeof getPos === 'function' ? getPos() : 0, attrs: node.attrs },
+        // Map "buttonStyle" back to "style" for the UI dialog
+        const { buttonStyle: bs, ...rest } = currentAttrs;
+        dom.dispatchEvent(new CustomEvent('edit-button-node', {
+          detail: { pos: typeof getPos === 'function' ? getPos() : 0, attrs: { ...rest, style: bs } },
           bubbles: true,
-        });
-        dom.dispatchEvent(event);
+        }));
       });
 
       dom.appendChild(btn);
@@ -150,15 +162,12 @@ export const ButtonExtension = Node.create({
         update(updatedNode) {
           if (updatedNode.type.name !== 'button') return false;
           const a = updatedNode.attrs;
+          currentAttrs = a;
           btn.textContent = a.text || 'Button title';
           btn.href = a.url || '#';
           btn.target = a.openInNewTab ? '_blank' : '_self';
           dom.style.justifyContent = alignMap[a.alignment] || 'flex-start';
-          btn.style.cssText = `display:inline-block;padding:10px 24px;border-radius:6px;font-weight:600;font-size:14px;text-decoration:none;cursor:pointer;${
-            a.style === 'primary'
-              ? 'background-color:#4f46e5;color:#fff;border:none;'
-              : 'background-color:transparent;color:#4f46e5;border:2px solid #4f46e5;'
-          }${a.fullWidth ? 'width:100%;text-align:center;box-sizing:border-box;' : ''}${a.customCSS}`;
+          btn.style.cssText = btnCSS(a.buttonStyle, a.color || '#059669', a.textColor || '#ffffff', a.fullWidth);
           return true;
         },
       };

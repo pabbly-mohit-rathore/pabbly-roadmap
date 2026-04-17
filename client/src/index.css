@@ -28,6 +28,7 @@ body {
 .tiptap-preview { outline: none; }
 .comment-editor-full { min-height: 80px; max-height: 300px; overflow-y: auto; }
 .comment-editor-compact { min-height: 80px; max-height: 300px; overflow-y: auto; }
+.tiptap.dialog-editor { min-height: 150px; }
 
 .tiptap p.is-editor-empty:first-child::before {
   color: #9ca3af;

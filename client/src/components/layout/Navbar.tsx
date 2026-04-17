@@ -22,7 +22,7 @@ export default function Navbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [invitationBusyId, setInvitationBusyId] = useState<string | null>(null);
   const { theme, setTheme } = useThemeStore();
-  const { unreadCount, notifications, fetchUnreadCount, fetchNotifications, markAsRead, markAllRead, acceptInvitation, rejectInvitation } = useNotificationStore();
+  const { unreadCount, notifications, loading: notifLoading, fetchUnreadCount, fetchNotifications, markAsRead, markAllRead, acceptInvitation, rejectInvitation } = useNotificationStore();
   const navigate = useNavigate();
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -167,7 +167,11 @@ export default function Navbar() {
                     </div>
                     {/* List */}
                     <div className="overflow-y-auto flex-1">
-                      {notifications.length > 0 ? notifications.map(n => {
+                      {notifLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <div className="w-6 h-6 border-2 border-gray-200 border-t-[#059669] rounded-full animate-spin" />
+                        </div>
+                      ) : notifications.length > 0 ? notifications.map(n => {
                         const invitationId = n.type === 'team_access_request' ? parseInvitationId(n.data) : null;
                         const isBusy = invitationBusyId === n.id;
                         const isTeamNotif = n.type?.startsWith('team_access');

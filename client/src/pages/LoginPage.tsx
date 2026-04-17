@@ -34,13 +34,6 @@ export default function LoginPage() {
       login(user, jwtToken, refreshToken);
       toast.success('Login successful!');
 
-      const pendingInvite = localStorage.getItem('invite_token');
-      if (pendingInvite) {
-        try { await api.post('/invite-links/redeem', { token: pendingInvite }); } catch { /* silent */ }
-        localStorage.removeItem('invite_token');
-      }
-      Object.keys(localStorage).filter(key => key.startsWith('invite_')).forEach(key => localStorage.removeItem(key));
-
       redirectAfterLogin(user);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -61,16 +54,6 @@ export default function LoginPage() {
 
       login(user, accessToken, refreshToken);
       toast.success('Login successful!');
-
-      const pendingInvite = localStorage.getItem('invite_token');
-      if (pendingInvite) {
-        try { await api.post('/invite-links/redeem', { token: pendingInvite }); } catch { /* silent */ }
-        localStorage.removeItem('invite_token');
-      }
-
-      Object.keys(localStorage)
-        .filter(key => key.startsWith('invite_'))
-        .forEach(key => localStorage.removeItem(key));
 
       redirectAfterLogin(user);
     } catch (err: unknown) {

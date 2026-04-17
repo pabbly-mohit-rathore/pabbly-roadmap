@@ -7,6 +7,7 @@ import useTeamAccessStore from '../../store/teamAccessStore';
 import AdminReporting from './Reporting';
 import AdminUsers from './Users';
 import AdminTeamMembers from './TeamMembers';
+import Tooltip from '../../components/ui/Tooltip';
 
 const ALL_TABS = [
   { id: 'activity-log', label: 'Activity Log', icon: BarChart3, heading: 'Activity Log', description: 'View activity logs, reports, and analytics.', btnLabel: '' },
@@ -55,11 +56,11 @@ export default function AdminSettings() {
           <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{currentTab.description}</p>
         </div>
         {currentTab.btnLabel && (
-          <button onClick={() => setTriggerAction(prev => prev + 1)}
+          <Tooltip title="Click here to add."><button onClick={() => setTriggerAction(prev => prev + 1)}
             className="flex items-center gap-2 bg-[#009966] text-white rounded-lg hover:bg-[#047857] transition shrink-0"
             style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
             <Plus className="w-5 h-5" /> {currentTab.btnLabel}
-          </button>
+          </button></Tooltip>
         )}
       </div>
 

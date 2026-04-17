@@ -413,13 +413,12 @@ export default function UserSettings() {
 
                 {/* Save Button */}
                 <div className="flex justify-end mt-6">
-                  <button
-                    onClick={handleSaveProfile}
+                  <Tooltip title="Click here to save."><button onClick={handleSaveProfile}
                     disabled={saving}
                     className="px-5 py-2.5 rounded-lg bg-[#1C252E] text-white text-sm font-semibold hover:bg-[#2a3640] transition-colors disabled:opacity-50"
                   >
                     {saving ? 'Saving...' : 'Save changes'}
-                  </button>
+                  </button></Tooltip>
                 </div>
               </div>
             </div>

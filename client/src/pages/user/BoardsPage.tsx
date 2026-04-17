@@ -36,50 +36,9 @@ export default function UserBoardsPage() {
   const fetchUserBoards = async () => {
     try {
       setLoading(true);
-      const invitedBoardIds = Object.keys(localStorage)
-        .filter(key => key.startsWith('invite_board_'))
-        .map(key => {
-          const boardData = localStorage.getItem(key);
-          if (boardData) {
-            try { return JSON.parse(boardData).id; } catch (e) { return null; }
-          }
-          return null;
-        })
-        .filter(Boolean);
-
-      if (invitedBoardIds.length > 0) {
-        const invitedBoards = invitedBoardIds
-          .map(id => {
-            const boardData = localStorage.getItem(`invite_board_${id}`);
-            if (boardData) {
-              try { return JSON.parse(boardData); } catch (e) { return null; }
-            }
-            return null;
-          })
-          .filter(Boolean);
-
-        setBoards(invitedBoards);
-
-        if (!isAuthenticated) {
-          const inviteToken = Object.keys(localStorage)
-            .find(key => key.startsWith('invite_token_'))
-            ?.replace('invite_token_', '');
-          if (inviteToken) {
-            try {
-              await api.post('/invite-links/redeem', { token: inviteToken });
-              Object.keys(localStorage)
-                .filter(key => key.startsWith('invite_'))
-                .forEach(key => localStorage.removeItem(key));
-            } catch (error) {
-              console.error('Error redeeming invite link:', error);
-            }
-          }
-        }
-      } else {
-        const response = await api.get('/boards');
-        if (response.data.success) {
-          setBoards(response.data.data.boards || []);
-        }
+      const response = await api.get('/boards');
+      if (response.data.success) {
+        setBoards(response.data.data.boards || []);
       }
     } catch (error) {
       console.error('Error fetching boards:', error);
@@ -191,28 +150,28 @@ export default function UserBoardsPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between px-6 py-3">
               <div className="flex items-center gap-3">
-                <button onClick={() => setDenseMode(!denseMode)}
+                <Tooltip title="Toggle compact view."><button onClick={() => setDenseMode(!denseMode)}
                   className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-                </button>
+                </button></Tooltip>
                 <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                   <div className="relative">
-                    <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
+                    <Tooltip title="Click to change rows per page."><button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                       className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
                       {rowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${rowsDropOpen ? 'rotate-180' : ''}`} />
-                    </button>
+                    </button></Tooltip>
                     {rowsDropOpen && (
                       <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
                         {[10, 25, 50, 100].map(n => (
-                          <button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
+                          <Tooltip title="Select the number of rows per page."><button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
                             className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
                               rowsPerPage === n ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
                               : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
-                            }`}>{n}</button>
+                            }`}>{n}</button></Tooltip>
                         ))}
                       </div>
                     )}
@@ -222,14 +181,14 @@ export default function UserBoardsPage() {
                   {boards.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, boards.length)}` : '0–0'} of {boards.length}
                 </span></Tooltip>
                 <div className="flex gap-1">
-                  <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
+                  <Tooltip title="Go to the previous page."><button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                     className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                     <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
+                  </button></Tooltip>
+                  <Tooltip title="Go to the next page."><button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
                     className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                     <ChevronRight className="w-4 h-4" />
-                  </button>
+                  </button></Tooltip>
                 </div>
               </div>
             </div>

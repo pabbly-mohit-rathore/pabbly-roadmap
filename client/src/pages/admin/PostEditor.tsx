@@ -1,11 +1,12 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import InputDialog from '../../components/ui/InputDialog';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Save, Send, ChevronLeft,
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, Link as LinkIcon, Image as ImageIcon,
   Code, Heading1, Heading2, Quote, Minus, Undo2, Redo2, Code2,
-  Upload, AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Table as TableIcon, RemoveFormatting, Palette, Highlighter
 } from 'lucide-react';
 import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
@@ -30,6 +31,7 @@ import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import toast from 'react-hot-toast';
+import Tooltip from '../../components/ui/Tooltip';
 
 // FontSize extension
 const FontSize = Extension.create({
@@ -246,17 +248,18 @@ export default function PostEditor() {
     finally { setPublishing(false); }
   };
 
-  const addLink = () => {
-    const url = prompt('Enter URL:');
-    if (url && editor) editor.chain().focus().setLink({ href: url }).run();
-  };
+  const [linkDialog, setLinkDialog] = useState<'link' | 'image' | null>(null);
 
-  const addImageFromUrl = () => {
-    const url = prompt('Enter image URL:');
-    if (url && editor) editor.chain().focus().insertContent({ type: 'resizableImage', attrs: { src: url } }).run();
-  };
+  const addLink = () => setLinkDialog('link');
+  const addImageFromUrl = () => setLinkDialog('image');
 
-  const addImageFromFile = () => fileInputRef.current?.click();
+  const handleUrlConfirm = useCallback((url: string) => {
+    if (!editor) return;
+    if (linkDialog === 'link') editor.chain().focus().setLink({ href: url }).run();
+    else if (linkDialog === 'image') editor.chain().focus().insertContent({ type: 'resizableImage', attrs: { src: url } }).run();
+    setLinkDialog(null);
+  }, [editor, linkDialog]);
+
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -320,8 +323,8 @@ export default function PostEditor() {
 
   if (loading) return <LoadingBar />;
 
-  const TB = ({ icon: Icon, action, active, title: t }: { icon: any; action: () => void; active?: boolean; title: string }) => (
-    <button onClick={action} title={t}
+  const TB = ({ icon: Icon, action, active }: { icon: any; action: () => void; active?: boolean; title?: string }) => (
+    <button onClick={action}
       className={`p-1.5 rounded transition ${
         active
           ? theme === 'dark' ? 'bg-gray-600 text-white' : 'bg-gray-300 text-gray-900'
@@ -340,10 +343,10 @@ export default function PostEditor() {
         theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
       }`}>
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(backPath)}
+          <Tooltip title="Click here to go back."><button onClick={() => navigate(backPath)}
             className={`flex items-center gap-1 text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             <ChevronLeft className="w-4 h-4" /> Back
-          </button>
+          </button></Tooltip>
           {post && (
             <div className="flex items-center gap-2">
               {post.isDraft && <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-100 text-yellow-700">Draft</span>}
@@ -358,12 +361,12 @@ export default function PostEditor() {
               Auto-saved {lastSaved}
             </span>
           )}
-          <button onClick={handleSave} disabled={saving}
+          <Tooltip title="Click here to save as draft."><button onClick={handleSave} disabled={saving}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition ${
               theme === 'dark' ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
             }`}>
             <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save'}
-          </button>
+          </button></Tooltip>
           <LoadingButton onClick={handlePublish} loading={publishing}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition disabled:opacity-70">
             <Send className="w-4 h-4" /> Publish Post
@@ -424,7 +427,7 @@ export default function PostEditor() {
 
               <div>
                 <button id="postFontColorBtn" onClick={() => { setShowColorPicker(!showColorPicker); setShowHighlightPicker(false); }}
-                  title="Font Color"
+                 
                   className={`p-1.5 rounded transition flex items-center gap-1 ${theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-200'}`}>
                   <Palette className="w-4 h-4" />
                   <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: fontColor }} />
@@ -433,7 +436,7 @@ export default function PostEditor() {
 
               <div>
                 <button id="postHighlightColorBtn" onClick={() => { setShowHighlightPicker(!showHighlightPicker); setShowColorPicker(false); }}
-                  title="Highlight"
+                 
                   className={`p-1.5 rounded transition flex items-center gap-1 ${
                     editor?.isActive('highlight')
                       ? theme === 'dark' ? 'bg-gray-600 text-white' : 'bg-gray-300 text-gray-900'
@@ -471,7 +474,6 @@ export default function PostEditor() {
               <Sep />
 
               <TB icon={LinkIcon} title="Link" action={addLink} active={editor?.isActive('link')} />
-              <TB icon={Upload} title="Upload Image" action={addImageFromFile} />
               <TB icon={ImageIcon} title="Image URL" action={addImageFromUrl} />
 
               <Sep />
@@ -580,6 +582,15 @@ export default function PostEditor() {
       )}
 
       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
+
+      <InputDialog
+        open={!!linkDialog}
+        title={linkDialog === 'image' ? 'Enter Image URL' : 'Enter URL'}
+        placeholder={linkDialog === 'image' ? 'https://example.com/image.png' : 'https://example.com'}
+        confirmLabel={linkDialog === 'image' ? 'Add Image' : 'Add Link'}
+        onConfirm={handleUrlConfirm}
+        onCancel={() => setLinkDialog(null)}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import LoadingBar from '../components/ui/LoadingBar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import Tooltip from '../components/ui/Tooltip';
 
 interface UserProfile {
   id: string;
@@ -202,10 +203,10 @@ export default function ProfilePage() {
                   className={`px-3 py-1.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${d ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'}`}
                   autoFocus onKeyDown={(e) => e.key === 'Enter' && handleUpdateName()}
                 />
-                <button onClick={handleUpdateName} disabled={savingName}
+                <Tooltip title="Click here to save."><button onClick={handleUpdateName} disabled={savingName}
                   className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60">
                   {savingName ? '...' : 'Save'}
-                </button>
+                </button></Tooltip>
                 <button onClick={() => { setEditName(false); setNameValue(profile?.name || ''); }}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${d ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>
                   Cancel
@@ -214,10 +215,10 @@ export default function ProfilePage() {
             ) : (
               <>
                 <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>{profile?.name}</span>
-                <button onClick={() => setEditName(true)}
+                <Tooltip title="Click here to update."><button onClick={() => setEditName(true)}
                   className={`text-sm font-semibold transition-colors ${d ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`}>
                   Update
-                </button>
+                </button></Tooltip>
               </>
             )}
           </div>
@@ -284,10 +285,10 @@ export default function ProfilePage() {
           {renderPasswordInput('Confirm New Password', 'confirmPassword', 'Confirm new password', showConfirm, () => setShowConfirm(!showConfirm))}
         </div>
         <div className="mt-6 flex justify-end">
-          <button onClick={handleChangePassword} disabled={savingPassword}
+          <Tooltip title="Click here to update."><button onClick={handleChangePassword} disabled={savingPassword}
             className="px-6 py-2.5 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors">
             {savingPassword ? 'Updating...' : 'Update Password'}
-          </button>
+          </button></Tooltip>
         </div>
       </div>
     </div>
@@ -321,9 +322,9 @@ export default function ProfilePage() {
             <p className="text-sm font-bold text-red-600">Delete account permanently</p>
             <p className={`text-xs mt-0.5 ${d ? 'text-red-400/70' : 'text-red-500/70'}`}>This permanently deletes your account. Your posts, comments, and votes will be disassociated.</p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-red-300 text-red-600 hover:bg-red-100 transition-colors">
+          <Tooltip title="Click here to delete your account."><button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-red-300 text-red-600 hover:bg-red-100 transition-colors">
             <Trash2 className="w-4 h-4" /> Delete Account
-          </button>
+          </button></Tooltip>
         </div>
       </div>
     </div>

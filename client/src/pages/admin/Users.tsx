@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Search, Shield, X, Copy, Check, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, Users as UsersIcon } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -19,6 +20,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [copiedField, setCopiedField] = useState('');
@@ -35,9 +37,9 @@ export default function AdminUsers() {
   useEffect(() => {
     const el = tabsRef.current[statusFilter];
     if (el?.parentElement) {
-      const pr = el.parentElement.getBoundingClientRect();
-      const er = el.getBoundingClientRect();
-      setIndicatorStyle({ left: er.left - pr.left, width: er.width });
+      
+      
+      setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
     }
   }, [statusFilter, loading]);
 
@@ -65,7 +67,22 @@ export default function AdminUsers() {
 
   return (
     <div>
+      {/* Header */}
+      <div className="flex items-center justify-end mb-4">
+        <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
+          className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+            showFilters
+              ? 'border-[#059669] text-[#059669]'
+              : d ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
+          }`}
+          style={{ height: '48px' }}>
+          <Icon icon="iconoir:filter" width={16} height={16} />
+          Filters
+        </button></Tooltip>
+      </div>
+
       {/* Filters */}
+      {showFilters && (
       <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="flex flex-wrap items-center gap-4">
           <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[180px] max-w-[380px] ${d ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`} style={{ padding: '0 14px', height: '48px' }}>
@@ -76,14 +93,15 @@ export default function AdminUsers() {
           </div>
 
           {searchQuery && (
-            <button onClick={() => { setSearchQuery(''); setPage(0); }}
+            <Tooltip title="Click here to clear all filters."><button onClick={() => { setSearchQuery(''); setPage(0); }}
               className="flex items-center gap-2 font-medium text-red-500 border border-red-300 hover:bg-red-50 rounded-lg transition-colors"
               style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
               <X className="w-5 h-5" /> Clear
-            </button>
+            </button></Tooltip>
           )}
         </div>
       </div>
+      )}
 
       {/* Table */}
       {loading ? <LoadingBar /> : (
@@ -172,20 +190,20 @@ export default function AdminUsers() {
                   <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }} onClick={(e) => e.stopPropagation()}>
                     {user.role !== 'admin' && (
                       <div className="relative inline-block">
-                        <button onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                        <Tooltip title="Click to see options."><button onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
                           className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
                           <MoreVertical className="w-4 h-4 text-gray-400" />
-                        </button>
+                        </button></Tooltip>
                         {openMenuId === user.id && (
                           <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px' }}>
                             <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
-                            <button onClick={() => { handleBanUser(user.id, user.isActive ? 'ban' : 'unban'); setOpenMenuId(null); }}
+                            <Tooltip title="Click here to change user status."><button onClick={() => { handleBanUser(user.id, user.isActive ? 'ban' : 'unban'); setOpenMenuId(null); }}
                               className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${
                                 user.isActive ? (d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50')
                                 : (d ? 'text-green-400 hover:bg-green-500/10' : 'text-green-600 hover:bg-green-50')
                               }`}>
                               <Shield className="w-[18px] h-[18px]" /> {user.isActive ? 'Ban User' : 'Unban User'}
-                            </button>
+                            </button></Tooltip>
                           </div>
                         )}
                       </div>
@@ -209,28 +227,28 @@ export default function AdminUsers() {
           {/* Pagination */}
           <div className="flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-3">
-              <button onClick={() => setDenseMode(!denseMode)}
+              <Tooltip title="Toggle compact view."><button onClick={() => setDenseMode(!denseMode)}
                 className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${denseMode ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-              </button>
+              </button></Tooltip>
               <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Switch to reduce the table size."><span>Dense</span></Tooltip></span>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}><Tooltip title="Select the number of rows displayed per page."><span>Rows per page:</span></Tooltip></span>
                 <div className="relative">
-                  <button onClick={() => setRowsDropOpen(!rowsDropOpen)}
+                  <Tooltip title="Click to change rows per page."><button onClick={() => setRowsDropOpen(!rowsDropOpen)}
                     className={`text-sm font-medium cursor-pointer flex items-center gap-1 ${d ? 'text-white' : 'text-gray-800'}`}>
                     {rowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${rowsDropOpen ? 'rotate-180' : ''}`} />
-                  </button>
+                  </button></Tooltip>
                   {rowsDropOpen && (
                     <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
                       {[10, 25, 50, 100].map(n => (
-                        <button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
+                        <Tooltip title="Select the number of rows per page."><button key={n} onClick={() => { setRowsPerPage(n); setRowsDropOpen(false); setPage(0); }}
                           className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${
                             rowsPerPage === n ? (d ? 'bg-gray-600 text-white font-semibold' : 'bg-gray-100 text-gray-800 font-semibold')
                             : (d ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50')
-                          }`}>{n}</button>
+                          }`}>{n}</button></Tooltip>
                       ))}
                     </div>
                   )}
@@ -240,14 +258,14 @@ export default function AdminUsers() {
                 {filteredUsers.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, filteredUsers.length)}` : '0–0'} of {filteredUsers.length}
               </span></Tooltip>
               <div className="flex gap-1">
-                <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
+                <Tooltip title="Go to the previous page."><button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                   className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                   <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
+                </button></Tooltip>
+                <Tooltip title="Go to the next page."><button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
                   className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                   <ChevronRight className="w-4 h-4" />
-                </button>
+                </button></Tooltip>
               </div>
             </div>
           </div>
@@ -334,12 +352,12 @@ export default function AdminUsers() {
               </div>
               {selectedUser.role !== 'admin' && (
                 <div className={`mt-8 pt-6 border-t ${d ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <button onClick={() => handleBanUser(selectedUser.id, selectedUser.isActive ? 'ban' : 'unban')}
+                  <Tooltip title="Click here to change user status."><button onClick={() => handleBanUser(selectedUser.id, selectedUser.isActive ? 'ban' : 'unban')}
                     className={`w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
                       selectedUser.isActive ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'
                     }`}>
                     {selectedUser.isActive ? 'Ban User' : 'Unban User'}
-                  </button>
+                  </button></Tooltip>
                 </div>
               )}
             </div>
