@@ -119,7 +119,6 @@ const getBoardBySlug = async (req, res, next) => {
         _count: {
           select: {
             posts: true,
-            comments: true,
             members: true,
           },
         },

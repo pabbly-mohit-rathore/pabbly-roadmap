@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database');
 
 // POST /changelog — Create a new changelog entry (admin only)
 const createEntry = async (req, res, next) => {
@@ -11,12 +10,15 @@ const createEntry = async (req, res, next) => {
 
     const { title, description, content, type, boardIds, allBoards } = req.body;
 
+    const validTypes = ['new', 'improved', 'fixed'];
+    const changelogType = validTypes.includes(type) ? type : 'new';
+
     const entry = await prisma.changelogEntry.create({
       data: {
         title,
         description: description || null,
         content,
-        type: type || 'new',
+        type: changelogType,
         status: 'draft',
         allBoards: allBoards !== false,
         authorId: userId,

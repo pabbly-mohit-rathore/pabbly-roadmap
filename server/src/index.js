@@ -21,7 +21,6 @@ const commentRoutes = require('./routes/comment.routes');
 const voteRoutes = require('./routes/vote.routes');
 const tagRoutes = require('./routes/tag.routes');
 const boardMemberRoutes = require('./routes/boardMember.routes');
-const inviteLinkRoutes = require('./routes/inviteLink.routes');
 const adminDashboardRoutes = require('./routes/adminDashboard.routes');
 const userManagementRoutes = require('./routes/userManagement.routes');
 const quickResponseRoutes = require('./routes/quickResponse.routes');
@@ -122,9 +121,6 @@ app.use('/api/tags', tagRoutes);
 
 // Board Member routes — /api/boards/:boardId/members, /api/members/boards, etc.
 app.use('/api', boardMemberRoutes);
-
-// Invite Link routes — /api/invite-links, /api/boards/:boardId/invite-links, etc.
-app.use('/api', inviteLinkRoutes);
 
 // Admin Dashboard routes — /api/admin/dashboard/stats, /api/admin/dashboard/top-posts, etc.
 app.use('/api', adminDashboardRoutes);
