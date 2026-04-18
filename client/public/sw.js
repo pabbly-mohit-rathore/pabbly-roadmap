@@ -21,8 +21,8 @@ self.addEventListener('push', (event) => {
     icon: '/favicon.png',
     badge: '/favicon.png',
     data: { url: payload.url || '/' },
-    tag: payload.type || 'pabbly-notification',
-    renotify: true,
+    tag: `pabbly-${payload.type || 'notification'}-${Date.now()}`,
+    requireInteraction: false,
   };
 
   event.waitUntil(self.registration.showNotification(payload.title, options));
