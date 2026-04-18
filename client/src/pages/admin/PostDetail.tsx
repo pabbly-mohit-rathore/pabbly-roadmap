@@ -661,7 +661,7 @@ export default function AdminPostDetail() {
                                   )}
                                 </div>
                               )}
-                              {comment.isSpam && <button onClick={() => handleMarkNotSpam(comment.id)} title="Click here to mark as not spam." className="text-xs text-blue-600 hover:underline mt-2">Mark not spam</button>}
+                              {comment.isSpam && <button onClick={() => handleMarkNotSpam(comment.id)} title="Click here to mark as not spam." className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-md transition-colors mt-2">Mark not spam</button>}
                               {comment.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">Official Response</p>}
 
                               {replyingToId === comment.id && (
@@ -753,7 +753,7 @@ export default function AdminPostDetail() {
                                               </button></Tooltip>
                                             </div>
                                           )}
-                                          {reply.isSpam && <button onClick={() => handleMarkNotSpam(reply.id)} title="Click here to mark as not spam." className="text-xs text-blue-600 hover:underline mt-2">Mark not spam</button>}
+                                          {reply.isSpam && <button onClick={() => handleMarkNotSpam(reply.id)} title="Click here to mark as not spam." className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-md transition-colors mt-2">Mark not spam</button>}
                                           {reply.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">Official Response</p>}
                                           {replyingToId === reply.id && (
                                             <div className="mt-3">
