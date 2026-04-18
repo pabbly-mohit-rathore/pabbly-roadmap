@@ -142,20 +142,17 @@ const addComment = async (req, res, next) => {
     }
 
     // Check: Kya user ko is board ka access hai?
-    const hasAccess = await prisma.userBoardAccess.findUnique({
-      where: {
-        userId_boardId: {
-          userId,
-          boardId: post.boardId,
-        },
-      },
-    });
-
-    if (req.user.role !== 'admin' && !hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: 'You do not have access to this board.',
+    // Admin, team members, userBoardAccess, ya public board — sabko allow karo
+    if (req.user.role !== 'admin' && !req.user.teamAccess) {
+      const hasAccess = await prisma.userBoardAccess.findUnique({
+        where: { userId_boardId: { userId, boardId: post.boardId } },
       });
+      if (!hasAccess) {
+        const board = await prisma.board.findUnique({ where: { id: post.boardId }, select: { isPublic: true } });
+        if (!board?.isPublic) {
+          return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
+        }
+      }
     }
 
     // Agar parentId hai toh parent comment check karo
