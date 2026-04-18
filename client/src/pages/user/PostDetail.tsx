@@ -231,7 +231,8 @@ export default function UserPostDetail() {
       }
     } catch (error) {
       console.error('Error adding comment:', error);
-      toast.error('Failed to add comment');
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to add comment');
     } finally {
       setSubmittingComment(false);
     }
