@@ -425,7 +425,7 @@ export default function AdminReporting() {
         <div style={{ padding: '24px 24px 16px 24px' }}>
           <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Activity Log</h2>
         </div>
-        <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+        <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <thead>
             <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
               {[
@@ -438,7 +438,7 @@ export default function AdminReporting() {
               ].map((h, i) => (
                 <th key={h.label} className={`font-semibold ${theme === 'dark' ? 'text-gray-400' : ''}`}
                   style={{ fontSize: '14px', color: theme === 'dark' ? undefined : '#1C252E', textAlign: i === 5 ? 'right' : 'left',
-                    width: i === 0 ? '220px' : i === 1 ? '120px' : i === 2 ? '250px' : i === 3 ? '180px' : i === 4 ? '130px' : '160px' }}>
+                    width: i === 0 ? '220px' : i === 1 ? '120px' : i === 2 ? '350px' : i === 3 ? '260px' : i === 4 ? '220px' : '130px' }}>
                   <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 5 ? '24px' : '16px' }}>
                     <UITooltip title={h.tip}><span>{h.label}</span></UITooltip>
                   </div>
@@ -449,12 +449,12 @@ export default function AdminReporting() {
           <tbody>
             {activityLogs.length > 0 ? activityLogs.map((log) => (
               <tr key={log.id} className={`border-b border-dashed transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
-                <td className={logDenseMode ? 'py-1.5' : 'py-4'} style={{ paddingLeft: '24px' }}>
-                  <div className="flex items-center gap-3">
+                <td className={`${logDenseMode ? 'py-1.5' : 'py-4'} overflow-hidden`} style={{ paddingLeft: '24px' }}>
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
                       {log.user.name[0].toUpperCase()}
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{log.user.name}</p>
                       <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{log.user.email}</p>
                     </div>
@@ -465,9 +465,21 @@ export default function AdminReporting() {
                     {log.action.replace(/_/g, ' ')}
                   </span>
                 </td>
-                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm max-w-[250px] truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{log.description}</td>
-                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm truncate max-w-[180px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{log.post?.title || '—'}</td>
-                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{log.board?.name || '—'}</td>
+                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm overflow-hidden ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <UITooltip title={log.description}>
+                    <span className="block truncate">{log.description}</span>
+                  </UITooltip>
+                </td>
+                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm overflow-hidden ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <UITooltip title={log.post?.title || '—'}>
+                    <span className="block truncate">{log.post?.title || '—'}</span>
+                  </UITooltip>
+                </td>
+                <td className={`px-4 ${logDenseMode ? 'py-1.5' : 'py-4'} text-sm overflow-hidden ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <UITooltip title={log.board?.name || '—'}>
+                    <span className="block truncate">{log.board?.name || '—'}</span>
+                  </UITooltip>
+                </td>
                 <td className={`${logDenseMode ? 'py-1.5' : 'py-4'} text-sm whitespace-nowrap text-right ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} style={{ paddingRight: '24px', paddingLeft: '16px' }}>
                   {new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </td>
@@ -500,7 +512,7 @@ export default function AdminReporting() {
                   {logRowsPerPage} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${logRowsDropOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {logRowsDropOpen && (
-                  <div className={`absolute top-full mt-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                  <div className={`absolute bottom-full mb-2 right-0 rounded-lg border shadow-lg z-50 p-1 min-w-[60px] ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
                     {[10, 25, 50, 100].map(n => (
                       <button key={n} onClick={() => { setLogRowsPerPage(n); setLogRowsDropOpen(false); setLogPage(0); }}
                         className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${

@@ -338,23 +338,41 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                             d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'
                           }`} style={{ minWidth: '160px' }}>
                             <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
-                            <Tooltip title="Click here to edit this post."><button onClick={() => { navigate(`/admin/changelog/${entry.id}/edit`); setOpenMenuId(null); }}
+                            <div className="relative group/mi1">
+                                <button onClick={() => { navigate(`/admin/changelog/${entry.id}/edit`); setOpenMenuId(null); }}
                               className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
                               <Edit2 className="w-[18px] h-[18px] text-amber-500" />  Edit
-                            </button></Tooltip>
+                            </button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi1:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to edit this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                             {entry.status === 'draft' && (
                               <>
-                                <Tooltip title="Click here to publish this entry."><button onClick={() => { handlePublish(entry.id); setOpenMenuId(null); }}
+                                <div className="relative group/mi3">
+                                <button onClick={() => { handlePublish(entry.id); setOpenMenuId(null); }}
                                   className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-green-400 hover:bg-green-500/10' : 'text-green-600 hover:bg-green-50'}`}>
                                   <Send className="w-[18px] h-[18px]" />  Publish
-                                </button></Tooltip>
+                                </button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi3:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to publish this entry.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                               </>
                             )}
                             <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
-                            <Tooltip title="Click here to delete this post."><button onClick={() => { setDeleteConfirm({ id: entry.id, title: entry.title }); setOpenMenuId(null); }}
+                            <div className="relative group/mi2">
+                                <button onClick={() => { setDeleteConfirm({ id: entry.id, title: entry.title }); setOpenMenuId(null); }}
                               className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
                               <Trash2 className="w-[18px] h-[18px]" />  Delete
-                            </button></Tooltip>
+                            </button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi2:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to delete this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                           </div>
                         )}
                       </div>

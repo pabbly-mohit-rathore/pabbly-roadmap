@@ -174,15 +174,27 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
                       {openMenuId === tag.id && (
                         <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px' }}>
                           <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
-                          <Tooltip title="Click here to edit this post."><button onClick={() => { setSelectedTag(tag); setFormData({ name: tag.name, color: tag.color }); setShowEditModal(true); setOpenMenuId(null); }}
+                          <div className="relative group/mi1">
+                                <button onClick={() => { setSelectedTag(tag); setFormData({ name: tag.name, color: tag.color }); setShowEditModal(true); setOpenMenuId(null); }}
                             className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
                             <Edit2 className="w-[18px] h-[18px] text-amber-500" />  Edit
-                          </button></Tooltip>
+                          </button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi1:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to edit this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                           <div className={`mx-1 my-1 border-t border-dashed ${d ? 'border-gray-500' : 'border-gray-200'}`} />
-                          <Tooltip title="Click here to delete this post."><button onClick={() => { setDeleteConfirm(tag.id); setOpenMenuId(null); }}
+                          <div className="relative group/mi4">
+                                <button onClick={() => { setDeleteConfirm(tag.id); setOpenMenuId(null); }}
                             className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg disabled:opacity-50 ${d ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
                             <Trash2 className="w-[18px] h-[18px]" />  Delete
-                          </button></Tooltip>
+                          </button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi4:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to delete this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                         </div>
                       )}
                     </div>
@@ -304,9 +316,15 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
           <div className={`rounded-xl w-full ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}>
             <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
               <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Edit Tag</h2>
-              <Tooltip title="Click here to edit this post."><button onClick={() => { setShowEditModal(false); setSelectedTag(null); }} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
+              <div className="relative group/mi2">
+                                <button onClick={() => { setShowEditModal(false); setSelectedTag(null); }} className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
                 <X className="w-5 h-5" />
-              </button></Tooltip>
+              </button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi2:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to edit this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
             </div>
             <div className="space-y-5" style={{ padding: '24px' }}>
               <div>
@@ -333,8 +351,14 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
                 </div>
               </div>
               <div className="flex gap-3 justify-end pt-2">
-                <Tooltip title="Click here to edit this post."><button onClick={() => { setShowEditModal(false); setSelectedTag(null); }}
-                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button></Tooltip>
+                <div className="relative group/mi3">
+                                <button onClick={() => { setShowEditModal(false); setSelectedTag(null); }}
+                  className={`px-3 py-1.5 text-sm font-medium border transition-colors ${d ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`} style={{ borderRadius: '8px' }}>Cancel</button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi3:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to edit this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                 <LoadingButton onClick={handleUpdateTag} loading={updating}
                   className="px-3 py-1.5 bg-[#059669] text-white text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-70" style={{ borderRadius: '8px' }}>Update</LoadingButton>
               </div>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, cloneElement, Children } from 'react';
 
 interface TooltipProps {
   title: string;
@@ -9,7 +9,7 @@ export default function Tooltip({ title, children }: TooltipProps) {
   const [show, setShow] = useState(false);
   const [visible, setVisible] = useState(false);
   const [pos, setPos] = useState({ left: 0, top: 0 });
-  const triggerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -19,7 +19,6 @@ export default function Tooltip({ title, children }: TooltipProps) {
       const tip = tipRef.current.getBoundingClientRect();
       let left = tr.left + tr.width / 2 - tip.width / 2;
       let top = tr.top - tip.height - 8;
-      // Keep within viewport
       if (top < 4) top = tr.bottom + 8;
       if (left < 4) left = 4;
       if (left + tip.width > window.innerWidth - 4) left = window.innerWidth - tip.width - 4;
@@ -34,15 +33,30 @@ export default function Tooltip({ title, children }: TooltipProps) {
 
   if (!title) return children;
 
+  // Clone the child and attach ref + hover handlers directly to it.
+  // This way the Tooltip adds NO extra DOM wrapper — layout stays exactly as the child.
+  const child = Children.only(children) as React.ReactElement<any>;
+  const enhanced = cloneElement(child, {
+    ref: (node: HTMLElement | null) => {
+      (triggerRef as React.MutableRefObject<HTMLElement | null>).current = node;
+      // Preserve existing ref if any
+      const origRef = (child as { ref?: unknown }).ref;
+      if (typeof origRef === 'function') origRef(node);
+      else if (origRef && typeof origRef === 'object') (origRef as React.MutableRefObject<HTMLElement | null>).current = node;
+    },
+    onMouseEnter: (e: React.MouseEvent) => {
+      handleEnter();
+      if (child.props.onMouseEnter) child.props.onMouseEnter(e);
+    },
+    onMouseLeave: (e: React.MouseEvent) => {
+      handleLeave();
+      if (child.props.onMouseLeave) child.props.onMouseLeave(e);
+    },
+  });
+
   return (
     <>
-      <span
-        ref={triggerRef}
-        onMouseEnter={handleEnter}
-        onMouseLeave={handleLeave}
-      >
-        {children}
-      </span>
+      {enhanced}
       {show && (
         <div
           ref={tipRef}
@@ -73,7 +87,6 @@ export default function Tooltip({ title, children }: TooltipProps) {
           >
             {title}
           </div>
-          {/* Arrow */}
           <div
             style={{
               width: 0,

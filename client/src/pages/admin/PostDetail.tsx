@@ -593,11 +593,23 @@ export default function AdminPostDetail() {
                                     </button></Tooltip>
                                     {commentMenuId === comment.id && (
                                       <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-lg z-50 p-1 ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '130px' }}>
-                                        <Tooltip title="Click here to edit this post."><button onClick={() => { setEditingCommentId(comment.id); setCommentMenuId(null); }}
-                                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button></Tooltip>
+                                        <div className="relative group/mi1">
+                                <button onClick={() => { setEditingCommentId(comment.id); setCommentMenuId(null); }}
+                                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi1:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to edit this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                                         {!isTeamManager && (
-                                        <Tooltip title="Click here to delete this post."><button onClick={() => { setDeleteCommentConfirm(comment.id); setCommentMenuId(null); }}
-                                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button></Tooltip>
+                                        <div className="relative group/mi5">
+                                <button onClick={() => { setDeleteCommentConfirm(comment.id); setCommentMenuId(null); }}
+                                          className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi5:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to delete this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                                         )}
                                       </div>
                                     )}
@@ -607,7 +619,13 @@ export default function AdminPostDetail() {
                               {editingCommentId === comment.id ? (
                                 <div className="mt-2">
                                   <CommentEditor onSubmit={(html) => handleEditComment(comment.id, html)} placeholder="Edit comment..." buttonLabel="Save" submitting={editingComment} initialContent={comment.content} />
-                                  <Tooltip title="Click here to edit this post."><button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>Cancel</button></Tooltip>
+                                  <div className="relative group/mi2">
+                                <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>Cancel</button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi2:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to edit this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                                 </div>
                               ) : (
                                 <div className={`mt-1 text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -684,11 +702,23 @@ export default function AdminPostDetail() {
                                                 </button></Tooltip>
                                                 {commentMenuId === reply.id && (
                                                   <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-lg z-50 p-1 ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '130px' }}>
-                                                    <Tooltip title="Click here to edit this post."><button onClick={() => { setEditingCommentId(reply.id); setCommentMenuId(null); }}
-                                                      className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button></Tooltip>
+                                                    <div className="relative group/mi3">
+                                <button onClick={() => { setEditingCommentId(reply.id); setCommentMenuId(null); }}
+                                                      className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>Edit</button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi3:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to edit this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                                                     {!isTeamManager && (
-                                                    <Tooltip title="Click here to delete this post."><button onClick={() => { setDeleteCommentConfirm(reply.id); setCommentMenuId(null); }}
-                                                      className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button></Tooltip>
+                                                    <div className="relative group/mi6">
+                                <button onClick={() => { setDeleteCommentConfirm(reply.id); setCommentMenuId(null); }}
+                                                      className={`w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>Delete</button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi6:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to delete this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                                                     )}
                                                   </div>
                                                 )}
@@ -698,7 +728,13 @@ export default function AdminPostDetail() {
                                           {editingCommentId === reply.id ? (
                                             <div className="mt-2">
                                               <CommentEditor onSubmit={(html) => handleEditComment(reply.id, html)} placeholder="Edit reply..." buttonLabel="Save" submitting={editingComment} initialContent={reply.content} compact />
-                                              <Tooltip title="Click here to edit this post."><button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Cancel</button></Tooltip>
+                                              <div className="relative group/mi4">
+                                <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Cancel</button>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi4:flex items-center z-[60] pointer-events-none">
+                                  <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">Click here to edit this post.</div>
+                                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-gray-900 -ml-[1px]" />
+                                </div>
+                              </div>
                                             </div>
                                           ) : (
                                             <div className={`mt-1 text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
