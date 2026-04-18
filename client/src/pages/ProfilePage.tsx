@@ -4,6 +4,7 @@ import { User, Bell, Lock, Settings, Eye, EyeOff, LogOut, Trash2 } from 'lucide-
 import useThemeStore from '../store/themeStore';
 import useAuthStore from '../store/authStore';
 import api from '../services/api';
+import pushNotifications from '../services/pushNotification.service';
 import toast from 'react-hot-toast';
 import LoadingBar from '../components/ui/LoadingBar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -58,15 +59,51 @@ export default function ProfilePage() {
 
   // Notifications
   const [notifSettings, setNotifSettings] = useState({
-    emailNotifications: true,
+    browserNotifications: false,
     postVoted: true,
     statusChange: true,
     newComment: true,
     commentLiked: true,
     commentReply: true,
   });
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   useEffect(() => { fetchProfile(); }, []);
+
+  useEffect(() => {
+    const supported = pushNotifications.isSupported();
+    setPushSupported(supported);
+    if (supported) {
+      pushNotifications.isSubscribed().then((subscribed) => {
+        setNotifSettings((s) => ({ ...s, browserNotifications: subscribed }));
+      });
+    }
+  }, []);
+
+  const toggleBrowserPush = async () => {
+    if (!pushSupported) {
+      toast.error('Browser notifications not supported in this browser.');
+      return;
+    }
+    setPushBusy(true);
+    try {
+      if (notifSettings.browserNotifications) {
+        await pushNotifications.unsubscribe();
+        setNotifSettings((s) => ({ ...s, browserNotifications: false }));
+        toast.success('Browser notifications turned off.');
+      } else {
+        await pushNotifications.subscribe();
+        setNotifSettings((s) => ({ ...s, browserNotifications: true }));
+        toast.success('Browser notifications enabled.');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update notification settings.';
+      toast.error(msg);
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!tabFromUrl) setSearchParams({ tab: activeTab }, { replace: true });
@@ -230,12 +267,22 @@ export default function ProfilePage() {
   const renderNotificationsTab = () => (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h2 className={`text-lg font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Email Notifications</h2>
-        {renderToggle(notifSettings.emailNotifications, () => setNotifSettings(s => ({ ...s, emailNotifications: !s.emailNotifications })))}
+        <h2 className={`text-lg font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Browser Notifications</h2>
+        <button
+          onClick={toggleBrowserPush}
+          disabled={!pushSupported || pushBusy}
+          className={`relative w-11 h-6 rounded-full transition-colors ${notifSettings.browserNotifications ? 'bg-emerald-500' : d ? 'bg-gray-600' : 'bg-gray-300'} ${(!pushSupported || pushBusy) ? 'opacity-60 cursor-not-allowed' : ''}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${notifSettings.browserNotifications ? 'translate-x-5' : ''}`} />
+        </button>
       </div>
-      <p className={`text-sm mb-6 ${d ? 'text-gray-400' : 'text-gray-500'}`}>We'll notify you about important updates based on your preferences below.</p>
+      <p className={`text-sm mb-6 ${d ? 'text-gray-400' : 'text-gray-500'}`}>
+        {pushSupported
+          ? "We'll send desktop notifications when the app is in the background, based on your preferences below."
+          : 'Your browser does not support push notifications.'}
+      </p>
 
-      {notifSettings.emailNotifications && (
+      {notifSettings.browserNotifications && (
         <div className={`rounded-xl border ${d ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
           {/* Post Section */}
           <div className={`flex items-center justify-between px-6 py-3 border-b ${d ? 'border-gray-700' : 'border-gray-100'}`}>

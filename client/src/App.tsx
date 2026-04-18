@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import CustomToaster from './components/ui/CustomToaster';
 import BannedDialog from './components/ui/BannedDialog';
 import { useEffect, lazy, Suspense } from 'react';
@@ -7,6 +7,7 @@ import AdminLayout from './components/admin/Layout';
 import useThemeStore from './store/themeStore';
 import useAuthStore from './store/authStore';
 import useTeamAccessStore from './store/teamAccessStore';
+import pushNotifications from './services/pushNotification.service';
 
 // Lazy load all pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -56,6 +57,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <PushNavigationBridge />
       <Suspense fallback={null}>
         <Routes>
           {/* Public Routes */}
@@ -172,6 +174,26 @@ function App() {
       <BannedDialog />
     </BrowserRouter>
   );
+}
+
+// Listens for 'navigate' messages from the service worker (push click) and routes to the URL
+function PushNavigationBridge() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!pushNotifications.isSupported()) return;
+    pushNotifications.registerServiceWorker().catch(() => {});
+
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'navigate' && typeof event.data.url === 'string') {
+        navigate(event.data.url);
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handler);
+    return () => navigator.serviceWorker?.removeEventListener('message', handler);
+  }, [navigate]);
+
+  return null;
 }
 
 export default App;

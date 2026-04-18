@@ -17,6 +17,7 @@ import {
 import { ResizableImage } from './rich-text-editor/Components/editor/components/img-resize';
 import useThemeStore from '../store/themeStore';
 import LoadingButton from './ui/LoadingButton';
+import Tooltip from './ui/Tooltip';
 import { ButtonExtension, type ButtonAttributes } from './ButtonExtension';
 import ButtonConfigModal from './ButtonConfigModal';
 
@@ -282,10 +283,12 @@ export default function CommentEditor({
         </div>
 
         {!hideButton && (
-          <LoadingButton onClick={handleSubmit} loading={submitting} type="button"
-            className="px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition disabled:opacity-70">
-            {buttonLabel}
-          </LoadingButton>
+          <Tooltip title={buttonLabel === 'Reply' ? 'Click here to post your reply.' : buttonLabel === 'Save' ? 'Click here to save changes.' : 'Click here to post your comment.'}>
+            <LoadingButton onClick={handleSubmit} loading={submitting} type="button"
+              className="px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition disabled:opacity-70">
+              {buttonLabel}
+            </LoadingButton>
+          </Tooltip>
         )}
       </div>
 
