@@ -226,15 +226,25 @@ const addComment = async (req, res, next) => {
         select: { authorId: true },
       });
       if (parentComment && parentComment.authorId !== userId) {
+        const title = 'New reply to your comment';
+        const message = `${comment.author.name} replied to your comment on "${post.title}"`;
         await prisma.notification.create({
           data: {
             userId: parentComment.authorId,
             type: 'comment_reply',
-            title: 'New reply to your comment',
-            message: `${comment.author.name} replied to your comment on "${post.title}"`,
+            title,
+            message,
             postId,
             data: JSON.stringify({ commentId: comment.id, parentId }),
           },
+        }).catch(() => {});
+
+        const { sendPushToUser } = require('../utils/webPush');
+        sendPushToUser(parentComment.authorId, {
+          title,
+          body: message,
+          url: `/posts/${post.slug || postId}`,
+          type: 'comment_reply',
         }).catch(() => {});
       }
     }
@@ -772,15 +782,25 @@ const toggleCommentLike = async (req, res, next) => {
     if (hasLiked && comment.authorId && comment.authorId !== userId) {
       const liker = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
       const post = await prisma.post.findUnique({ where: { id: comment.postId }, select: { title: true, slug: true } });
+      const title = 'Your comment was liked';
+      const message = `${liker?.name || 'Someone'} liked your comment on "${post?.title || 'a post'}"`;
       await prisma.notification.create({
         data: {
           userId: comment.authorId,
           type: 'comment_liked',
-          title: 'Your comment was liked',
-          message: `${liker?.name || 'Someone'} liked your comment on "${post?.title || 'a post'}"`,
+          title,
+          message,
           postId: comment.postId,
           data: JSON.stringify({ commentId: id }),
         },
+      }).catch(() => {});
+
+      const { sendPushToUser } = require('../utils/webPush');
+      sendPushToUser(comment.authorId, {
+        title,
+        body: message,
+        url: post?.slug ? `/posts/${post.slug}` : '/',
+        type: 'comment_liked',
       }).catch(() => {});
     }
 

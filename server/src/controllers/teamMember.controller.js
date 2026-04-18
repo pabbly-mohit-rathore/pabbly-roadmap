@@ -220,12 +220,14 @@ const addTeamMember = async (req, res, next) => {
     });
 
     // Notification with accept/reject payload
+    const inviteTitle = 'Team Access Request';
+    const inviteMessage = `You have been invited as ${accessLevel === 'admin' ? 'Admin' : 'Manager'} on "${board.name}". Accept to access the dashboard.`;
     await prisma.notification.create({
       data: {
         userId: user.id,
         type: 'team_access_request',
-        title: 'Team Access Request',
-        message: `You have been invited as ${accessLevel === 'admin' ? 'Admin' : 'Manager'} on "${board.name}". Accept to access the dashboard.`,
+        title: inviteTitle,
+        message: inviteMessage,
         data: JSON.stringify({
           invitationId: invitation.id,
           accessLevel: invitation.accessLevel,
@@ -234,6 +236,14 @@ const addTeamMember = async (req, res, next) => {
         }),
       },
     });
+
+    const { sendPushToUser } = require('../utils/webPush');
+    sendPushToUser(user.id, {
+      title: inviteTitle,
+      body: inviteMessage,
+      url: '/notifications',
+      type: 'team_access_request',
+    }).catch(() => {});
 
     res.status(201).json({
       success: true,
@@ -300,6 +310,14 @@ const acceptTeamInvitation = async (req, res, next) => {
       }),
     ]);
 
+    const { sendPushToUser } = require('../utils/webPush');
+    sendPushToUser(invitation.invitedById, {
+      title: 'Team Invitation Accepted',
+      body: `Your team access invitation for "${invitation.board.name}" was accepted.`,
+      url: '/notifications',
+      type: 'team_access_accepted',
+    }).catch(() => {});
+
     // Update notification data to mark action as taken (data is a JSON string)
     const reqNotifications = await prisma.notification.findMany({
       where: {
@@ -363,6 +381,14 @@ const rejectTeamInvitation = async (req, res, next) => {
         },
       }),
     ]);
+
+    const { sendPushToUser } = require('../utils/webPush');
+    sendPushToUser(invitation.invitedById, {
+      title: 'Team Invitation Declined',
+      body: `${name} declined your team access invitation for "${invitation.board.name}".`,
+      url: '/notifications',
+      type: 'team_access_rejected',
+    }).catch(() => {});
 
     // Update notification data to mark action as taken (data is a JSON string)
     const reqNotifications = await prisma.notification.findMany({

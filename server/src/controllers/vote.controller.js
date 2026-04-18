@@ -26,7 +26,7 @@ const upvotePost = async (req, res, next) => {
     // Post dhundho
     const post = await prisma.post.findUnique({
       where: { id: postId },
-      select: { id: true, boardId: true, voteCount: true, title: true, authorId: true },
+      select: { id: true, boardId: true, voteCount: true, title: true, authorId: true, slug: true },
     });
 
     if (!post) {
@@ -96,14 +96,18 @@ const upvotePost = async (req, res, next) => {
     // Notification — post author ko batao (sirf new vote pe, remove pe nahi)
     if (!existingVote && post.authorId && post.authorId !== userId) {
       const voter = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+      const title = 'New vote on your post';
+      const message = `${voter?.name || 'Someone'} upvoted "${post.title}"`;
       await prisma.notification.create({
-        data: {
-          userId: post.authorId,
-          type: 'post_voted',
-          title: 'New vote on your post',
-          message: `${voter?.name || 'Someone'} upvoted "${post.title}"`,
-          postId,
-        },
+        data: { userId: post.authorId, type: 'post_voted', title, message, postId },
+      }).catch(() => {});
+
+      const { sendPushToUser } = require('../utils/webPush');
+      sendPushToUser(post.authorId, {
+        title,
+        body: message,
+        url: `/posts/${post.slug || postId}`,
+        type: 'post_voted',
       }).catch(() => {});
     }
 

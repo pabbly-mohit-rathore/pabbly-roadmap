@@ -52,6 +52,7 @@ model User {
 
   receivedInvitations  TeamInvitation[] @relation("ReceivedInvitations")
   sentInvitations      TeamInvitation[] @relation("SentInvitations")
+  pushSubscriptions    PushSubscription[]
 
   @@map("users")  // Database mein table ka naam "users" hoga
 }
@@ -598,4 +599,25 @@ model ChangelogLike {
 
   @@unique([changelogEntryId, userId])
   @@map("changelog_likes")
+}
+
+// ============================================================
+// MODEL 19: PushSubscription
+// Browser push subscriptions — har user ke multiple devices ho sakte hain
+// User browser pe "Allow notifications" karta hai to subscription store hoti hai
+// ============================================================
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique @db.Text  // Browser-provided push endpoint URL
+  p256dh    String   @db.Text          // Public key for encryption
+  auth      String   @db.Text          // Auth secret
+  userAgent String?  @db.Text          // For debugging — which browser/device
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

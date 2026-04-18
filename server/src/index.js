@@ -154,6 +154,10 @@ app.use('/api/subscriptions', subscriptionRoutes);
 const notificationRoutes = require('./routes/notification.routes');
 app.use('/api/notifications', notificationRoutes);
 
+// Push subscription routes (browser push)
+const pushSubscriptionRoutes = require('./routes/pushSubscription.routes');
+app.use('/api/push', pushSubscriptionRoutes);
+
 // ──────────────────────────────────────
 // ERROR HANDLER (sabse last mein lagta hai)
 // Koi bhi error aaye toh ye pakad leta hai

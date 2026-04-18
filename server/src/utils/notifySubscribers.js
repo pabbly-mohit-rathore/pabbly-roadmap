@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { sendPushToUsers } = require('./webPush');
 
 async function notifySubscribers(postId, { type, title, message, excludeUserIds = [] }) {
   try {
@@ -9,15 +10,23 @@ async function notifySubscribers(postId, { type, title, message, excludeUserIds 
 
     if (subscribers.length === 0) return;
 
+    const userIds = subscribers.map(s => s.userId);
+
     await prisma.notification.createMany({
-      data: subscribers.map(s => ({
-        userId: s.userId,
-        type,
-        title,
-        message,
-        postId,
-      })),
+      data: userIds.map(userId => ({ userId, type, title, message, postId })),
     });
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { slug: true },
+    });
+
+    sendPushToUsers(userIds, {
+      title,
+      body: message,
+      url: post?.slug ? `/posts/${post.slug}` : '/',
+      type,
+    }).catch((err) => console.error('Push notify failed:', err));
   } catch (error) {
     console.error('Error notifying subscribers:', error);
   }
