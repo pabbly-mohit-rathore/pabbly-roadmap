@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { sendPushToUser } = require('../utils/webPush');
 
 const getPublicKey = (req, res) => {
   res.json({ success: true, data: { publicKey: process.env.VAPID_PUBLIC_KEY || null } });
@@ -59,4 +60,26 @@ const getStatus = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { getPublicKey, subscribe, unsubscribe, getStatus };
+const sendTest = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const subs = await prisma.pushSubscription.findMany({ where: { userId } });
+    if (subs.length === 0) {
+      return res.status(400).json({ success: false, message: 'No active push subscription. Enable browser notifications first.' });
+    }
+
+    await sendPushToUser(userId, {
+      title: 'Pabbly Roadmap — Test Notification',
+      body: 'If you see this on your desktop, push notifications are working!',
+      url: '/admin/profile-settings?tab=notifications',
+      type: 'test',
+    });
+
+    res.json({ success: true, message: 'Test notification sent.', data: { subscriptionCount: subs.length } });
+  } catch (error) {
+    console.error('Test push error:', error);
+    next(error);
+  }
+};
+
+module.exports = { getPublicKey, subscribe, unsubscribe, getStatus, sendTest };
