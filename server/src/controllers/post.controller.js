@@ -34,8 +34,12 @@ const getPosts = async (req, res, next) => {
       limit = 10
     } = req.query;
 
-    const skip = limit === 'all' ? 0 : (page - 1) * limit;
-    const take = limit === 'all' ? undefined : parseInt(limit);
+    // Hard cap — never allow fetching more than 500 posts in one call (prevents OOM/DoS)
+    const MAX_LIMIT = 500;
+    const parsedLimit = limit === 'all' ? MAX_LIMIT : Math.min(Math.max(parseInt(limit) || 10, 1), MAX_LIMIT);
+    const parsedPage = Math.max(parseInt(page) || 1, 1);
+    const skip = (parsedPage - 1) * parsedLimit;
+    const take = parsedLimit;
 
     const where = { isDraft: false };
 
@@ -112,7 +116,7 @@ const getPosts = async (req, res, next) => {
       orderBy = { voteCount: 'desc' };
     }
 
-    const isAll = limit === 'all';
+    const isAll = false; // cap enforced above
 
     const postQuery = prisma.post.findMany({
       where,
@@ -463,7 +467,8 @@ const changePostStatus = async (req, res, next) => {
       include: { author: { select: { id: true, name: true } } },
     });
 
-    await prisma.activity.create({
+    // Fire-and-forget: activity log + notify subscribers
+    prisma.activity.create({
       data: {
         action: 'status_changed',
         description: `Post "${post.title}" status changed to ${status}`,
@@ -471,14 +476,14 @@ const changePostStatus = async (req, res, next) => {
         postId: id,
         boardId: post.boardId,
       },
-    });
+    }).catch(err => console.error('activity log failed:', err));
 
-    await notifySubscribers(id, {
+    notifySubscribers(id, {
       type: 'status_changed',
       title: 'Status updated',
       message: `Post "${post.title}" status changed to ${status.replace(/_/g, ' ')}`,
       excludeUserIds: [userId],
-    });
+    }).catch(err => console.error('notifySubscribers failed:', err));
 
     res.json({
       success: true,

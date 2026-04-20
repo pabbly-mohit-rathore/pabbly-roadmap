@@ -109,8 +109,8 @@ const listUsers = async (req, res, next) => {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: parseInt(limit) || 20,
-      skip: parseInt(offset) || 0,
+      take: Math.min(parseInt(limit) || 20, 200),
+      skip: Math.max(parseInt(offset) || 0, 0),
     });
 
     // Get total count for pagination
@@ -122,8 +122,8 @@ const listUsers = async (req, res, next) => {
         users,
         pagination: {
           total,
-          limit: parseInt(limit) || 20,
-          offset: parseInt(offset) || 0,
+          limit: Math.min(parseInt(limit) || 20, 200),
+          offset: Math.max(parseInt(offset) || 0, 0),
         },
       },
     });

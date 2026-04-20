@@ -144,7 +144,7 @@ const getTopVotedPosts = async (req, res, next) => {
         },
       },
       orderBy: { voteCount: 'desc' },
-      take: parseInt(limit) || 10,
+      take: Math.min(parseInt(limit) || 10, 100),
     });
 
     // Fetch truncated content previews via raw SQL so Dashboard row matches
@@ -208,8 +208,8 @@ const getRecentActivities = async (req, res, next) => {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: parseInt(limit) || 50,
-      skip: parseInt(offset) || 0,
+      take: Math.min(parseInt(limit) || 50, 200),
+      skip: Math.max(parseInt(offset) || 0, 0),
     });
 
     const total = await prisma.activity.count({
@@ -222,8 +222,8 @@ const getRecentActivities = async (req, res, next) => {
         activities,
         pagination: {
           total,
-          limit: parseInt(limit) || 50,
-          offset: parseInt(offset) || 0,
+          limit: Math.min(parseInt(limit) || 50, 200),
+          offset: Math.max(parseInt(offset) || 0, 0),
         },
       },
     });

@@ -356,6 +356,8 @@ model Comment {
   likes   CommentLike[]
 
   @@index([postId])
+  @@index([parentId])
+  @@index([postId, parentId, createdAt])
   @@map("comments")
 }
 
@@ -374,6 +376,7 @@ model CommentLike {
   comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@unique([userId, commentId])  // Ek user ek comment ko sirf ek baar like kar sakta hai
+  @@index([commentId])
   @@map("comment_likes")
 }
 
@@ -393,6 +396,7 @@ model Subscription {
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
+  @@index([postId])
   @@map("subscriptions")
 }
 
@@ -418,6 +422,8 @@ model Activity {
 
   @@index([boardId])
   @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([postId])
   @@map("activities")
 }
 

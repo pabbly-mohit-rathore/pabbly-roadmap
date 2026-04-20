@@ -191,14 +191,14 @@ const addComment = async (req, res, next) => {
       },
     });
 
-    // Increment comment count on post
-    await prisma.post.update({
+    // Fire-and-forget: commentCount, activity, notifySubscribers, auto-subscribe
+    // These don't need to block the response
+    prisma.post.update({
       where: { id: postId },
       data: { commentCount: { increment: 1 } },
-    });
+    }).catch(err => console.error('commentCount update failed:', err));
 
-    // Activity log
-    await prisma.activity.create({
+    prisma.activity.create({
       data: {
         action: 'commented',
         description: `Comment added on post`,
@@ -206,15 +206,14 @@ const addComment = async (req, res, next) => {
         postId,
         boardId: post.boardId,
       },
-    });
+    }).catch(err => console.error('activity log failed:', err));
 
-    // Notify all subscribers (excludes commenter)
-    await notifySubscribers(postId, {
+    notifySubscribers(postId, {
       type: 'new_comment',
       title: 'New comment on your post',
       message: `${comment.author.name} commented on "${post.title}"`,
       excludeUserIds: [userId],
-    });
+    }).catch(err => console.error('notifySubscribers failed:', err));
 
     // Reply notification — parent comment author ko batao
     if (parentId) {
@@ -246,12 +245,12 @@ const addComment = async (req, res, next) => {
       }
     }
 
-    // Auto-subscribe commenter to the post
-    await prisma.subscription.upsert({
+    // Auto-subscribe commenter to the post (fire-and-forget)
+    prisma.subscription.upsert({
       where: { userId_postId: { userId, postId } },
       create: { userId, postId },
       update: {},
-    });
+    }).catch(err => console.error('auto-subscribe failed:', err));
 
     // Real-time broadcast — sabko turant dikhega
     const io = req.app.get('io');

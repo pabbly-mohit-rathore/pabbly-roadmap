@@ -1,19 +1,16 @@
 // ============================================================
 // MAIN SERVER FILE
-//
-// Ye file sab kuch connect karti hai:
-//   1. Express app banao
-//   2. Middleware lagao (cors, helmet, morgan, json)
-//   3. Routes connect karo
-//   4. Error handler lagao (sabse last mein)
-//   5. Server start karo
 // ============================================================
+require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const helmet = require('helmet');
+const compression = require('compression');
 
 const errorHandler = require('./middleware/errorHandler');
+const { apiLimiter, authLimiter, writeLimiter, uploadLimiter } = require('./middleware/rateLimiters');
+
 const authRoutes = require('./routes/auth.routes');
 const boardRoutes = require('./routes/board.routes');
 const postRoutes = require('./routes/post.routes');
@@ -36,133 +33,152 @@ const { Server } = require('socket.io');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy — required for rate-limiter to see real client IP behind load balancer/Render
+app.set('trust proxy', 1);
+
 // HTTP server + Socket.io setup
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      process.env.CLIENT_URL
-    ].filter(Boolean),
+    origin: ["http://localhost:5173", process.env.CLIENT_URL].filter(Boolean),
     credentials: true,
   },
+  // Connection limits to prevent socket DoS
+  maxHttpBufferSize: 1e6,     // 1 MB max message size
+  pingTimeout: 30000,
+  pingInterval: 25000,
 });
-
-// Socket.io ko globally accessible banao (controllers mein use hoga)
 app.set('io', io);
 
 io.on('connection', (socket) => {
-  // User joins a post room (for real-time updates on that post)
   socket.on('join-post', (postId) => {
-    socket.join(`post:${postId}`);
+    if (typeof postId === 'string' && postId.length <= 100) socket.join(`post:${postId}`);
   });
-
   socket.on('leave-post', (postId) => {
-    socket.leave(`post:${postId}`);
+    if (typeof postId === 'string' && postId.length <= 100) socket.leave(`post:${postId}`);
   });
-
-  // User joins board room (for real-time feed updates)
   socket.on('join-board', (boardId) => {
-    socket.join(`board:${boardId}`);
+    if (typeof boardId === 'string' && boardId.length <= 100) socket.join(`board:${boardId}`);
   });
-
   socket.on('leave-board', (boardId) => {
-    socket.leave(`board:${boardId}`);
+    if (typeof boardId === 'string' && boardId.length <= 100) socket.leave(`board:${boardId}`);
   });
 });
 
 // ──────────────────────────────────────
-// MIDDLEWARE (har request pe chalte hain)
+// SECURITY + PERFORMANCE MIDDLEWARE
 // ──────────────────────────────────────
 
-// CORS — frontend ko allow karo server se baat karne ke liye
+// Security headers (XSS, clickjacking, MIME sniffing, etc.)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow /uploads from client origin
+}));
+
+// Gzip compression — reduces response size by ~70% for JSON
+app.use(compression());
+
+// CORS
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    process.env.CLIENT_URL
-  ].filter(Boolean),
+  origin: ["http://localhost:5173", process.env.CLIENT_URL].filter(Boolean),
   credentials: true,
   exposedHeaders: ['X-User-Banned']
 }));
 
-// JSON — request body ko JSON format mein parse karo
-app.use(express.json({ limit: '50mb' }));
+// Body parsers — reasonable limits (avatar uploads use multer, not JSON)
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Static files — uploads folder serve karo
+// Static uploads
 const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+  maxAge: '7d',
+  immutable: false,
+}));
 
-// ──────────────────────────────────────
-// ROUTES — kaunsa URL kahan jayega
-// ──────────────────────────────────────
-
-// Health check — server chal raha hai ya nahi
+// Health check (no rate limit)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// Auth routes — /api/auth/register, /api/auth/login, etc.
-app.use('/api/auth', authRoutes);
+// Global API rate limit (applies to all /api/* routes)
+app.use('/api', apiLimiter);
 
-// Board routes — /api/boards, /api/boards/:slug, etc.
+// ──────────────────────────────────────
+// ROUTES
+// ──────────────────────────────────────
+
+// Auth — strict limiter on top of global
+app.use('/api/auth', authLimiter, authRoutes);
+
+// Write-heavy endpoints — extra limiter
+app.use('/api/posts', writeLimiter, postRoutes);
+app.use('/api/comments', writeLimiter, commentRoutes);
+app.use('/api/votes', writeLimiter, voteRoutes);
+
+// Others
 app.use('/api/boards', boardRoutes);
-
-// Post routes — /api/posts, /api/posts/:slug, etc.
-app.use('/api/posts', postRoutes);
-
-// Comment routes — /api/comments/post/:postId, etc.
-app.use('/api/comments', commentRoutes);
-
-// Vote routes — /api/votes/:postId, etc.
-app.use('/api/votes', voteRoutes);
-
-// Tag routes — /api/tags?boardId=xxx, etc.
 app.use('/api/tags', tagRoutes);
-
-// Board Member routes — /api/boards/:boardId/members, /api/members/boards, etc.
 app.use('/api', boardMemberRoutes);
-
-// Admin Dashboard routes — /api/admin/dashboard/stats, /api/admin/dashboard/top-posts, etc.
 app.use('/api', adminDashboardRoutes);
-
-// User Management routes — /api/admin/users, /api/admin/users/:userId, etc.
 app.use('/api', userManagementRoutes);
-
-// Quick Response routes — /api/quick-responses, etc.
 app.use('/api', quickResponseRoutes);
-
-// Roadmap routes — /api/roadmap, etc.
 app.use('/api', roadmapRoutes);
-
-// Activity Log routes — /api/activity-log, etc.
 app.use('/api', activityLogRoutes);
-
-// Changelog routes — /api/changelog, /api/changelog/public, etc.
 app.use('/api', changelogRoutes);
-
-// Reporting routes — /api/reporting/*, etc.
 app.use('/api', reportingRoutes);
-
-// Team Member routes — /api/team-members/*, etc.
 app.use('/api', teamMemberRoutes);
 
-// Subscription routes
 const subscriptionRoutes = require('./routes/subscription.routes');
 app.use('/api/subscriptions', subscriptionRoutes);
 
-// Notification routes
 const notificationRoutes = require('./routes/notification.routes');
 app.use('/api/notifications', notificationRoutes);
 
-// Push subscription routes (browser push)
 const pushSubscriptionRoutes = require('./routes/pushSubscription.routes');
 app.use('/api/push', pushSubscriptionRoutes);
 
-// ──────────────────────────────────────
-// ERROR HANDLER (sabse last mein lagta hai)
-// Koi bhi error aaye toh ye pakad leta hai
-// ──────────────────────────────────────
+// Expose upload limiter for routes that need it (auth/avatar)
+app.locals.uploadLimiter = uploadLimiter;
+
+// 404 for unmatched API routes
+app.use('/api', (req, res) => {
+  res.status(404).json({ success: false, message: 'Endpoint not found' });
+});
+
+// Error handler (always last)
 app.use(errorHandler);
+
+// ──────────────────────────────────────
+// CRASH PROTECTION
+// ──────────────────────────────────────
+
+// Never crash on unhandled promise rejection — log and continue
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+
+// Catch uncaught exceptions — log, then exit cleanly (process manager will restart)
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+  // Give pending requests a moment to finish before exit
+  setTimeout(() => process.exit(1), 1000);
+});
+
+// Graceful shutdown on SIGTERM (Docker/Render/PM2 sends this)
+const shutdown = (signal) => {
+  console.log(`[${signal}] received, shutting down gracefully...`);
+  server.close(() => {
+    console.log('HTTP server closed.');
+    process.exit(0);
+  });
+  // Force exit if shutdown takes too long
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout.');
+    process.exit(1);
+  }, 10000);
+};
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 // ──────────────────────────────────────
 // SERVER START

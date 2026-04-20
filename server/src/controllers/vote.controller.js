@@ -82,8 +82,8 @@ const upvotePost = async (req, res, next) => {
       select: { id: true, voteCount: true },
     });
 
-    // Activity log
-    await prisma.activity.create({
+    // Fire-and-forget: activity log + notification (don't block response)
+    prisma.activity.create({
       data: {
         action: 'voted',
         description: existingVote ? 'Vote removed' : 'Post upvoted',
@@ -91,24 +91,26 @@ const upvotePost = async (req, res, next) => {
         postId,
         boardId: post.boardId,
       },
-    });
+    }).catch(err => console.error('activity log failed:', err));
 
     // Notification — post author ko batao (sirf new vote pe, remove pe nahi)
     if (!existingVote && post.authorId && post.authorId !== userId) {
-      const voter = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
-      const title = 'New vote on your post';
-      const message = `${voter?.name || 'Someone'} upvoted "${post.title}"`;
-      await prisma.notification.create({
-        data: { userId: post.authorId, type: 'post_voted', title, message, postId },
-      }).catch(() => {});
+      (async () => {
+        const voter = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+        const title = 'New vote on your post';
+        const message = `${voter?.name || 'Someone'} upvoted "${post.title}"`;
+        await prisma.notification.create({
+          data: { userId: post.authorId, type: 'post_voted', title, message, postId },
+        }).catch(() => {});
 
-      const { sendPushToUser } = require('../utils/webPush');
-      sendPushToUser(post.authorId, {
-        title,
-        body: message,
-        url: `/posts/${post.slug || postId}`,
-        type: 'post_voted',
-      }).catch(() => {});
+        const { sendPushToUser } = require('../utils/webPush');
+        sendPushToUser(post.authorId, {
+          title,
+          body: message,
+          url: `/posts/${post.slug || postId}`,
+          type: 'post_voted',
+        }).catch(() => {});
+      })().catch(err => console.error('vote notification failed:', err));
     }
 
     // Real-time broadcast — sabko turant dikhega

@@ -121,8 +121,8 @@ const getActivityLog = async (req, res, next) => {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: parseInt(limit) || 30,
-      skip: parseInt(offset) || 0,
+      take: Math.min(parseInt(limit) || 30, 200),
+      skip: Math.max(parseInt(offset) || 0, 0),
     });
 
     // Get total count for pagination
@@ -134,8 +134,8 @@ const getActivityLog = async (req, res, next) => {
         activities,
         pagination: {
           total,
-          limit: parseInt(limit) || 30,
-          offset: parseInt(offset) || 0,
+          limit: Math.min(parseInt(limit) || 30, 200),
+          offset: Math.max(parseInt(offset) || 0, 0),
         },
       },
     });
