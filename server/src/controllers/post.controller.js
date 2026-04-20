@@ -617,12 +617,39 @@ const mergePosts = async (req, res, next) => {
 const getPostById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { userId, role } = req.user || {};
+    const isAdmin = role === 'admin';
+
     const post = await prisma.post.findUnique({
       where: { id },
       include: {
         author: { select: { id: true, name: true, email: true, avatar: true } },
         board: { select: { id: true, name: true, slug: true, color: true } },
         tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
+        votes: { select: { userId: true, user: { select: { id: true, name: true, avatar: true } } } },
+        _count: { select: { comments: true, votes: true } },
+        comments: {
+          where: {
+            parentId: null,
+            ...(isAdmin ? {} : { isInternal: false }),
+          },
+          orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+          select: {
+            id: true, content: true, isInternal: true, isOfficial: true,
+            isPinned: true, likeCount: true, createdAt: true, authorId: true, parentId: true,
+            author: { select: { id: true, name: true, avatar: true } },
+            likes: { select: { userId: true } },
+            replies: {
+              orderBy: { createdAt: 'asc' },
+              select: {
+                id: true, content: true, isOfficial: true, isPinned: true,
+                likeCount: true, createdAt: true, authorId: true, parentId: true,
+                author: { select: { id: true, name: true, avatar: true } },
+                likes: { select: { userId: true } },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -630,7 +657,10 @@ const getPostById = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Post not found.' });
     }
 
-    res.json({ success: true, data: { post } });
+    const hasVoted = userId ? post.votes.some(v => v.userId === userId) : false;
+    const actualVoteCount = post._count.votes;
+
+    res.json({ success: true, data: { post: { ...post, voteCount: actualVoteCount, hasVoted } } });
   } catch (error) {
     next(error);
   }
