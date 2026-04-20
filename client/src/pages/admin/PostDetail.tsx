@@ -122,9 +122,37 @@ export default function AdminPostDetail() {
         init(data.postId, data.voteCount, votes[data.postId]?.voted ?? false);
       }
     },
-    onCommentAdded: () => {},
-    onCommentUpdated: () => {},
-    onCommentDeleted: () => {},
+    onCommentAdded: (data) => {
+      const { comment: newComment } = data;
+      if (!newComment) return;
+      // Skip if it's our own comment (already inserted optimistically)
+      if (currentUser && newComment.author?.id === currentUser.id) return;
+      setComments(prev => {
+        // Already exists — ignore duplicate
+        const exists = (list: Comment[]): boolean =>
+          list.some(c => c.id === newComment.id || (c.replies && exists(c.replies)));
+        if (exists(prev)) return prev;
+        // Reply → nest under parent
+        if (newComment.parentId) {
+          return prev.map(c => c.id === newComment.parentId
+            ? { ...c, replies: [...(c.replies || []), { ...newComment, replies: [] }] }
+            : c);
+        }
+        // Top-level → append
+        return [...prev, { ...newComment, replies: [], likeCount: newComment.likeCount || 0 }];
+      });
+      setPost(prev => prev ? { ...prev, commentCount: prev.commentCount + 1 } : prev);
+    },
+    onCommentDeleted: (data) => {
+      const { commentId } = data;
+      if (!commentId) return;
+      setComments(prev => prev
+        .filter(c => c.id !== commentId)
+        .map(c => ({ ...c, replies: c.replies ? c.replies.filter(r => r.id !== commentId) : c.replies }))
+      );
+      setPost(prev => prev ? { ...prev, commentCount: Math.max(0, prev.commentCount - 1) } : prev);
+    },
+    onCommentUpdated: () => { fetchComments(); },
   });
 
   // Fetch post (comments come with it)
