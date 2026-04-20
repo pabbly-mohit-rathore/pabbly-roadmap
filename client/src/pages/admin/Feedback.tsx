@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, X, Edit2, Trash2, Search, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, FileText, Clock, Eye, Zap, Rocket, PauseCircle, MessageSquare, Bug, Puzzle, Inbox, ArrowUpRight, TrendingUp, CheckCircle2, Download } from 'lucide-react';
 import { Icon } from '@iconify/react';
@@ -158,33 +158,6 @@ export default function AdminFeedback() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, boardFilter]);
 
-  useEffect(() => {
-    const handleFocus = () => { if (!isInitialLoad.current) fetchPosts(); };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, boardFilter]);
-
-  // Prefetch full content in the background after posts load so Edit is instant.
-  useEffect(() => {
-    if (posts.length === 0) return;
-    const toFetch = posts.filter(p => !(p.id in contentCacheRef.current));
-    if (toFetch.length === 0) return;
-    let cancelled = false;
-    (async () => {
-      for (const p of toFetch) {
-        if (cancelled) return;
-        try {
-          const res = await api.get(`/posts/by-id/${p.id}`);
-          if (res.data.success) {
-            contentCacheRef.current[p.id] = res.data.data.post.content || '';
-          }
-        } catch { /* ignore — will fall back to on-demand fetch */ }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [posts]);
-
   const updateIndicator = () => {
     const el = tabsRef.current[typeFilter];
     if (el) {
@@ -241,26 +214,39 @@ export default function AdminFeedback() {
 
   // Base filtered posts — activity filter + search applied, but NOT type filter
   // Used for type tab counts so they reflect the activity filter
-  const baseFilteredPosts = posts.filter((post) => {
-    if (!post.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (activityFilter === 'my-posts' && post.author?.id !== user?.id) return false;
-    if (activityFilter === 'my-voted' && !post.hasVoted) return false;
-    if (activityFilter === 'my-commented' && !post.hasCommented) return false;
-    return true;
-  });
+  const baseFilteredPosts = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return posts.filter((post) => {
+      if (!post.title.toLowerCase().includes(q)) return false;
+      if (activityFilter === 'my-posts' && post.author?.id !== user?.id) return false;
+      if (activityFilter === 'my-voted' && !post.hasVoted) return false;
+      if (activityFilter === 'my-commented' && !post.hasCommented) return false;
+      return true;
+    });
+  }, [posts, searchQuery, activityFilter, user?.id]);
 
   // Final filtered posts — type filter on top of base
-  const filteredPosts = baseFilteredPosts.filter((post) => {
-    if (typeFilter !== 'all' && post.type !== typeFilter) return false;
-    return true;
-  });
+  const filteredPosts = useMemo(() => {
+    if (typeFilter === 'all') return baseFilteredPosts;
+    return baseFilteredPosts.filter((post) => post.type === typeFilter);
+  }, [baseFilteredPosts, typeFilter]);
 
-  const sortedPosts = [...filteredPosts].sort((a, b) => {
-    if (sortBy === 'most-voted') return (b.voteCount ?? 0) - (a.voteCount ?? 0);
-    if (sortBy === 'trending') return ((b.voteCount ?? 0) + (b.commentCount ?? 0)) - ((a.voteCount ?? 0) + (a.commentCount ?? 0));
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-  const paginatedPosts = sortedPosts.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+  const sortedPosts = useMemo(() => {
+    const arr = [...filteredPosts];
+    if (sortBy === 'most-voted') {
+      arr.sort((a, b) => (b.voteCount ?? 0) - (a.voteCount ?? 0));
+    } else if (sortBy === 'trending') {
+      arr.sort((a, b) => ((b.voteCount ?? 0) + (b.commentCount ?? 0)) - ((a.voteCount ?? 0) + (a.commentCount ?? 0)));
+    } else {
+      arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    return arr;
+  }, [filteredPosts, sortBy]);
+
+  const paginatedPosts = useMemo(
+    () => sortedPosts.slice(page * rowsPerPage, (page + 1) * rowsPerPage),
+    [sortedPosts, page, rowsPerPage]
+  );
   const totalPages = Math.ceil(sortedPosts.length / rowsPerPage);
 
   const [postContent, setPostContent] = useState('');

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ArrowUpRight, MessageSquare, Plus, Edit2, Trash2, MoreVertical, ChevronLeft, ChevronRight, ChevronDown, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
 import { Icon } from '@iconify/react';
@@ -110,9 +110,8 @@ export default function UserFeatureRequests() {
   const [editFormData, setEditFormData] = useState({ title: '', type: 'feature' });
   const [editContent, setEditContent] = useState('');
   const [updating, setUpdating] = useState(false);
-  // Prefetched full content for the user's own posts, so Edit opens instantly.
+  // Content cache for Edit (populated on-demand when user clicks Edit).
   const contentCacheRef = useRef<Record<string, string>>({});
-  const [, forceCacheBump] = useState(0);
 
   const updateIndicator = () => {
     const el = tabsRef.current[typeFilter];
@@ -137,31 +136,6 @@ export default function UserFeatureRequests() {
   const [creating, setCreating] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   useEffect(() => { fetchData(); }, []);
-
-  // Prefetch full content for the user's own posts in the background.
-  // Fires after the list loads so edit opens instantly from cache.
-  useEffect(() => {
-    if (!user?.id || posts.length === 0) return;
-    const ownPosts = posts
-      .filter(p => p.author?.id === user.id)
-      .filter(p => !(p.id in contentCacheRef.current));
-    if (ownPosts.length === 0) return;
-    let cancelled = false;
-    (async () => {
-      // Sequential to avoid hammering the server on pages with many posts.
-      for (const p of ownPosts) {
-        if (cancelled) return;
-        try {
-          const res = await api.get(`/posts/by-id/${p.id}`);
-          if (res.data.success) {
-            contentCacheRef.current[p.id] = res.data.data.post.content || '';
-            forceCacheBump(n => n + 1);
-          }
-        } catch { /* ignore — will fall back to on-demand fetch */ }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [posts, user?.id]);
 
   const fetchData = async () => {
     try {
@@ -270,31 +244,43 @@ export default function UserFeatureRequests() {
   };
 
   // Base filtered posts — everything except type filter, used for type tab counts
-  const baseFilteredPosts = posts.filter(p => {
-    if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-    if (boardFilter !== 'all' && p.board?.id !== boardFilter) return false;
-    if (activityFilter === 'my-posts' && p.author?.id !== user?.id) return false;
-    if (activityFilter === 'my-voted' && !p.hasVoted) return false;
-    if (activityFilter === 'my-commented' && !p.hasCommented) return false;
-    return true;
-  });
+  const baseFilteredPosts = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return posts.filter(p => {
+      if (q && !p.title.toLowerCase().includes(q)) return false;
+      if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+      if (boardFilter !== 'all' && p.board?.id !== boardFilter) return false;
+      if (activityFilter === 'my-posts' && p.author?.id !== user?.id) return false;
+      if (activityFilter === 'my-voted' && !p.hasVoted) return false;
+      if (activityFilter === 'my-commented' && !p.hasCommented) return false;
+      return true;
+    });
+  }, [posts, searchQuery, statusFilter, boardFilter, activityFilter, user?.id]);
 
-  const filteredPosts = baseFilteredPosts.filter(p => {
-    if (typeFilter !== 'all' && p.type !== typeFilter) return false;
-    return true;
-  });
+  const filteredPosts = useMemo(() => {
+    if (typeFilter === 'all') return baseFilteredPosts;
+    return baseFilteredPosts.filter(p => p.type === typeFilter);
+  }, [baseFilteredPosts, typeFilter]);
 
   const hasFilters = statusFilter !== 'all' || typeFilter !== 'all' || boardFilter !== 'all' || activityFilter !== 'all';
 
-  const sortedPosts = [...filteredPosts].sort((a, b) => {
-    if (sortBy === 'most-voted') return (b.voteCount ?? 0) - (a.voteCount ?? 0);
-    if (sortBy === 'trending') return ((b.voteCount ?? 0) + (b.commentCount ?? 0)) - ((a.voteCount ?? 0) + (a.commentCount ?? 0));
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  const sortedPosts = useMemo(() => {
+    const arr = [...filteredPosts];
+    if (sortBy === 'most-voted') {
+      arr.sort((a, b) => (b.voteCount ?? 0) - (a.voteCount ?? 0));
+    } else if (sortBy === 'trending') {
+      arr.sort((a, b) => ((b.voteCount ?? 0) + (b.commentCount ?? 0)) - ((a.voteCount ?? 0) + (a.commentCount ?? 0)));
+    } else {
+      arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    return arr;
+  }, [filteredPosts, sortBy]);
 
   const totalPages = Math.ceil(sortedPosts.length / rowsPerPage);
-  const paginatedPosts = sortedPosts.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+  const paginatedPosts = useMemo(
+    () => sortedPosts.slice(page * rowsPerPage, (page + 1) * rowsPerPage),
+    [sortedPosts, page, rowsPerPage]
+  );
 
   const clearFilters = () => { setSearchQuery(''); setStatusFilter('all'); setTypeFilter('all'); setBoardFilter('all'); setActivityFilter('all'); setPage(0); };
 

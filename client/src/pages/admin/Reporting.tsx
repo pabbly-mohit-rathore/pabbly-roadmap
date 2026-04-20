@@ -62,11 +62,12 @@ export default function AdminReporting() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([fetchBoards(), fetchAll()]);
+    fetchBoards();
   }, []);
 
   useEffect(() => {
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period, boardFilter]);
 
   const fetchBoards = async () => {
@@ -78,6 +79,7 @@ export default function AdminReporting() {
 
   useEffect(() => {
     fetchActivityLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logPage, logRowsPerPage]);
 
   const fetchAll = async () => {
@@ -99,7 +101,6 @@ export default function AdminReporting() {
     } finally {
       setLoading(false);
     }
-    fetchActivityLogs();
   };
 
   const fetchActivityLogs = async () => {
