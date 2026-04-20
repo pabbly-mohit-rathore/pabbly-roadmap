@@ -137,8 +137,8 @@ export default function AdminPostDetail() {
   const fetchPost = async () => {
     try {
       setLoading(true);
-      // Admin route uses post ID (e.g., /admin/posts/:id). Use the by-id endpoint.
-      const response = await api.get(`/posts/by-id/${postId}`);
+      // Admin route `:postId` param actually carries a slug everywhere in the app.
+      const response = await api.get(`/posts/${postId}`);
       if (response.data.success) {
         const postData = response.data.data.post;
         setPost(postData);
