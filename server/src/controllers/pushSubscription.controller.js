@@ -82,4 +82,13 @@ const sendTest = async (req, res, next) => {
   }
 };
 
-module.exports = { getPublicKey, subscribe, unsubscribe, getStatus, sendTest };
+// Clear ALL subscriptions for the current user (useful to remove stale dev/localhost subs)
+const clearAll = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const result = await prisma.pushSubscription.deleteMany({ where: { userId } });
+    res.json({ success: true, message: `Cleared ${result.count} push subscription(s)`, data: { count: result.count } });
+  } catch (error) { next(error); }
+};
+
+module.exports = { getPublicKey, subscribe, unsubscribe, getStatus, sendTest, clearAll };
