@@ -541,7 +541,7 @@ export default function UserPostDetail() {
                                       <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: comment.content }} />
                                     </div>
                                   )}
-                                  {(
+                                  {!comment.isSpam && (
                                     <div className="flex items-center gap-4 mt-2">
                                       <Tooltip title="Click here to like this comment."><button onClick={() => handleLikeComment(comment.id)}
                                         className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${likedCommentIds.has(comment.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
@@ -658,7 +658,7 @@ export default function UserPostDetail() {
                                                   <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: reply.content }} />
                                                 </div>
                                               )}
-                                              {(
+                                              {!reply.isSpam && (
                                                 <div className="flex items-center gap-4 mt-2">
                                                   <Tooltip title="Click here to like this comment."><button onClick={() => handleLikeComment(reply.id)}
                                                     className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${likedCommentIds.has(reply.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
