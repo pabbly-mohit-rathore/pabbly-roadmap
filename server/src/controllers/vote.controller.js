@@ -144,12 +144,11 @@ const upvotePost = async (req, res, next) => {
       })().catch(err => console.error('vote notification failed:', err));
     }
 
-    // Real-time broadcast — sabko turant dikhega
+    // Real-time broadcast — sabko turant dikhega (post detail + list pages)
     const io = req.app.get('io');
-    io.to(`post:${postId}`).emit('vote-updated', {
-      postId,
-      voteCount: updatedPost.voteCount,
-    });
+    const votePayload = { postId, voteCount: updatedPost.voteCount };
+    io.to(`post:${postId}`).emit('vote-updated', votePayload);
+    io.to('feed').emit('vote-updated', votePayload);
 
     res.json({
       success: true,

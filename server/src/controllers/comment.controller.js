@@ -240,10 +240,8 @@ const addComment = async (req, res, next) => {
 
     // Real-time broadcast — sabko turant dikhega
     const io = req.app.get('io');
-    io.to(`post:${postId}`).emit('comment-added', {
-      postId,
-      comment,
-    });
+    io.to(`post:${postId}`).emit('comment-added', { postId, comment });
+    io.to('feed').emit('comment-count-changed', { postId, delta: 1 });
 
     res.status(201).json({
       success: true,
@@ -419,6 +417,7 @@ const deleteComment = async (req, res, next) => {
       postId: comment.post.id,
       commentId: id,
     });
+    io.to('feed').emit('comment-count-changed', { postId: comment.post.id, delta: -(totalDeleted || 1) });
 
     res.json({
       success: true,

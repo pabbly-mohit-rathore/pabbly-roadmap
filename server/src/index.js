@@ -63,6 +63,9 @@ io.on('connection', (socket) => {
   socket.on('leave-board', (boardId) => {
     if (typeof boardId === 'string' && boardId.length <= 100) socket.leave(`board:${boardId}`);
   });
+  // Global feed for cross-page live updates (vote counts on list pages, etc.)
+  socket.on('join-feed', () => socket.join('feed'));
+  socket.on('leave-feed', () => socket.leave('feed'));
 });
 
 // ──────────────────────────────────────
