@@ -109,40 +109,6 @@ const getNewPosts = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// GET /reporting/stale-posts
-const getStalePosts = async (req, res, next) => {
-  try {
-    const { role } = req.user;
-    if (role !== 'admin' && !req.user.teamAccess) return res.status(403).json({ success: false, message: 'Admin only' });
-
-    const { boardId } = req.query;
-    const staleDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const where = { updatedAt: { lt: staleDate }, status: { notIn: ['live'] }, isDraft: false };
-
-    // Filter by admin's own boards
-    const adminBoards = await prisma.board.findMany({
-      where: { createdById: req.user.userId },
-      select: { id: true },
-    });
-    const adminBoardIds = adminBoards.map(b => b.id);
-
-    if (boardId && boardId !== 'all') {
-      where.boardId = adminBoardIds.includes(boardId) ? boardId : 'none';
-    } else {
-      where.boardId = { in: adminBoardIds };
-    }
-
-    const posts = await prisma.post.findMany({
-      where,
-      select: { id: true, title: true, slug: true, status: true, voteCount: true, updatedAt: true, board: { select: { name: true } } },
-      orderBy: { updatedAt: 'asc' },
-      take: 10,
-    });
-
-    res.json({ success: true, data: { posts } });
-  } catch (error) { next(error); }
-};
-
 // GET /reporting/posts-by-board
 const getPostsByBoard = async (req, res, next) => {
   try {
@@ -217,4 +183,4 @@ const getStatusPipeline = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { getActivityOverview, getNewPosts, getStalePosts, getPostsByBoard, getAdminActivity, getStatusPipeline };
+module.exports = { getActivityOverview, getNewPosts, getPostsByBoard, getAdminActivity, getStatusPipeline };

@@ -214,20 +214,17 @@ const getPostBySlug = async (req, res, next) => {
           where: {
             parentId: null,
             ...(isAdmin ? {} : { isInternal: false }),
-            ...(!isAdmin ? (userId ? { OR: [{ isSpam: false }, { authorId: userId }] } : { isSpam: false }) : {}),
           },
           orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
           select: {
-            id: true, content: true, isSpam: true, isInternal: true, isOfficial: true,
+            id: true, content: true, isInternal: true, isOfficial: true,
             isPinned: true, likeCount: true, createdAt: true, authorId: true, parentId: true,
             author: { select: { id: true, name: true, avatar: true } },
             likes: { select: { userId: true } },
             replies: {
-              ...(!isAdmin && userId ? { where: { OR: [{ isSpam: false }, { authorId: userId }] } } : {}),
-              ...(!isAdmin && !userId ? { where: { isSpam: false } } : {}),
               orderBy: { createdAt: 'asc' },
               select: {
-                id: true, content: true, isSpam: true, isOfficial: true, isPinned: true,
+                id: true, content: true, isOfficial: true, isPinned: true,
                 likeCount: true, createdAt: true, authorId: true, parentId: true,
                 author: { select: { id: true, name: true, avatar: true } },
                 likes: { select: { userId: true } },

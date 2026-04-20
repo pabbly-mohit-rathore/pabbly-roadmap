@@ -55,22 +55,13 @@ const getComments = async (req, res, next) => {
       isAdminOrManager = (post.board?.members?.length || 0) > 0;
     }
 
-    // Build where clause
+    // Build where clause (isInternal hidden from non-admins; comments are public by default)
     const where = { postId, parentId: null };
-
     if (!isAdminOrManager) {
       where.isInternal = false;
-      if (userId) {
-        where.OR = [{ isSpam: false }, { authorId: userId }];
-      } else {
-        where.isSpam = false;
-      }
     }
 
-    // Single query for comments + replies (no separate count query)
-    const replyWhere = !isAdminOrManager ? (
-      userId ? { OR: [{ isSpam: false }, { authorId: userId }] } : { isSpam: false }
-    ) : undefined;
+    const replyWhere = !isAdminOrManager ? { isInternal: false } : undefined;
 
     const comments = await prisma.comment.findMany({
       where,
@@ -78,7 +69,6 @@ const getComments = async (req, res, next) => {
       select: {
         id: true,
         content: true,
-        isSpam: true,
         isInternal: true,
         isOfficial: true,
         isPinned: true,
@@ -94,7 +84,6 @@ const getComments = async (req, res, next) => {
           select: {
             id: true,
             content: true,
-            isSpam: true,
             isOfficial: true,
             isPinned: true,
             likeCount: true,
@@ -168,17 +157,13 @@ const addComment = async (req, res, next) => {
       }
     }
 
-    // Comment banao
-    // User comments = SPAM by default, Admin/Manager comments = NOT spam
-    const isSpam = req.user.role === 'user';
-
+    // Comment banao (all comments public by default — no spam gating)
     const comment = await prisma.comment.create({
       data: {
         content,
         authorId: userId,
         postId,
         parentId: parentId || null,
-        isSpam, // User comments = true, admin/manager = false
       },
       include: {
         author: {
@@ -581,79 +566,7 @@ const markAsInternal = async (req, res, next) => {
 };
 
 // ============================================================
-// 7. TOGGLE COMMENT SPAM (Admin/Manager only)
-//
-// User comments are spam by default
-// Admin/Manager can mark as "not spam" to approve
-// ============================================================
-const toggleCommentSpam = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { userId, role } = req.user;
-
-    const comment = await prisma.comment.findUnique({
-      where: { id },
-      include: { post: { select: { id: true, boardId: true } } },
-    });
-
-    if (!comment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Comment not found.',
-      });
-    }
-
-    // Check: Admin or board manager only
-    if (role !== 'admin') {
-      const isBoardManager = await prisma.boardMember.findUnique({
-        where: {
-          userId_boardId: {
-            userId,
-            boardId: comment.post.boardId,
-          },
-        },
-      });
-      if (!isBoardManager) {
-        return res.status(403).json({
-          success: false,
-          message: 'Only admins and board managers can moderate spam.',
-        });
-      }
-    }
-
-    // Toggle spam status
-    const updatedComment = await prisma.comment.update({
-      where: { id },
-      data: { isSpam: !comment.isSpam },
-      include: {
-        author: { select: { id: true, name: true, avatar: true } },
-        likes: { select: { userId: true } },
-      },
-    });
-
-    // Activity log
-    await prisma.activity.create({
-      data: {
-        action: 'updated',
-        description: `Comment marked as ${updatedComment.isSpam ? 'spam' : 'approved'}`,
-        userId,
-        postId: comment.post.id,
-        boardId: comment.post.boardId,
-      },
-    });
-
-    res.json({
-      success: true,
-      message: `Comment ${updatedComment.isSpam ? 'marked as spam' : 'approved'} successfully.`,
-      data: { comment: updatedComment },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ============================================================
-// 8. TOGGLE COMMENT PIN (Admin/Manager only)
+// 7. TOGGLE COMMENT PIN (Admin/Manager only)
 // ============================================================
 const toggleCommentPin = async (req, res, next) => {
   try {
@@ -830,7 +743,6 @@ module.exports = {
   deleteComment,
   markAsOfficial,
   markAsInternal,
-  toggleCommentSpam,
   toggleCommentPin,
   toggleCommentLike,
 };
