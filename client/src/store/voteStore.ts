@@ -10,6 +10,7 @@ interface VoteStore {
   votes: Record<string, VoteState>;
   init: (postId: string, count: number, voted: boolean) => void;
   toggle: (postId: string) => void;
+  syncCount: (postId: string, count: number) => void;
 }
 
 const pendingTimers: Record<string, ReturnType<typeof setTimeout>> = {};
@@ -21,6 +22,21 @@ const useVoteStore = create<VoteStore>((set, get) => ({
   init: (postId, count, voted) => {
     if (pendingTimers[postId]) return;
     set(s => ({ votes: { ...s.votes, [postId]: { count, voted } } }));
+  },
+
+  // Server-pushed count update (socket). Preserves current user's voted state.
+  // Skipped while a pending toggle is in-flight to avoid overwriting optimistic updates.
+  syncCount: (postId, count) => {
+    if (pendingTimers[postId]) return;
+    set(s => {
+      const current = s.votes[postId];
+      return {
+        votes: {
+          ...s.votes,
+          [postId]: { count, voted: current?.voted ?? false },
+        },
+      };
+    });
   },
 
   toggle: (postId) => {

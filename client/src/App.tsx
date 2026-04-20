@@ -8,6 +8,7 @@ import useThemeStore from './store/themeStore';
 import useAuthStore from './store/authStore';
 import useTeamAccessStore from './store/teamAccessStore';
 import pushNotifications from './services/pushNotification.service';
+import useFeedSocket from './hooks/useFeedSocket';
 
 // Lazy load all pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -58,6 +59,7 @@ function App() {
   return (
     <BrowserRouter>
       <PushNavigationBridge />
+      <FeedSocketBridge enabled={isAuthenticated} />
       <Suspense fallback={null}>
         <Routes>
           {/* Public Routes */}
@@ -174,6 +176,12 @@ function App() {
       <BannedDialog />
     </BrowserRouter>
   );
+}
+
+// Global socket bridge — joins 'feed' room and syncs vote/comment counts across all pages
+function FeedSocketBridge({ enabled }: { enabled: boolean }) {
+  useFeedSocket(enabled);
+  return null;
 }
 
 // Listens for 'navigate' messages from the service worker (push click) and routes to the URL
