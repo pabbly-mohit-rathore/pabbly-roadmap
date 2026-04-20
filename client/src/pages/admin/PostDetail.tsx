@@ -44,7 +44,6 @@ interface Comment {
   author: { id: string; name: string; avatar?: string };
   createdAt: string;
   isOfficial: boolean;
-  isSpam: boolean;
   isPinned: boolean;
   likeCount: number;
   likes: { userId: string }[];
@@ -381,19 +380,6 @@ export default function AdminPostDetail() {
     }
   };
 
-  const handleMarkNotSpam = async (commentId: string) => {
-    try {
-      const response = await api.put(`/comments/${commentId}/spam`);
-      if (response.data.success) {
-        fetchComments();
-        toast.success('Comment approved');
-      }
-    } catch (error) {
-      console.error('Error marking not spam:', error);
-      toast.error('Failed to approve comment');
-    }
-  };
-
   const handleReply = async (parentId: string, htmlContent?: string) => {
     let content = htmlContent || replyText;
     if (!content.trim() || content === '<p></p>') {
@@ -569,7 +555,7 @@ export default function AdminPostDetail() {
                         const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
                         const avatarUrl = comment.author.avatar ? (comment.author.avatar.startsWith('http') ? comment.author.avatar : `${API_BASE}${comment.author.avatar}`) : null;
                         return (
-                        <div key={comment.id} id={`comment-${comment.id}`} className={`rounded-xl p-4 transition-all ${comment.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border border-red-800' : 'bg-red-50 border border-red-200') : (theme === 'dark' ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200 shadow-sm')}`}>
+                        <div key={comment.id} id={`comment-${comment.id}`} className={`rounded-xl p-4 transition-all ${theme === 'dark' ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200 shadow-sm'}`}>
                           <div className="flex gap-3">
                             {avatarUrl ? (
                               <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
@@ -583,9 +569,8 @@ export default function AdminPostDetail() {
                                 <div className="flex items-center gap-2">
                                   <span onClick={() => handleUserClick(comment.author.id)} className={`font-semibold text-sm cursor-pointer hover:underline ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{comment.author.name}</span>
                                   <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(comment.createdAt)}</span>
-                                  {comment.isSpam && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800">Spam</span>}
                                 </div>
-                                {!comment.isSpam && (
+                                {(
                                   <div className="relative">
                                     <Tooltip title="Click to see options."><button onClick={() => setCommentMenuId(commentMenuId === comment.id ? null : comment.id)}
                                       className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
@@ -632,7 +617,7 @@ export default function AdminPostDetail() {
                                   <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: comment.content }} />
                                 </div>
                               )}
-                              {!comment.isSpam && (
+                              {(
                                 <div className="flex items-center gap-4 mt-2">
                                   <Tooltip title="Click here to like this comment."><button onClick={() => handleLikeComment(comment.id)}
                                     className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${likedCommentIds.has(comment.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
@@ -661,7 +646,6 @@ export default function AdminPostDetail() {
                                   )}
                                 </div>
                               )}
-                              {comment.isSpam && <button onClick={() => handleMarkNotSpam(comment.id)} title="Click here to mark as not spam." className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-md transition-colors mt-2">Mark not spam</button>}
                               {comment.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">Official Response</p>}
 
                               {replyingToId === comment.id && (
@@ -679,7 +663,7 @@ export default function AdminPostDetail() {
                                   {comment.replies.map((reply) => {
                                     const rAvatarUrl = reply.author.avatar ? (reply.author.avatar.startsWith('http') ? reply.author.avatar : `${API_BASE}${reply.author.avatar}`) : null;
                                     return (
-                                    <div key={reply.id} id={`comment-${reply.id}`} className={`pl-4 py-3 border-l-[3px] transition-all ${reply.isSpam ? (theme === 'dark' ? 'bg-red-900/10 border-l-red-500' : 'bg-red-50 border-l-red-400') : (theme === 'dark' ? 'border-l-gray-600' : 'border-l-gray-300')}`}>
+                                    <div key={reply.id} id={`comment-${reply.id}`} className={`pl-4 py-3 border-l-[3px] transition-all ${theme === 'dark' ? 'border-l-gray-600' : 'border-l-gray-300'}`}>
                                       <div className="flex gap-3">
                                         {rAvatarUrl ? (
                                           <img src={rAvatarUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
@@ -694,7 +678,7 @@ export default function AdminPostDetail() {
                                               <span onClick={() => handleUserClick(reply.author.id)} className={`font-semibold text-sm cursor-pointer hover:underline ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{reply.author.name}</span>
                                               <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(reply.createdAt)}</span>
                                             </div>
-                                            {!reply.isSpam && (
+                                            {(
                                               <div className="relative">
                                                 <Tooltip title="Click to see options."><button onClick={() => setCommentMenuId(commentMenuId === reply.id ? null : reply.id)}
                                                   className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
@@ -741,7 +725,7 @@ export default function AdminPostDetail() {
                                               <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: reply.content }} />
                                             </div>
                                           )}
-                                          {!reply.isSpam && (
+                                          {(
                                             <div className="flex items-center gap-4 mt-2">
                                               <Tooltip title="Click here to like this comment."><button onClick={() => handleLikeComment(reply.id)}
                                                 className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${likedCommentIds.has(reply.id) ? 'text-red-500' : theme === 'dark' ? 'text-gray-400 hover:text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
@@ -753,7 +737,6 @@ export default function AdminPostDetail() {
                                               </button></Tooltip>
                                             </div>
                                           )}
-                                          {reply.isSpam && <button onClick={() => handleMarkNotSpam(reply.id)} title="Click here to mark as not spam." className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-md transition-colors mt-2">Mark not spam</button>}
                                           {reply.isOfficial && <p className="text-xs text-green-600 mt-2 font-semibold">Official Response</p>}
                                           {replyingToId === reply.id && (
                                             <div className="mt-3">

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ThumbsUp, Calendar, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageCircle, ArrowUpRight } from 'lucide-react';
+import { ThumbsUp, Calendar, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
@@ -12,16 +11,6 @@ interface ActivityData {
   posts: { count: number; change: number };
   votes: { count: number; change: number };
   comments: { count: number; change: number };
-}
-
-interface StalePost {
-  id: string;
-  title: string;
-  slug: string;
-  status: string;
-  voteCount: number;
-  updatedAt: string;
-  board: { name: string };
 }
 
 interface BoardData {
@@ -43,13 +32,11 @@ interface ActivityLog {
 
 export default function AdminReporting({ showFilters = false }: { showFilters?: boolean } = {}) {
   const theme = useThemeStore((state) => state.theme);
-  const navigate = useNavigate();
   const [period, setPeriod] = useState('week');
   const [boardFilter, setBoardFilter] = useState('all');
   const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
   const [activity, setActivity] = useState<ActivityData | null>(null);
   const [statusPipeline, setStatusPipeline] = useState<{ status: string; count: number }[]>([]);
-  const [stalePosts, setStalePosts] = useState<StalePost[]>([]);
   const [boardData, setBoardData] = useState<{ boards: BoardData[]; total: number }>({ boards: [], total: 0 });
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [logTotal, setLogTotal] = useState(0);
@@ -84,14 +71,12 @@ export default function AdminReporting({ showFilters = false }: { showFilters?: 
     setLoading(true);
     try {
       const bp = { period, boardId: boardFilter };
-      const [actRes, staleRes, boardRes, pipelineRes] = await Promise.all([
+      const [actRes, boardRes, pipelineRes] = await Promise.all([
         api.get('/reporting/activity-overview', { params: bp }),
-        api.get('/reporting/stale-posts', { params: { boardId: boardFilter } }),
         api.get('/reporting/posts-by-board', { params: bp }),
         api.get('/reporting/status-pipeline'),
       ]);
       if (actRes.data.success) setActivity(actRes.data.data);
-      if (staleRes.data.success) setStalePosts(staleRes.data.data.posts);
       if (boardRes.data.success) setBoardData(boardRes.data.data);
       if (pipelineRes.data.success) setStatusPipeline(pipelineRes.data.data.pipeline);
     } catch (error) {
@@ -214,8 +199,8 @@ export default function AdminReporting({ showFilters = false }: { showFilters?: 
         )}
       </div>
 
-      {/* 3 Cards: Posts Overview (donut) + New Posts + Stale Posts */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      {/* 2 Cards: Posts Overview (donut) + Status Pipeline */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
         {/* Posts Overview - Donut Chart */}
         <div className={`p-5 rounded-lg border flex flex-col ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Posts Overview</h2>
@@ -354,55 +339,6 @@ export default function AdminReporting({ showFilters = false }: { showFilters?: 
           })()}
         </div>
 
-        {/* Stale Posts */}
-        <div className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <div className="px-5 pt-5 pb-3">
-            <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Stale Posts</h2>
-            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>No activity for 7+ days</p>
-          </div>
-          {stalePosts.length > 0 ? (
-            <table className="w-full" style={{ borderCollapse: 'collapse' }}>
-              <thead>
-                <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                  {[{ label: 'Upvote', tip: 'Total upvotes received' }, { label: 'Title', tip: 'Title of the post or entry' }, { label: 'Board', tip: 'Board name this item belongs to' }, { label: 'Status', tip: 'Current status of the item' }].map((h, i) => (
-                    <th key={h.label} className={`py-2.5 text-xs font-semibold ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}
-                      style={{ textAlign: 'left', paddingLeft: i === 0 ? '16px' : '12px', paddingRight: i === 3 ? '16px' : '12px' }}><UITooltip title={h.tip}><span>{h.label}</span></UITooltip></th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {stalePosts.slice(0, 10).map((post) => {
-                  const sc: Record<string, string> = { open: 'text-blue-600', under_review: 'text-yellow-600', planned: 'text-purple-600', in_progress: 'text-orange-500', live: 'text-green-600', hold: 'text-red-500' };
-                  return (
-                    <tr key={post.id} onClick={() => navigate(`/admin/posts/${post.slug}`, { state: { from: '/admin/settings', source: 'settings' } })}
-                      className={`border-t border-dashed cursor-pointer transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}>
-                      <td className="py-3" style={{ paddingLeft: '16px', width: '70px' }}>
-                        <div className={`inline-flex flex-row items-center justify-center rounded-lg border font-bold bg-transparent ${theme === 'dark' ? 'border-gray-600 text-gray-400' : 'border-gray-200 text-gray-500'}`}
-                          style={{ padding: '8px 14px', fontSize: '11px', gap: '6px' }}>
-                          <ArrowUpRight className="w-3 h-3 rotate-[-45deg]" />
-                          <span>{post.voteCount ?? 0}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 max-w-0 overflow-hidden">
-                        <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{post.title}</p>
-                      </td>
-                      <td className={`py-3 px-3 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} style={{ width: '110px' }}>
-                        <span className="truncate block">{post.board.name}</span>
-                      </td>
-                      <td className="py-3 px-3" style={{ width: '110px', paddingRight: '16px' }}>
-                        <span className={`text-xs font-semibold ${sc[post.status] || 'text-gray-500'}`}>
-                          {post.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <p className={`text-sm text-center py-12 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>None of your posts are stale.</p>
-          )}
-        </div>
       </div>
 
       {/* Activity Log Table */}
