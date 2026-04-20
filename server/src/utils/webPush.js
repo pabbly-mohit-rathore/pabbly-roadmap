@@ -18,20 +18,42 @@ if (PUBLIC_KEY && PRIVATE_KEY) {
   console.warn('[webPush] Missing VAPID_PUBLIC_KEY or VAPID_PRIVATE_KEY in .env — push disabled');
 }
 
+/**
+ * Resolve the correct URL for a user based on their role.
+ * Admins get admin routes; everyone else gets user routes.
+ * Payload may include: url (default), adminUrl (overrides for admins).
+ */
+function resolveUrlForUser(payload, userRole) {
+  if (userRole === 'admin' && payload.adminUrl) return payload.adminUrl;
+  return payload.url || '/';
+}
+
 async function sendPushToUser(userId, payload) {
   if (!vapidConfigured) {
     console.warn('[webPush] Skipping push — VAPID not configured');
     return;
   }
 
-  const subs = await prisma.pushSubscription.findMany({ where: { userId } });
+  const [user, subs] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
+    prisma.pushSubscription.findMany({ where: { userId } }),
+  ]);
+
   if (subs.length === 0) {
     console.log(`[webPush] No subscriptions for user ${userId}`);
     return;
   }
 
-  const body = JSON.stringify(payload);
-  console.log(`[webPush] Sending to ${subs.length} subscription(s) for user ${userId}: ${payload.title}`);
+  const resolvedUrl = resolveUrlForUser(payload, user?.role);
+  const finalPayload = {
+    title: payload.title,
+    body: payload.body,
+    url: resolvedUrl,
+    type: payload.type,
+  };
+  const body = JSON.stringify(finalPayload);
+
+  console.log(`[webPush] Sending to ${subs.length} subscription(s) for user ${userId} (${user?.role || 'user'}): ${payload.title} → ${resolvedUrl}`);
 
   await Promise.all(
     subs.map(async (sub) => {

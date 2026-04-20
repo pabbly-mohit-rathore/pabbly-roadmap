@@ -240,6 +240,7 @@ const addComment = async (req, res, next) => {
           title,
           body: message,
           url: post.slug ? `/user/posts/${post.slug}` : '/',
+          adminUrl: `/admin/posts/${post.id}`,
           type: 'comment_reply',
         }).catch(() => {});
       }
@@ -802,6 +803,7 @@ const toggleCommentLike = async (req, res, next) => {
         title,
         body: message,
         url: post?.slug ? `/user/posts/${post.slug}` : '/',
+        adminUrl: `/admin/posts/${comment.postId}`,
         type: 'comment_liked',
       }).catch(() => {});
     }

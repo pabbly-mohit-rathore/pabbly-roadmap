@@ -138,6 +138,7 @@ const upvotePost = async (req, res, next) => {
           title,
           body: message,
           url: post.slug ? `/user/posts/${post.slug}` : '/',
+          adminUrl: `/admin/posts/${post.id}`,
           type: 'post_voted',
         }).catch(() => {});
       })().catch(err => console.error('vote notification failed:', err));
