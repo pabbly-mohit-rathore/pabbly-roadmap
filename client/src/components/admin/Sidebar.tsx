@@ -5,6 +5,10 @@ import { Icon } from '@iconify/react';
 function RoadmapIcon({ className }: { className?: string }) {
   return <Icon icon="streamline:arrow-roadmap" className={className} width={20} height={20} />;
 }
+
+function AllPostsIcon({ className }: { className?: string }) {
+  return <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />;
+}
 import useThemeStore from '../../store/themeStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
 import useAuthStore from '../../store/authStore';
@@ -32,7 +36,7 @@ export default function AdminSidebar() {
   const allMenuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
     { label: 'Roadmap', icon: RoadmapIcon, path: '/admin/roadmap' },
-    { label: 'All Posts', icon: ({ className }: { className?: string }) => <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />, path: '/admin/all-posts' },
+    { label: 'All Posts', icon: AllPostsIcon, path: '/admin/all-posts' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
   ];
 

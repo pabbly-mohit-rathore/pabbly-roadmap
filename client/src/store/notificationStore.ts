@@ -14,6 +14,7 @@ interface Notification {
   post?: { id: string; title: string; slug: string };
   accepted?: boolean;
   rejected?: boolean;
+  removing?: boolean;
 }
 
 interface InvitationResult {
@@ -30,6 +31,7 @@ interface NotificationStore {
   fetchNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
+  clearAll: () => Promise<void>;
   acceptInvitation: (notificationId: string, invitationId: string) => Promise<InvitationResult | null>;
   rejectInvitation: (notificationId: string, invitationId: string) => Promise<boolean>;
 }
@@ -81,6 +83,29 @@ const useNotificationStore = create<NotificationStore>((set) => ({
       unreadCount: 0,
     }));
     try { await api.put('/notifications/read-all'); } catch { /* silent */ }
+  },
+
+  clearAll: async () => {
+    // Staggered slide-out animation: mark each notification "removing" with a delay
+    const current = useNotificationStore.getState().notifications;
+    const stagger = 70; // ms between each animation start
+    const animDuration = 350; // should match CSS transition
+
+    current.forEach((n, idx) => {
+      setTimeout(() => {
+        useNotificationStore.setState(s => ({
+          notifications: s.notifications.map(x => x.id === n.id ? { ...x, removing: true } : x),
+        }));
+      }, idx * stagger);
+    });
+
+    // After all animations complete, clear state + backend
+    const totalDuration = current.length * stagger + animDuration;
+    setTimeout(() => {
+      useNotificationStore.setState({ notifications: [], unreadCount: 0 });
+    }, totalDuration);
+
+    try { await api.delete('/notifications/clear-all'); } catch { /* silent */ }
   },
 
   acceptInvitation: async (notificationId, invitationId) => {

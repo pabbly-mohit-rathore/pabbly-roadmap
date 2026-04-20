@@ -5,6 +5,10 @@ import { Icon } from '@iconify/react';
 function RoadmapIcon({ className }: { className?: string }) {
   return <Icon icon="streamline:arrow-roadmap" className={className} width={20} height={20} />;
 }
+
+function AllPostsIcon({ className }: { className?: string }) {
+  return <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />;
+}
 import useThemeStore from '../../store/themeStore';
 
 export default function UserSidebar() {
@@ -22,7 +26,7 @@ export default function UserSidebar() {
 
   const menuItems = [
     { label: 'Roadmap', icon: RoadmapIcon, path: '/user/roadmap' },
-    { label: 'All Posts', icon: ({ className }: { className?: string }) => <Icon icon="material-symbols:post-add-sharp" className={className} width={20} height={20} />, path: '/user/all-posts' },
+    { label: 'All Posts', icon: AllPostsIcon, path: '/user/all-posts' },
   ];
 
   const isActive = (path: string) => {

@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MessageSquareText, Eye, Bell, LogOut, Sun, Moon, Settings, ChevronDown, Layout, Check, X } from 'lucide-react';
+import { MessageSquareText, Eye, Bell, LogOut, Sun, Moon, Settings, ChevronDown, Layout, Check, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
@@ -22,7 +22,7 @@ export default function Navbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [invitationBusyId, setInvitationBusyId] = useState<string | null>(null);
   const { theme, setTheme } = useThemeStore();
-  const { unreadCount, notifications, loading: notifLoading, fetchUnreadCount, fetchNotifications, markAsRead, markAllRead, acceptInvitation, rejectInvitation } = useNotificationStore();
+  const { unreadCount, notifications, loading: notifLoading, fetchUnreadCount, fetchNotifications, markAsRead, markAllRead, clearAll, acceptInvitation, rejectInvitation } = useNotificationStore();
   const navigate = useNavigate();
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -159,11 +159,18 @@ export default function Navbar() {
                     {/* Header */}
                     <div className={`flex items-center justify-between px-4 py-3 border-b shrink-0 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
                       <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Notifications</span>
-                      {unreadCount > 0 && (
-                        <button onClick={markAllRead} className="flex items-center gap-1 text-xs font-medium text-[#059669] hover:underline">
-                          <Check className="w-3 h-3" /> Mark all read
-                        </button>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {unreadCount > 0 && (
+                          <button onClick={markAllRead} className="flex items-center gap-1 text-xs font-medium text-[#059669] hover:underline">
+                            <Check className="w-3 h-3" /> Mark all read
+                          </button>
+                        )}
+                        {notifications.length > 0 && (
+                          <button onClick={clearAll} className="flex items-center gap-1 text-xs font-medium text-[#059669] hover:underline">
+                            <Trash2 className="w-3 h-3" /> Clear all
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {/* List */}
                     <div className="overflow-y-auto flex-1">
@@ -190,7 +197,9 @@ export default function Navbar() {
                             navigate(commentId ? `${basePath}?commentId=${commentId}` : basePath);
                             setNotifOpen(false);
                           }}
-                          className={`flex gap-3 px-4 py-3 transition-colors ${isClickable ? 'cursor-pointer' : ''} ${
+                          className={`flex gap-3 px-4 py-3 transition-all duration-[350ms] ease-in ${isClickable ? 'cursor-pointer' : ''} ${
+                            n.removing ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'
+                          } ${
                             !n.isRead
                               ? (theme === 'dark' ? 'bg-blue-900/10 hover:bg-gray-700' : 'bg-blue-50/50 hover:bg-gray-50')
                               : (theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50')
