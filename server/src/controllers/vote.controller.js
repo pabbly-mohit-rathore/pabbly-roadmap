@@ -93,21 +93,51 @@ const upvotePost = async (req, res, next) => {
       },
     }).catch(err => console.error('activity log failed:', err));
 
-    // Notification — post author ko batao (sirf new vote pe, remove pe nahi)
-    if (!existingVote && post.authorId && post.authorId !== userId) {
+    // Notification — post author + all admins + board managers (sirf new vote pe)
+    if (!existingVote) {
       (async () => {
         const voter = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
-        const title = 'New vote on your post';
+        const title = 'New vote on a post';
         const message = `${voter?.name || 'Someone'} upvoted "${post.title}"`;
-        await prisma.notification.create({
-          data: { userId: post.authorId, type: 'post_voted', title, message, postId },
-        }).catch(() => {});
 
-        const { sendPushToUser } = require('../utils/webPush');
-        sendPushToUser(post.authorId, {
+        // Collect all recipients: author + admins + board managers (minus the voter)
+        const [admins, managers] = await Promise.all([
+          prisma.user.findMany({
+            where: { role: 'admin', isActive: true, id: { not: userId } },
+            select: { id: true },
+          }),
+          prisma.boardMember.findMany({
+            where: { boardId: post.boardId, userId: { not: userId } },
+            select: { userId: true },
+          }),
+        ]);
+
+        const recipientIds = Array.from(new Set([
+          ...(post.authorId && post.authorId !== userId ? [post.authorId] : []),
+          ...admins.map(a => a.id),
+          ...managers.map(m => m.userId),
+        ]));
+
+        if (recipientIds.length === 0) return;
+
+        // Author-specific message, admins/managers get generic
+        await prisma.notification.createMany({
+          data: recipientIds.map(uid => ({
+            userId: uid,
+            type: 'post_voted',
+            title: uid === post.authorId ? 'New vote on your post' : title,
+            message: uid === post.authorId
+              ? `${voter?.name || 'Someone'} upvoted "${post.title}"`
+              : message,
+            postId,
+          })),
+        });
+
+        const { sendPushToUsers } = require('../utils/webPush');
+        sendPushToUsers(recipientIds, {
           title,
           body: message,
-          url: `/posts/${post.slug || postId}`,
+          url: post.slug ? `/user/posts/${post.slug}` : '/',
           type: 'post_voted',
         }).catch(() => {});
       })().catch(err => console.error('vote notification failed:', err));

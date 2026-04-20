@@ -239,7 +239,7 @@ const addComment = async (req, res, next) => {
         sendPushToUser(parentComment.authorId, {
           title,
           body: message,
-          url: `/posts/${post.slug || postId}`,
+          url: post.slug ? `/user/posts/${post.slug}` : '/',
           type: 'comment_reply',
         }).catch(() => {});
       }
@@ -399,27 +399,33 @@ const deleteComment = async (req, res, next) => {
       });
     }
 
-    // Comment delete karo
-    await prisma.comment.delete({
-      where: { id },
-    });
+    // Count all replies (for commentCount decrement) then delete cascade
+    const replyCount = await prisma.comment.count({ where: { parentId: id } });
+    const totalDeleted = replyCount + 1;
 
-    // Decrement comment count on post
-    await prisma.post.update({
+    // Delete all nested replies first, then the comment itself
+    // (Prisma self-relations don't support onDelete: Cascade, so we do it manually)
+    await prisma.$transaction([
+      prisma.comment.deleteMany({ where: { parentId: id } }),
+      prisma.comment.delete({ where: { id } }),
+    ]);
+
+    // Decrement comment count on post by total deleted
+    prisma.post.update({
       where: { id: comment.post.id },
-      data: { commentCount: { decrement: 1 } },
-    });
+      data: { commentCount: { decrement: totalDeleted } },
+    }).catch(err => console.error('commentCount decrement failed:', err));
 
-    // Activity log
-    await prisma.activity.create({
+    // Activity log (fire-and-forget)
+    prisma.activity.create({
       data: {
         action: 'deleted',
-        description: 'Comment deleted',
+        description: replyCount > 0 ? `Comment + ${replyCount} replies deleted` : 'Comment deleted',
         userId,
         postId: comment.post.id,
         boardId: comment.post.boardId,
       },
-    });
+    }).catch(err => console.error('activity log failed:', err));
 
     // Real-time broadcast
     const io = req.app.get('io');
@@ -795,7 +801,7 @@ const toggleCommentLike = async (req, res, next) => {
       sendPushToUser(comment.authorId, {
         title,
         body: message,
-        url: post?.slug ? `/posts/${post.slug}` : '/',
+        url: post?.slug ? `/user/posts/${post.slug}` : '/',
         type: 'comment_liked',
       }).catch(() => {});
     }

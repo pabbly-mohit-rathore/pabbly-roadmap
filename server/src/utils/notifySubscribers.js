@@ -51,7 +51,7 @@ async function notifySubscribers(postId, { type, title, message, excludeUserIds 
     sendPushToUsers(userIds, {
       title,
       body: message,
-      url: post.slug ? `/posts/${post.slug}` : '/',
+      url: post.slug ? `/user/posts/${post.slug}` : '/',
       type,
     }).catch((err) => console.error('[notifySubscribers] Push failed:', err));
   } catch (error) {
