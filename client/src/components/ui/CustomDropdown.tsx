@@ -16,11 +16,12 @@ interface CustomDropdownProps {
   minWidth?: string;
   className?: string;
   bgClass?: string;
+  buttonBgClass?: string;
   dropUp?: boolean;
   portalMode?: boolean;
 }
 
-const CustomDropdown: React.FC<CustomDropdownProps> = ({ label, value, options, onChange, minWidth = '150px', className = '', bgClass, dropUp = false, portalMode = false }) => {
+const CustomDropdown: React.FC<CustomDropdownProps> = ({ label, value, options, onChange, minWidth = '150px', className = '', bgClass, buttonBgClass, dropUp = false, portalMode = false }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -28,7 +29,11 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ label, value, options, 
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
   const d = useThemeStore((s) => s.theme === 'dark');
 
-  const resolvedBg = bgClass || (d ? 'bg-gray-700' : 'bg-white');
+  // Default dark bg matches standard filter panel bg (bg-gray-800) so label blends seamlessly.
+  // Dialog usages pass buttonBgClass/bgClass to override (e.g. bg-gray-900).
+  const resolvedButtonBg = buttonBgClass || (d ? 'bg-gray-800' : 'bg-white');
+  const resolvedButtonBgOpen = buttonBgClass || (d ? 'bg-gray-800' : 'bg-white');
+  const resolvedBg = bgClass || buttonBgClass || (d ? 'bg-gray-800' : 'bg-white');
 
   const handleClickOutside = useCallback((e: MouseEvent) => {
     const target = e.target as Node;
@@ -114,11 +119,11 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ label, value, options, 
       <button ref={btnRef} onClick={() => setOpen(!open)}
         className={`flex items-center justify-between gap-6 rounded-lg border text-sm transition-colors ${
           open
-            ? (d ? 'border-gray-400 bg-gray-700' : 'border-gray-400 bg-white')
-            : (d ? 'border-gray-600 bg-gray-700 hover:border-gray-500' : 'border-gray-300 bg-white hover:border-gray-400')
+            ? (d ? `border-gray-400 ${resolvedButtonBgOpen}` : 'border-gray-400 bg-white')
+            : (d ? `border-gray-600 ${resolvedButtonBg} hover:border-gray-500` : 'border-gray-300 bg-white hover:border-gray-400')
         }`} style={{ minWidth, padding: '0 14px', height: '48px' }}>
         <span className={`absolute -top-2 left-2.5 px-1 text-[11px] font-medium ${
-          d ? 'text-gray-400' : 'text-gray-500'
+          d ? 'text-white' : 'text-gray-500'
         } ${resolvedBg}`}>{label}</span>
         <span className={d ? 'text-white' : 'text-gray-800'}>{selectedLabel}</span>
         <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''} ${d ? 'text-gray-400' : 'text-gray-500'}`} />

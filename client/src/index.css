@@ -19,6 +19,18 @@ body {
   }
 }
 
+/* Floating-label background helpers — fix dark-mode label notch between input and dialog.
+   Label vertical position is at input's top border; top 50% sits in dialog area, bottom 50% on input.
+   Gradient splits label bg so each half matches its container — creates a seamless MUI notch. */
+.float-label-bg { background: #ffffff; }
+html.dark .float-label-bg {
+  background: linear-gradient(to bottom, #111827 50%, #1f2937 50%);
+}
+.float-label-bg-dropdown { background: #ffffff; }
+html.dark .float-label-bg-dropdown {
+  background: linear-gradient(to bottom, #111827 50%, #374151 50%);
+}
+
 /* TipTap Editor Styles */
 .tiptap {
   outline: none;

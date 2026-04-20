@@ -476,12 +476,12 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
                     style={{ padding: '16.5px 14px' }}
                     className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
-                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                      d ? 'border-gray-700 bg-gray-900 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
                     }`} />
                   <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none top-1/2 -translate-y-1/2
                     peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
                     peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
-                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Entry Title *</span>
+                    ${d ? 'text-white bg-gray-900' : 'text-gray-500 bg-white'}`}>Entry Title *</span>
                 </div>
                 <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Enter the title for your changelog entry.</p>
               </div>
@@ -493,12 +493,12 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     style={{ padding: '16.5px 14px' }}
                     className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
-                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                      d ? 'border-gray-700 bg-gray-900 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
                     }`} />
                   <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none top-1/2 -translate-y-1/2
                     peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
                     peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
-                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Description</span>
+                    ${d ? 'text-white bg-gray-900' : 'text-gray-500 bg-white'}`}>Description</span>
                 </div>
                 <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Brief description of this changelog entry.</p>
               </div>

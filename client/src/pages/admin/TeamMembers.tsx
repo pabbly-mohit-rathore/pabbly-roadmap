@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Search, X, XCircle, Users, Shield, UserCog, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
-import { Icon } from '@iconify/react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import LoadingBar from '../../components/ui/LoadingBar';
@@ -34,7 +33,7 @@ interface Stats {
   managerAccessCount: number;
 }
 
-export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: number }) {
+export default function AdminTeamMembers({ triggerCreate, showFilters = false }: { triggerCreate?: number; showFilters?: boolean }) {
   const theme = useThemeStore((state) => state.theme);
   const d = theme === 'dark';
 
@@ -58,7 +57,6 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
   const [updatingAccess, setUpdatingAccess] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeConfirm, setRemoveConfirm] = useState<{ id: string; type: 'member' | 'invitation' } | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -234,20 +232,6 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
             </div>
           );
         })}
-      </div>
-
-      {/* Filter Toggle */}
-      <div className="flex items-center justify-end mb-4">
-        <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
-            showFilters
-              ? 'border-[#059669] text-[#059669]'
-              : d ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
-          }`}
-          style={{ height: '48px' }}>
-          <Icon icon="iconoir:filter" width={16} height={16} />
-          Filters
-        </button></Tooltip>
       </div>
 
       {/* Filter Bar */}
@@ -453,13 +437,13 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     style={{ padding: '16.5px 14px' }}
                     className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
-                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                      d ? 'border-gray-700 bg-gray-900 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
                     }`} />
                   <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none
                     top-1/2 -translate-y-1/2
                     peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
                     peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
-                    ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Email Address *</span>
+                    ${d ? 'text-white bg-gray-900' : 'text-gray-500 bg-white'}`}>Email Address *</span>
                 </div>
                 <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Ensure that the email address is already registered.</p>
               </div>
@@ -469,7 +453,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 <CustomDropdown label="Access Level *" value={formData.accessLevel}
                   options={[{ value: 'admin', label: 'Admin Access' }, { value: 'manager', label: 'Manager Access' }]}
                   onChange={(v) => setFormData({ ...formData, accessLevel: v as 'admin' | 'manager' })}
-                  minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                  minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} buttonBgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
                 <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Admin (full) or Manager (limited).</p>
               </div>
 
@@ -535,7 +519,7 @@ export default function AdminTeamMembers({ triggerCreate }: { triggerCreate?: nu
                 <CustomDropdown label="Access Level *" value={updateAccessLevel}
                   options={[{ value: 'admin', label: 'Admin Access (full access)' }, { value: 'manager', label: 'Manager Access (limited access)' }]}
                   onChange={(v) => setUpdateAccessLevel(v as 'admin' | 'manager')}
-                  minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
+                  minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} buttonBgClass={d ? 'bg-gray-900' : 'bg-white'} portalMode />
                 <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Change the access level for this team member.</p>
               </div>
 

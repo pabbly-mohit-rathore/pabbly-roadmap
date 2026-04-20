@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BarChart3, Users, Plus } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
@@ -36,11 +37,13 @@ export default function AdminSettings() {
     return valid ? tabFromUrl! : 'activity-log';
   });
   const [triggerAction, setTriggerAction] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
   const currentTab = ALL_TABS.find(t => t.id === activeTab)!;
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     setSearchParams({ tab: tabId }, { replace: true });
+    setShowFilters(false); // reset filter panel on tab change
   };
 
   useEffect(() => {
@@ -55,13 +58,25 @@ export default function AdminSettings() {
           <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{currentTab.heading}</h1>
           <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{currentTab.description}</p>
         </div>
-        {currentTab.btnLabel && (
-          <Tooltip title="Click here to add."><button onClick={() => setTriggerAction(prev => prev + 1)}
-            className="flex items-center gap-2 bg-[#009966] text-white rounded-lg hover:bg-[#047857] transition shrink-0"
-            style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
-            <Plus className="w-5 h-5" /> {currentTab.btnLabel}
+        <div className="flex items-center gap-3 shrink-0">
+          <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+              showFilters
+                ? 'border-[#059669] text-[#059669]'
+                : d ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
+            }`}
+            style={{ height: '48px' }}>
+            <Icon icon="iconoir:filter" width={16} height={16} />
+            Filters
           </button></Tooltip>
-        )}
+          {currentTab.btnLabel && (
+            <Tooltip title="Click here to add."><button onClick={() => setTriggerAction(prev => prev + 1)}
+              className="flex items-center gap-2 bg-[#009966] text-white rounded-lg hover:bg-[#047857] transition"
+              style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
+              <Plus className="w-5 h-5" /> {currentTab.btnLabel}
+            </button></Tooltip>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -82,9 +97,9 @@ export default function AdminSettings() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'activity-log' && <AdminReporting />}
-      {activeTab === 'users' && !isTeamMember && <AdminUsers />}
-      {activeTab === 'team-members' && !isTeamMember && <AdminTeamMembers triggerCreate={triggerAction} />}
+      {activeTab === 'activity-log' && <AdminReporting showFilters={showFilters} />}
+      {activeTab === 'users' && !isTeamMember && <AdminUsers showFilters={showFilters} />}
+      {activeTab === 'team-members' && !isTeamMember && <AdminTeamMembers triggerCreate={triggerAction} showFilters={showFilters} />}
     </div>
   );
 }

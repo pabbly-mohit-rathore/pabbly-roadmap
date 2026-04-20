@@ -309,7 +309,7 @@ export default function UserRoadmapPage() {
                             <div className="flex items-center gap-2 min-w-0">
                               {post.board?.name && (
                                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded truncate shrink min-w-0 ${
-                                  theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                                  theme === 'dark' ? 'bg-gray-800/60 text-gray-400 border border-gray-700' : 'bg-gray-100 text-gray-700'
                                 }`}>
                                   {post.board.name}
                                 </span>

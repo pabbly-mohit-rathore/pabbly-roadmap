@@ -88,11 +88,11 @@ export default function ButtonConfigModal({ isOpen, onClose, onInsert, initialAt
               <input type="text" value={attrs.text} placeholder=" "
                 onChange={(e) => set('text', e.target.value)}
                 style={{ padding: '16.5px 14px' }}
-                className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'}`} />
+                className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${d ? 'border-gray-700 bg-gray-900 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'}`} />
               <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none top-1/2 -translate-y-1/2
                 peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
                 peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
-                ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>Button Text *</span>
+                ${d ? 'text-white bg-gray-900' : 'text-gray-500 bg-white'}`}>Button Text *</span>
             </div>
             <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>The text displayed on the button.</p>
           </div>
@@ -104,11 +104,11 @@ export default function ButtonConfigModal({ isOpen, onClose, onInsert, initialAt
               <input type="url" value={attrs.url} placeholder=" "
                 onChange={(e) => set('url', e.target.value)}
                 style={{ padding: '16.5px 14px 16.5px 38px' }}
-                className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'}`} />
+                className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${d ? 'border-gray-700 bg-gray-900 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'}`} />
               <span className={`absolute left-9 px-1 text-sm transition-all pointer-events-none top-1/2 -translate-y-1/2
                 peer-focus:top-0 peer-focus:left-2.5 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
                 peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:left-2.5 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:font-medium
-                ${d ? 'text-gray-400 bg-gray-900' : 'text-gray-500 bg-white'}`}>URL</span>
+                ${d ? 'text-white bg-gray-900' : 'text-gray-500 bg-white'}`}>URL</span>
             </div>
             <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>The URL the button links to.</p>
           </div>

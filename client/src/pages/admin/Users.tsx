@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
 import { Search, Shield, X, Copy, Check, ChevronLeft, ChevronRight, ChevronDown, MoreVertical, Users as UsersIcon } from 'lucide-react';
-import { Icon } from '@iconify/react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -14,13 +13,12 @@ interface User {
   _count: { posts: number; votes: number; comments: number; boardMemberships: number; boardAccess: number; };
 }
 
-export default function AdminUsers() {
+export default function AdminUsers({ showFilters = false }: { showFilters?: boolean } = {}) {
   const theme = useThemeStore((s) => s.theme);
   const d = theme === 'dark';
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [copiedField, setCopiedField] = useState('');
@@ -67,20 +65,6 @@ export default function AdminUsers() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-end mb-4">
-        <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
-            showFilters
-              ? 'border-[#059669] text-[#059669]'
-              : d ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
-          }`}
-          style={{ height: '48px' }}>
-          <Icon icon="iconoir:filter" width={16} height={16} />
-          Filters
-        </button></Tooltip>
-      </div>
-
       {/* Filters */}
       {showFilters && (
       <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>

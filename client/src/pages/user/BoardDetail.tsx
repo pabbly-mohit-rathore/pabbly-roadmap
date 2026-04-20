@@ -394,7 +394,7 @@ export default function UserBoardDetail() {
                     style={{ padding: '16.5px 14px' }}
                     className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
                       formErrors.title ? (d ? 'border-red-500 bg-gray-800 text-white' : 'border-red-500 bg-white text-gray-900')
-                      : (d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400')
+                      : (d ? 'border-gray-700 bg-gray-900 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400')
                     }`} />
                   <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none top-1/2 -translate-y-1/2
                     peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
@@ -410,7 +410,7 @@ export default function UserBoardDetail() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     style={{ padding: '16.5px 14px' }}
                     className={`peer w-full rounded-lg border text-sm outline-none transition-colors ${
-                      d ? 'border-gray-700 bg-gray-800 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
+                      d ? 'border-gray-700 bg-gray-900 text-white focus:border-gray-400' : 'border-gray-300 bg-white text-gray-900 focus:border-gray-400'
                     }`} />
                   <span className={`absolute left-2.5 px-1 text-sm transition-all pointer-events-none top-1/2 -translate-y-1/2
                     peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-[11px] peer-focus:font-medium
@@ -422,7 +422,7 @@ export default function UserBoardDetail() {
               <div>
                 <CustomDropdown label="Type" value={formData.type}
                   options={[{ value: 'feature', label: 'Feature' }, { value: 'bug', label: 'Bug' }, { value: 'improvement', label: 'Improvement' }, { value: 'integration', label: 'Integration' }]}
-                  onChange={(v) => setFormData({ ...formData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} />
+                  onChange={(v) => setFormData({ ...formData, type: v })} minWidth="100%" bgClass={d ? 'bg-gray-900' : 'bg-white'} buttonBgClass={d ? 'bg-gray-900' : 'bg-white'} />
                 <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Select the type of post.</p>
               </div>
               <div className="flex gap-3 justify-end pt-2">

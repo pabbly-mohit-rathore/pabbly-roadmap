@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThumbsUp, Calendar, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageCircle, ArrowUpRight } from 'lucide-react';
-import { Icon } from '@iconify/react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
@@ -42,12 +41,11 @@ interface ActivityLog {
   board?: { name: string } | null;
 }
 
-export default function AdminReporting() {
+export default function AdminReporting({ showFilters = false }: { showFilters?: boolean } = {}) {
   const theme = useThemeStore((state) => state.theme);
   const navigate = useNavigate();
   const [period, setPeriod] = useState('week');
   const [boardFilter, setBoardFilter] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
   const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
   const [activity, setActivity] = useState<ActivityData | null>(null);
   const [statusPipeline, setStatusPipeline] = useState<{ status: string; count: number }[]>([]);
@@ -187,20 +185,6 @@ export default function AdminReporting() {
 
   return (
     <div>
-      {/* Filter Toggle */}
-      <div className="flex items-center justify-end mb-4">
-        <UITooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
-            showFilters
-              ? 'border-[#059669] text-[#059669]'
-              : d ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
-          }`}
-          style={{ height: '48px' }}>
-          <Icon icon="iconoir:filter" width={16} height={16} />
-          Filters
-        </button></UITooltip>
-      </div>
-
       {/* Filter Bar */}
       {showFilters && (
       <div className={`p-4 rounded-lg border mb-5 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
