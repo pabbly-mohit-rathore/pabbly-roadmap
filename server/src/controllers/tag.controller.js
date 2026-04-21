@@ -23,34 +23,27 @@ const getTags = async (req, res, next) => {
   try {
     const { boardId } = req.query;
 
-    if (!boardId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Board ID is required.',
+    // If boardId provided, filter by board. Otherwise return ALL tags.
+    const where = boardId ? { boardId } : {};
+
+    if (boardId) {
+      const board = await prisma.board.findUnique({
+        where: { id: boardId },
+        select: { id: true },
       });
+      if (!board) {
+        return res.status(404).json({
+          success: false,
+          message: 'Board not found.',
+        });
+      }
     }
 
-    // Board dhundho
-    const board = await prisma.board.findUnique({
-      where: { id: boardId },
-      select: { id: true },
-    });
-
-    if (!board) {
-      return res.status(404).json({
-        success: false,
-        message: 'Board not found.',
-      });
-    }
-
-    // Board ke sab tags get karo
     const tags = await prisma.tag.findMany({
-      where: { boardId },
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
-        _count: {
-          select: { posts: true },
-        },
+        _count: { select: { posts: true } },
       },
     });
 

@@ -60,6 +60,7 @@ const assignTagRules = [
 
 const getTagsQueryRules = [
   query('boardId')
+    .optional()
     .isUUID().withMessage('Board ID must be a valid UUID.'),
 ];
 
