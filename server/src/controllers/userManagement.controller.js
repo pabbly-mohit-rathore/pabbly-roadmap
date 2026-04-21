@@ -320,8 +320,37 @@ const toggleUserStatus = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// Lightweight user search for @mention autocomplete
+// Returns minimal data (id, name, avatar) — available to all authenticated users
+// ============================================================
+const searchUsersForMention = async (req, res, next) => {
+  try {
+    const q = (req.query.q || '').toString().trim();
+    const take = Math.min(parseInt(req.query.limit) || 8, 20);
+
+    const where = { isActive: true };
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      select: { id: true, name: true, avatar: true },
+      orderBy: { name: 'asc' },
+      take,
+    });
+
+    res.json({ success: true, data: { users } });
+  } catch (error) { next(error); }
+};
+
 module.exports = {
   listUsers,
   getUserDetails,
   toggleUserStatus,
+  searchUsersForMention,
 };

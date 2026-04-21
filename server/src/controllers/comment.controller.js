@@ -12,6 +12,7 @@
 
 const prisma = require('../config/database');
 const notifySubscribers = require('../utils/notifySubscribers');
+const { notifyMentions } = require('../utils/notifyMentions');
 
 // ============================================================
 // 1. GET ALL COMMENTS FOR A POST
@@ -263,6 +264,17 @@ const addComment = async (req, res, next) => {
     if (!isInternal) {
       io.to('feed').emit('comment-count-changed', { postId, delta: 1 });
     }
+
+    // @-mentions → notify each mentioned user (fire-and-forget)
+    notifyMentions({
+      html: content,
+      actorId: userId,
+      actorName: comment.author.name,
+      context: parentId ? 'reply' : 'comment',
+      postId,
+      postTitle: post.title,
+      postSlug: post.slug,
+    }).catch(err => console.error('notifyMentions failed:', err));
 
     res.status(201).json({
       success: true,

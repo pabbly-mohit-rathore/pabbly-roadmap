@@ -480,6 +480,7 @@ enum NotificationType {
   post_voted
   comment_liked
   comment_reply
+  mention
   team_access_granted
   team_access_request
   team_access_accepted

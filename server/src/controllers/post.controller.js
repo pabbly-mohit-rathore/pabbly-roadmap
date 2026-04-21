@@ -15,6 +15,7 @@
 const { Prisma } = require('@prisma/client');
 const prisma = require('../config/database');
 const notifySubscribers = require('../utils/notifySubscribers');
+const { notifyMentions } = require('../utils/notifyMentions');
 
 // ============================================================
 // 1. GET ALL POSTS
@@ -317,6 +318,17 @@ const createPost = async (req, res, next) => {
 
     // Auto-subscribe author to their own post
     await prisma.subscription.create({ data: { userId, postId: post.id } });
+
+    // @-mentions in post content → notify mentioned users (fire-and-forget)
+    notifyMentions({
+      html: content || '',
+      actorId: userId,
+      actorName: post.author.name,
+      context: 'post',
+      postId: post.id,
+      postTitle: post.title,
+      postSlug: post.slug,
+    }).catch(err => console.error('notifyMentions failed:', err));
 
     res.status(201).json({
       success: true,

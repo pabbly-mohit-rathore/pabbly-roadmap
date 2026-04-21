@@ -17,6 +17,7 @@ const {
   listUsers,
   getUserDetails,
   toggleUserStatus,
+  searchUsersForMention,
 } = require('../controllers/userManagement.controller');
 
 // ──────────────────────────────────────
@@ -53,6 +54,9 @@ const toggleStatusRules = [
 // ──────────────────────────────────────
 // Routes
 // ──────────────────────────────────────
+
+// GET /users/search — Lightweight user search for @mention autocomplete (any authenticated user)
+router.get('/users/search', authenticate, searchUsersForMention);
 
 // GET /admin/users — List all users (admin only)
 router.get('/admin/users', authenticate, listUsersRules, validate, listUsers);
