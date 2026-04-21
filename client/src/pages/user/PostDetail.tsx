@@ -84,7 +84,7 @@ export default function UserPostDetail() {
   const [editText, setEditText] = useState('');
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
-  const [replyingToName, setReplyingToName] = useState<string | null>(null);
+  const [, setReplyingToName] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [activeTab, setActiveTab] = useState<'comments' | 'activities'>('comments');
   const [commentMenuId, setCommentMenuId] = useState<string | null>(null);
@@ -348,9 +348,6 @@ export default function UserPostDetail() {
     if (!content.trim() || content === '<p></p>') {
       toast.error('Reply cannot be empty');
       return;
-    }
-    if (replyingToName) {
-      content = content.replace(/^<p>/, `<p><span class="mention-tag">@${replyingToName}</span> `);
     }
 
     try {

@@ -97,7 +97,7 @@ export default function AdminPostDetail() {
   const [statusSaving, setStatusSaving] = useState(false);
   const [deleteCommentConfirm, setDeleteCommentConfirm] = useState<string | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
-  const [replyingToName, setReplyingToName] = useState<string | null>(null);
+  const [, setReplyingToName] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedCommentUser, setSelectedCommentUser] = useState<any>(null);
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
@@ -420,10 +420,6 @@ export default function AdminPostDetail() {
     if (!content.trim() || content === '<p></p>') {
       toast.error('Reply cannot be empty');
       return;
-    }
-    // Prepend @mention if replying to someone
-    if (replyingToName) {
-      content = content.replace(/^<p>/, `<p><span class="mention-tag">@${replyingToName}</span> `);
     }
 
     try {
