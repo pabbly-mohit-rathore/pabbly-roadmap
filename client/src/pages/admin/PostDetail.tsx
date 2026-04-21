@@ -36,6 +36,7 @@ interface Post {
   author: { name: string; avatar?: string };
   board: { name: string; id: string };
   tags?: { tag: Tag }[];
+  canPostInternal?: boolean;
 }
 
 interface Comment {
@@ -45,6 +46,7 @@ interface Comment {
   createdAt: string;
   isOfficial: boolean;
   isPinned: boolean;
+  isInternal?: boolean;
   likeCount: number;
   likes: { userId: string }[];
   parentId: string | null;
@@ -298,7 +300,7 @@ export default function AdminPostDetail() {
     applyStatusChange(newStatus);
   };
 
-  const handleAddComment = async (htmlContent?: string) => {
+  const handleAddComment = async (htmlContent?: string, isInternal?: boolean) => {
     const content = htmlContent || commentText;
     if (!content.trim() || content === '<p></p>') {
       toast.error('Comment cannot be empty');
@@ -309,13 +311,17 @@ export default function AdminPostDetail() {
       setSubmittingComment(true);
       const response = await api.post(`/comments/post/${post?.id}`, {
         content,
+        isInternal: !!isInternal,
       });
 
       if (response.data.success) {
         setCommentText('');
-        setPost((prev) =>
-          prev ? { ...prev, commentCount: prev.commentCount + 1 } : null
-        );
+        // Internal comments don't count toward the public commentCount
+        if (!isInternal) {
+          setPost((prev) =>
+            prev ? { ...prev, commentCount: prev.commentCount + 1 } : null
+          );
+        }
         // Add comment to state immediately, then sync with server
         const newComment = response.data.data?.comment;
         if (newComment) {
@@ -323,7 +329,7 @@ export default function AdminPostDetail() {
         } else {
           fetchComments();
         }
-        toast.success('Comment added');
+        toast.success(isInternal ? 'Internal comment added' : 'Comment added');
       }
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -572,7 +578,8 @@ export default function AdminPostDetail() {
                   {/* Add Comment */}
                   <div className="mb-6">
                     <CommentEditor
-                      onSubmit={(html) => handleAddComment(html)}
+                      showInternalOption={isMainAdmin || isTeamAccess || !!post?.canPostInternal}
+                      onSubmit={(html, isInternal) => handleAddComment(html, isInternal)}
                       submitting={submittingComment}
                     />
                   </div>
@@ -598,6 +605,7 @@ export default function AdminPostDetail() {
                                 <div className="flex items-center gap-2">
                                   <span onClick={() => handleUserClick(comment.author.id)} className={`font-semibold text-sm cursor-pointer hover:underline ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{comment.author.name}</span>
                                   <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(comment.createdAt)}</span>
+                                  {comment.isInternal && <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">Internal Comment</span>}
                                 </div>
                                 {(
                                   <div className="relative">
@@ -706,6 +714,7 @@ export default function AdminPostDetail() {
                                             <div className="flex items-center gap-2">
                                               <span onClick={() => handleUserClick(reply.author.id)} className={`font-semibold text-sm cursor-pointer hover:underline ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{reply.author.name}</span>
                                               <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(reply.createdAt)}</span>
+                                              {reply.isInternal && <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">Internal Comment</span>}
                                             </div>
                                             {(
                                               <div className="relative">

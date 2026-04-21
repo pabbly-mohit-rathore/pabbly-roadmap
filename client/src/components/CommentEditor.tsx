@@ -11,7 +11,7 @@ import {
   Bold, Italic, Underline as UnderlineIcon, Heading2,
   List, ListOrdered, Code, Link as LinkIcon,
   Image as ImageIcon, Video, MousePointerClick,
-  AlignLeft, AlignCenter, AlignRight
+  AlignLeft, AlignCenter, AlignRight, ChevronDown, Check,
 } from 'lucide-react';
 // @ts-expect-error -- JSX module without type declarations
 import { ResizableImage } from './rich-text-editor/Components/editor/components/img-resize';
@@ -35,7 +35,7 @@ function TB({ icon: Icon, action, active, dark }: { icon: React.ComponentType<{ 
 }
 
 interface CommentEditorProps {
-  onSubmit: (html: string) => void;
+  onSubmit: (html: string, isInternal?: boolean) => void;
   placeholder?: string;
   buttonLabel?: string;
   submitting?: boolean;
@@ -44,6 +44,8 @@ interface CommentEditorProps {
   hideButton?: boolean;
   maxEditorHeight?: string;
   onContentChange?: (html: string) => void;
+  /** When true, show a split-button to toggle between Public and Internal comment */
+  showInternalOption?: boolean;
 }
 
 export default function CommentEditor({
@@ -56,14 +58,29 @@ export default function CommentEditor({
   hideButton = false,
   maxEditorHeight,
   onContentChange,
+  showInternalOption = false,
 }: CommentEditorProps) {
   const theme = useThemeStore((state) => state.theme);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showButtonModal, setShowButtonModal] = useState(false);
   const [editingButtonAttrs, setEditingButtonAttrs] = useState<Partial<ButtonAttributes> | undefined>(undefined);
   const editingButtonPos = useRef<number | null>(null);
+  const [commentMode, setCommentMode] = useState<'public' | 'internal'>('public');
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const modeMenuRef = useRef<HTMLDivElement>(null);
+  const modeMenuPortalRef = useRef<HTMLDivElement>(null);
   const d = theme === 'dark';
   const isReply = buttonLabel === 'Reply' || compact;
+
+  useEffect(() => {
+    if (!modeMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (modeMenuRef.current && !modeMenuRef.current.contains(target)) setModeMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [modeMenuOpen]);
 
   const editor = useEditor({
     extensions: [
@@ -108,7 +125,7 @@ export default function CommentEditor({
     if (!editor) return;
     const html = editor.getHTML();
     if (html === '<p></p>' || !html.trim()) return;
-    onSubmit(html);
+    onSubmit(html, showInternalOption && commentMode === 'internal');
     editor.commands.clearContent();
   };
 
@@ -248,7 +265,7 @@ export default function CommentEditor({
   if (!editor) return null;
 
   return (
-    <div ref={editorRef} className={`rounded-lg border overflow-hidden transition-colors ${d ? 'bg-gray-800 border-gray-700 hover:border-gray-500 focus-within:border-gray-400' : 'bg-white border-gray-200 hover:border-gray-400 focus-within:border-gray-400'}`}>
+    <div ref={editorRef} className={`rounded-lg border transition-colors ${d ? 'bg-gray-800 border-gray-700 hover:border-gray-500 focus-within:border-gray-400' : 'bg-white border-gray-200 hover:border-gray-400 focus-within:border-gray-400'}`}>
       {/* Editor Content */}
       <EditorContent editor={editor} className={`${d ? 'text-white' : 'text-gray-900'} comment-editor-content`}
         style={maxEditorHeight ? { maxHeight: maxEditorHeight, overflowY: 'auto' } : undefined} />
@@ -283,12 +300,66 @@ export default function CommentEditor({
         </div>
 
         {!hideButton && (
-          <Tooltip title={buttonLabel === 'Reply' ? 'Click here to post your reply.' : buttonLabel === 'Save' ? 'Click here to save changes.' : 'Click here to post your comment.'}>
-            <LoadingButton onClick={handleSubmit} loading={submitting} type="button"
-              className="px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition disabled:opacity-70">
-              {buttonLabel}
-            </LoadingButton>
-          </Tooltip>
+          showInternalOption && buttonLabel !== 'Reply' && buttonLabel !== 'Save' ? (
+            // Split-button: main submit (Public/Internal) + dropdown to switch modes
+            <div ref={modeMenuRef} className="relative inline-flex">
+              <Tooltip title={commentMode === 'internal' ? 'Internal — only admins and team members can see this.' : 'Public — everyone can see this.'}>
+                <LoadingButton onClick={handleSubmit} loading={submitting} type="button"
+                  className={`px-4 py-2 text-sm font-semibold rounded-l-lg transition disabled:opacity-70 ${
+                    commentMode === 'internal'
+                      ? 'bg-amber-500 hover:bg-amber-600 text-gray-900'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  }`}>
+                  {commentMode === 'internal' ? 'Internal Comment' : 'Public Comment'}
+                </LoadingButton>
+              </Tooltip>
+              <Tooltip title="Switch comment type.">
+                <button type="button" onClick={() => setModeMenuOpen((v) => !v)}
+                  className={`px-2 py-2 rounded-r-lg transition border-l ${
+                    commentMode === 'internal'
+                      ? 'bg-amber-500 hover:bg-amber-600 border-amber-400 text-gray-900'
+                      : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500 text-white'
+                  }`}>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${modeMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </Tooltip>
+              {modeMenuOpen && (
+                <div ref={modeMenuPortalRef}
+                  className={`absolute right-0 top-full mt-1 rounded-lg border shadow-2xl p-1 ${
+                    d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
+                  }`}
+                  style={{ minWidth: '220px', zIndex: 50 }}>
+                  <button type="button" onClick={() => { setCommentMode('public'); setModeMenuOpen(false); }}
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-left rounded-md transition-colors ${
+                      d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
+                    }`}>
+                    <div>
+                      <div className="text-sm font-medium">Public Comment</div>
+                      <div className={`text-xs mt-0.5 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Visible to everyone</div>
+                    </div>
+                    {commentMode === 'public' && <Check className="w-4 h-4 text-[#059669] flex-shrink-0" />}
+                  </button>
+                  <button type="button" onClick={() => { setCommentMode('internal'); setModeMenuOpen(false); }}
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-left rounded-md transition-colors ${
+                      d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
+                    }`}>
+                    <div>
+                      <div className="text-sm font-medium">Internal Comment</div>
+                      <div className={`text-xs mt-0.5 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Admin &amp; team only</div>
+                    </div>
+                    {commentMode === 'internal' && <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Tooltip title={buttonLabel === 'Reply' ? 'Click here to post your reply.' : buttonLabel === 'Save' ? 'Click here to save changes.' : 'Click here to post your comment.'}>
+              <LoadingButton onClick={handleSubmit} loading={submitting} type="button"
+                className="px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition disabled:opacity-70">
+                {buttonLabel}
+              </LoadingButton>
+            </Tooltip>
+          )
         )}
       </div>
 

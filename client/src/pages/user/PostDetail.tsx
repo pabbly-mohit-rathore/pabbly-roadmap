@@ -12,6 +12,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Tooltip from '../../components/ui/Tooltip';
 import LoadingBar from '../../components/ui/LoadingBar';
 import useSocket from '../../hooks/useSocket';
+import useTeamAccessStore from '../../store/teamAccessStore';
 
 interface Tag {
   id: string;
@@ -34,6 +35,7 @@ interface Post {
   author: { name: string; avatar?: string };
   board: { name: string; id: string };
   tags?: { tag: Tag }[];
+  canPostInternal?: boolean;
 }
 
 interface Comment {
@@ -43,6 +45,7 @@ interface Comment {
   createdAt: string;
   isOfficial: boolean;
   isPinned: boolean;
+  isInternal?: boolean;
   likeCount: number;
   likes: { userId: string }[];
   parentId: string | null;
@@ -65,6 +68,7 @@ const getTimeAgo = (dateStr: string): string => {
 export default function UserPostDetail() {
   const theme = useThemeStore((state) => state.theme);
   const { user: currentUser, isAuthenticated } = useAuthStore();
+  const { isTeamAccess } = useTeamAccessStore();
   const { votes, init, toggle } = useVoteStore();
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
@@ -228,9 +232,7 @@ export default function UserPostDetail() {
     setTimeout(() => setAnimating(false), 400);
   };
 
-  const handleAddComment = async (htmlContent?: string) => {
-
-
+  const handleAddComment = async (htmlContent?: string, isInternal?: boolean) => {
     const content = htmlContent || commentText;
     if (!content.trim() || content === '<p></p>') {
       toast.error('Comment cannot be empty');
@@ -239,18 +241,23 @@ export default function UserPostDetail() {
 
     try {
       setSubmittingComment(true);
-      const response = await api.post(`/comments/post/${post?.id}`, { content });
+      const response = await api.post(`/comments/post/${post?.id}`, {
+        content,
+        isInternal: !!isInternal,
+      });
 
       if (response.data.success) {
         setCommentText('');
-        setPost((prev) => prev ? { ...prev, commentCount: prev.commentCount + 1 } : null);
+        if (!isInternal) {
+          setPost((prev) => prev ? { ...prev, commentCount: prev.commentCount + 1 } : null);
+        }
         const newComment = response.data.data?.comment;
         if (newComment) {
           setComments(prev => [...prev, { ...newComment, replies: [], likeCount: newComment.likeCount || 0 }]);
         } else {
           fetchComments();
         }
-        toast.success('Comment added');
+        toast.success(isInternal ? 'Internal comment added' : 'Comment added');
       }
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -469,7 +476,7 @@ export default function UserPostDetail() {
                     <div className="px-6 pt-6 pb-6">
                       {/* Add Comment */}
                       <div className="mb-6">
-                        <CommentEditor onSubmit={(html) => handleAddComment(html)} submitting={submittingComment} />
+                        <CommentEditor showInternalOption={currentUser?.role === 'admin' || isTeamAccess || !!post?.canPostInternal} onSubmit={(html, isInternal) => handleAddComment(html, isInternal)} submitting={submittingComment} />
                       </div>
 
                       {/* Comments List */}
@@ -495,6 +502,7 @@ export default function UserPostDetail() {
                                     <div className="flex items-center gap-2">
                                       <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{comment.author.name}</span>
                                       <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(comment.createdAt)}</span>
+                                      {comment.isInternal && <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">Internal Comment</span>}
                                     </div>
                                     {canManageComment && (
                                       <div className="relative">
@@ -605,6 +613,7 @@ export default function UserPostDetail() {
                                                 <div className="flex items-center gap-2">
                                                   <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{reply.author.name}</span>
                                                   <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{getTimeAgo(reply.createdAt)}</span>
+                                                  {reply.isInternal && <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">Internal Comment</span>}
                                                 </div>
                                                 {canManageReply && (
                                                   <div className="relative">
