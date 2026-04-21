@@ -209,7 +209,7 @@ const getPostBySlug = async (req, res, next) => {
         author: { select: { id: true, name: true, email: true, avatar: true } },
         board: { select: { id: true, name: true, slug: true, color: true } },
         tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
-        votes: { select: { userId: true, user: { select: { id: true, name: true, avatar: true } } } },
+        votes: { select: { userId: true, user: { select: { id: true, name: true, email: true, avatar: true } } } },
         _count: { select: { comments: true, votes: true } },
         comments: {
           where: {
@@ -648,7 +648,7 @@ const getPostById = async (req, res, next) => {
         author: { select: { id: true, name: true, email: true, avatar: true } },
         board: { select: { id: true, name: true, slug: true, color: true } },
         tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
-        votes: { select: { userId: true, user: { select: { id: true, name: true, avatar: true } } } },
+        votes: { select: { userId: true, user: { select: { id: true, name: true, email: true, avatar: true } } } },
         _count: { select: { comments: true, votes: true } },
         comments: {
           where: {
