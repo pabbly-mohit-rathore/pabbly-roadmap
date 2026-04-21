@@ -46,6 +46,7 @@ model User {
   boardAccess          UserBoardAccess[]   // Boards jahan ye user dekh sakta hai
   createdInviteLinks   BoardInviteLink[]   // Invite links jo isne banaye
   createdQuickResponses QuickResponse[]    // Quick response templates created
+  createdTags           Tag[]              @relation("CreatedTags")
   changelogEntries     ChangelogEntry[]    // Changelog entries created by admin
   changelogLikes       ChangelogLike[]     // Changelog entries liked by user
   createdBoards        Board[]             // Boards jo isne banaye
@@ -274,19 +275,22 @@ enum Priority {
 // ============================================================
 
 model Tag {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  color     String   @default("#6366f1")
-  boardId   String              // Tag belongs to a specific board
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  color       String   @default("#6366f1")
+  boardId     String              // Tag belongs to a specific board
+  createdById String?             // Who created this tag (nullable for legacy rows)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  board Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  posts PostTag[]
+  board     Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation("CreatedTags", fields: [createdById], references: [id], onDelete: SetNull)
+  posts     PostTag[]
 
   @@index([boardId])
+  @@index([createdById])
   @@map("tags")
 }
 
