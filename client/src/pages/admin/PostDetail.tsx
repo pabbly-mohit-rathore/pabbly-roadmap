@@ -1034,7 +1034,7 @@ export default function AdminPostDetail() {
                             {t.tag.name}
                             {!isTeamManager && (
                               <button onClick={() => handleRemoveTag(t.tag.id)}
-                                className="hover:opacity-70 transition-opacity -mr-0.5"
+                                className="hover:opacity-70 transition-opacity -mr-0.5 cursor-pointer"
                                 title="Remove tag">
                                 <X className="w-3 h-3" />
                               </button>
