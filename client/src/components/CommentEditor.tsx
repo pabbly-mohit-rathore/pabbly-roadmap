@@ -347,21 +347,33 @@ export default function CommentEditor({
                   style={{ minWidth: '220px', zIndex: 50 }}>
                   <button type="button" onClick={() => { setCommentMode('public'); setModeMenuOpen(false); }}
                     className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-left rounded-md transition-colors ${
-                      d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
+                      commentMode === 'public'
+                        ? d ? 'bg-emerald-500/10 text-emerald-300' : 'bg-emerald-50 text-emerald-700'
+                        : d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
                     }`}>
                     <div>
-                      <div className="text-sm font-medium">Public Comment</div>
-                      <div className={`text-xs mt-0.5 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Visible to everyone</div>
+                      <div className="text-sm font-semibold">Public Comment</div>
+                      <div className={`text-xs mt-0.5 ${
+                        commentMode === 'public'
+                          ? d ? 'text-emerald-400/80' : 'text-emerald-600/80'
+                          : d ? 'text-gray-400' : 'text-gray-500'
+                      }`}>Visible to everyone</div>
                     </div>
                     {commentMode === 'public' && <Check className="w-4 h-4 text-[#059669] flex-shrink-0" />}
                   </button>
                   <button type="button" onClick={() => { setCommentMode('internal'); setModeMenuOpen(false); }}
                     className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-left rounded-md transition-colors ${
-                      d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
+                      commentMode === 'internal'
+                        ? d ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-50 text-amber-800'
+                        : d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
                     }`}>
                     <div>
-                      <div className="text-sm font-medium">Internal Comment</div>
-                      <div className={`text-xs mt-0.5 ${d ? 'text-gray-400' : 'text-gray-500'}`}>Admin &amp; team only</div>
+                      <div className="text-sm font-semibold">Internal Comment</div>
+                      <div className={`text-xs mt-0.5 ${
+                        commentMode === 'internal'
+                          ? d ? 'text-amber-300/80' : 'text-amber-700/80'
+                          : d ? 'text-gray-400' : 'text-gray-500'
+                      }`}>Admin &amp; team only</div>
                     </div>
                     {commentMode === 'internal' && <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />}
                   </button>
