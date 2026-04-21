@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarChart3, Users, Plus } from 'lucide-react';
+import { BarChart3, Users, Plus, Tag as TagIcon } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -8,12 +8,14 @@ import useTeamAccessStore from '../../store/teamAccessStore';
 import AdminReporting from './Reporting';
 import AdminUsers from './Users';
 import AdminTeamMembers from './TeamMembers';
+import AdminTags from './Tags';
 import Tooltip from '../../components/ui/Tooltip';
 
 const ALL_TABS = [
   { id: 'activity-log', label: 'Activity Log', icon: BarChart3, heading: 'Activity Log', description: 'View activity logs, reports, and analytics.', btnLabel: '' },
   { id: 'users', label: 'Users', icon: Users, heading: 'Users', description: 'Manage registered users and their accounts.', btnLabel: '' },
   { id: 'team-members', label: 'Team Members', icon: Users, heading: 'Team Members', description: 'Manage team members and their access levels.', btnLabel: 'Add Team Member' },
+  { id: 'tags', label: 'Tags', icon: TagIcon, heading: 'Tags', description: 'Create and manage tags to categorize posts.', btnLabel: 'Create Tag' },
 ];
 
 export default function AdminSettings() {
@@ -100,6 +102,7 @@ export default function AdminSettings() {
       {activeTab === 'activity-log' && <AdminReporting showFilters={showFilters} />}
       {activeTab === 'users' && !isTeamMember && <AdminUsers showFilters={showFilters} />}
       {activeTab === 'team-members' && !isTeamMember && <AdminTeamMembers triggerCreate={triggerAction} showFilters={showFilters} />}
+      {activeTab === 'tags' && <AdminTags triggerCreate={triggerAction} showFilters={showFilters} />}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, forwardRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useThemeStore from '../../store/themeStore';
 
 export interface MentionUser {
@@ -7,46 +7,53 @@ export interface MentionUser {
   avatar?: string | null;
 }
 
+export type MentionKeyDownHandler = (props: { event: KeyboardEvent }) => boolean;
+
 interface MentionListProps {
   items: MentionUser[];
   command: (item: { id: string; label: string }) => void;
-}
-
-export interface MentionListHandle {
-  onKeyDown: (props: { event: KeyboardEvent }) => boolean;
+  keyDownRef?: { current: MentionKeyDownHandler | null };
 }
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
-const MentionList = forwardRef<MentionListHandle, MentionListProps>(({ items, command }, ref) => {
+export default function MentionList({ items, command, keyDownRef }: MentionListProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const theme = useThemeStore((s) => s.theme);
   const d = theme === 'dark';
+  const itemsRef = useRef(items);
+  const selectedIndexRef = useRef(selectedIndex);
+  itemsRef.current = items;
+  selectedIndexRef.current = selectedIndex;
 
   useEffect(() => setSelectedIndex(0), [items]);
 
   const selectItem = (index: number) => {
-    const item = items[index];
+    const item = itemsRef.current[index];
     if (item) command({ id: item.id, label: item.name });
   };
 
-  useImperativeHandle(ref, () => ({
-    onKeyDown: ({ event }) => {
+  // Register a keyboard handler that the tiptap suggestion uses — avoids forwardRef.
+  useEffect(() => {
+    if (!keyDownRef) return;
+    keyDownRef.current = ({ event }) => {
       if (event.key === 'ArrowUp') {
-        setSelectedIndex((prev) => (prev + items.length - 1) % items.length);
+        setSelectedIndex((prev) => (prev + itemsRef.current.length - 1) % itemsRef.current.length);
         return true;
       }
       if (event.key === 'ArrowDown') {
-        setSelectedIndex((prev) => (prev + 1) % items.length);
+        setSelectedIndex((prev) => (prev + 1) % itemsRef.current.length);
         return true;
       }
       if (event.key === 'Enter') {
-        selectItem(selectedIndex);
+        selectItem(selectedIndexRef.current);
         return true;
       }
       return false;
-    },
-  }));
+    };
+    return () => { if (keyDownRef) keyDownRef.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyDownRef]);
 
   if (items.length === 0) {
     return (
@@ -94,7 +101,4 @@ const MentionList = forwardRef<MentionListHandle, MentionListProps>(({ items, co
       })}
     </div>
   );
-});
-
-MentionList.displayName = 'MentionList';
-export default MentionList;
+}

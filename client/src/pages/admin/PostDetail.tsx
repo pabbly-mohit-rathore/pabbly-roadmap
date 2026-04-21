@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply, X, Copy, Check, ChevronDown } from 'lucide-react';
+import { ArrowUpRight, Heart, MessageCircle, Activity, MoreHorizontal, Reply, X, Copy, Check, ChevronDown, Plus } from 'lucide-react';
 import StatusReasonDialog from '../../components/ui/StatusReasonDialog';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -80,6 +80,8 @@ export default function AdminPostDetail() {
 
   const [post, setPost] = useState<Post | null>(state?.post || null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [tagMenuOpen, setTagMenuOpen] = useState(false);
   const [loading, setLoading] = useState(!post);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -162,6 +164,40 @@ export default function AdminPostDetail() {
     if (postId && !post) fetchPost();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
+
+  // Fetch available tags for this post's board (for tag assignment dropdown)
+  useEffect(() => {
+    if (!post?.board?.id) return;
+    api.get(`/tags?boardId=${post.board.id}`)
+      .then(r => { if (r.data.success) setAvailableTags(r.data.data.tags || []); })
+      .catch(() => {});
+  }, [post?.board?.id]);
+
+  const handleAssignTag = async (tagId: string) => {
+    if (!post) return;
+    try {
+      const res = await api.post('/tags/assign', { postId: post.id, tagId });
+      if (res.data.success) {
+        const tag = availableTags.find(t => t.id === tagId);
+        if (tag) {
+          setPost(prev => prev ? { ...prev, tags: [...(prev.tags || []), { tag }] } : prev);
+        }
+        setTagMenuOpen(false);
+        toast.success('Tag assigned');
+      }
+    } catch { toast.error('Failed to assign tag'); }
+  };
+
+  const handleRemoveTag = async (tagId: string) => {
+    if (!post) return;
+    try {
+      const res = await api.post('/tags/remove', { postId: post.id, tagId });
+      if (res.data.success) {
+        setPost(prev => prev ? { ...prev, tags: (prev.tags || []).filter(t => t.tag.id !== tagId) } : prev);
+        toast.success('Tag removed');
+      }
+    } catch { toast.error('Failed to remove tag'); }
+  };
 
 
   const fetchPost = async () => {
@@ -982,6 +1018,68 @@ export default function AdminPostDetail() {
                     </div>
                   );
                 })()}
+
+                {/* Tags */}
+                <div className={`p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Tags</p>
+                    {!isTeamManager && (
+                      <div className="relative">
+                        <Tooltip title="Click to add a tag."><button onClick={() => setTagMenuOpen((v) => !v)}
+                          className={`p-1 rounded transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}>
+                          <Plus className="w-3.5 h-3.5" />
+                        </button></Tooltip>
+                        {tagMenuOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setTagMenuOpen(false)} />
+                            <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-xl p-1 z-50 max-h-[240px] overflow-y-auto ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '200px' }}>
+                              {(() => {
+                                const assignedIds = new Set((post?.tags || []).map((t) => t.tag.id));
+                                const unassigned = availableTags.filter((t) => !assignedIds.has(t.id));
+                                if (unassigned.length === 0) {
+                                  return (
+                                    <div className={`px-3 py-2 text-xs text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                      {availableTags.length === 0 ? 'No tags available. Create in Settings → Tags.' : 'All tags assigned'}
+                                    </div>
+                                  );
+                                }
+                                return unassigned.map((t) => (
+                                  <button key={t.id} type="button" onClick={() => handleAssignTag(t.id)}
+                                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
+                                    <span className="truncate">{t.name}</span>
+                                  </button>
+                                ));
+                              })()}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {(post?.tags && post.tags.length > 0) ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {post.tags.map((t) => (
+                        <span key={t.tag.id}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                          style={{ backgroundColor: `${t.tag.color}1a`, color: t.tag.color }}>
+                          {t.tag.name}
+                          {!isTeamManager && (
+                            <button onClick={() => handleRemoveTag(t.tag.id)}
+                              className="hover:opacity-70 transition-opacity ml-0.5"
+                              title="Remove tag">
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      No tags {isTeamManager ? '' : '— click + to add'}
+                    </p>
+                  )}
+                </div>
 
               </div>
             </div>

@@ -857,6 +857,22 @@ export default function UserPostDetail() {
                     );
                   })()}
 
+                  {/* Tags (read-only for regular users) */}
+                  {post?.tags && post.tags.length > 0 && (
+                    <div className={`p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                      <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Tags</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {post.tags.map((t) => (
+                          <span key={t.tag.id}
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{ backgroundColor: `${t.tag.color}1a`, color: t.tag.color }}>
+                            {t.tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               </div>
             </div>

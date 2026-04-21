@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Edit2, Trash2, X, Search, MoreVertical, ChevronLeft, ChevronRight, ChevronDown, Tag as TagIcon } from 'lucide-react';
-import { Icon } from '@iconify/react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -15,7 +14,7 @@ interface Board { id: string; name: string; }
 
 const COLORS = ['#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6'];
 
-export default function AdminTags({ triggerCreate }: { triggerCreate?: number }) {
+export default function AdminTags({ triggerCreate, showFilters = false }: { triggerCreate?: number; showFilters?: boolean }) {
   const theme = useThemeStore((s) => s.theme);
   const d = theme === 'dark';
   const [tags, setTags] = useState<Tag[]>([]);
@@ -35,7 +34,6 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [denseMode, setDenseMode] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
   const [rowsDropOpen, setRowsDropOpen] = useState(false);
 
   useEffect(() => { fetchBoards(); }, []);
@@ -85,20 +83,6 @@ export default function AdminTags({ triggerCreate }: { triggerCreate?: number })
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-end mb-4">
-        <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
-            showFilters
-              ? 'border-[#059669] text-[#059669]'
-              : d ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
-          }`}
-          style={{ height: '48px' }}>
-          <Icon icon="iconoir:filter" width={16} height={16} />
-          Filters
-        </button></Tooltip>
-      </div>
-
       {/* Filters */}
       {showFilters && (
       <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
