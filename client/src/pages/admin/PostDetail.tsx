@@ -1020,64 +1020,71 @@ export default function AdminPostDetail() {
                 })()}
 
                 {/* Tags */}
-                <div className={`p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
-                  <div className="flex items-center justify-between mb-2">
+                <div className={`flex items-start gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-600'}`}>
+                    T
+                  </div>
+                  <div className="flex-1 min-w-0">
                     <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Tags</p>
-                    {!isTeamManager && (
-                      <div className="relative">
-                        <Tooltip title="Click to add a tag."><button onClick={() => setTagMenuOpen((v) => !v)}
-                          className={`p-1 rounded transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}>
-                          <Plus className="w-3.5 h-3.5" />
-                        </button></Tooltip>
-                        {tagMenuOpen && (
-                          <>
-                            <div className="fixed inset-0 z-40" onClick={() => setTagMenuOpen(false)} />
-                            <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-xl p-1 z-50 max-h-[240px] overflow-y-auto ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '200px' }}>
-                              {(() => {
-                                const assignedIds = new Set((post?.tags || []).map((t) => t.tag.id));
-                                const unassigned = availableTags.filter((t) => !assignedIds.has(t.id));
-                                if (unassigned.length === 0) {
-                                  return (
-                                    <div className={`px-3 py-2 text-xs text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                      {availableTags.length === 0 ? 'No tags available. Create in Settings → Tags.' : 'All tags assigned'}
-                                    </div>
-                                  );
-                                }
-                                return unassigned.map((t) => (
-                                  <button key={t.id} type="button" onClick={() => handleAssignTag(t.id)}
-                                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
-                                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
-                                    <span className="truncate">{t.name}</span>
-                                  </button>
-                                ));
-                              })()}
-                            </div>
-                          </>
-                        )}
+                    {post?.tags && post.tags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {post.tags.map((t) => (
+                          <span key={t.tag.id}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                            style={{ backgroundColor: `${t.tag.color}1a`, color: t.tag.color }}>
+                            {t.tag.name}
+                            {!isTeamManager && (
+                              <button onClick={() => handleRemoveTag(t.tag.id)}
+                                className="hover:opacity-70 transition-opacity -mr-0.5"
+                                title="Remove tag">
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </span>
+                        ))}
                       </div>
+                    ) : (
+                      <p className={`text-sm mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {isTeamManager ? 'No tags' : 'Add a tag'}
+                      </p>
                     )}
                   </div>
-                  {(post?.tags && post.tags.length > 0) ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {post.tags.map((t) => (
-                        <span key={t.tag.id}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                          style={{ backgroundColor: `${t.tag.color}1a`, color: t.tag.color }}>
-                          {t.tag.name}
-                          {!isTeamManager && (
-                            <button onClick={() => handleRemoveTag(t.tag.id)}
-                              className="hover:opacity-70 transition-opacity ml-0.5"
-                              title="Remove tag">
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </span>
-                      ))}
+                  {!isTeamManager && (
+                    <div className="relative shrink-0">
+                      <Tooltip title="Click to add a tag."><button onClick={() => setTagMenuOpen((v) => !v)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition-colors ${
+                          tagMenuOpen
+                            ? 'border-[#059669] text-[#059669] bg-emerald-50'
+                            : theme === 'dark' ? 'border-gray-600 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-300 text-gray-500 hover:border-[#059669] hover:text-[#059669]'
+                        }`}>
+                        <Plus className="w-4 h-4" />
+                      </button></Tooltip>
+                      {tagMenuOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setTagMenuOpen(false)} />
+                          <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-xl p-1 z-50 max-h-[240px] overflow-y-auto ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '220px' }}>
+                            {(() => {
+                              const assignedIds = new Set((post?.tags || []).map((t) => t.tag.id));
+                              const unassigned = availableTags.filter((t) => !assignedIds.has(t.id));
+                              if (unassigned.length === 0) {
+                                return (
+                                  <div className={`px-3 py-2.5 text-xs text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    {availableTags.length === 0 ? 'No tags yet. Create in Settings → Tags.' : 'All tags assigned'}
+                                  </div>
+                                );
+                              }
+                              return unassigned.map((t) => (
+                                <button key={t.id} type="button" onClick={() => handleAssignTag(t.id)}
+                                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm rounded-md transition-colors ${theme === 'dark' ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
+                                  <span className="truncate font-medium">{t.name}</span>
+                                </button>
+                              ));
+                            })()}
+                          </div>
+                        </>
+                      )}
                     </div>
-                  ) : (
-                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                      No tags {isTeamManager ? '' : '— click + to add'}
-                    </p>
                   )}
                 </div>
 

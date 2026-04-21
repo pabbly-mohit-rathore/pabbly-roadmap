@@ -859,16 +859,21 @@ export default function UserPostDetail() {
 
                   {/* Tags (read-only for regular users) */}
                   {post?.tags && post.tags.length > 0 && (
-                    <div className={`p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
-                      <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Tags</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {post.tags.map((t) => (
-                          <span key={t.tag.id}
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{ backgroundColor: `${t.tag.color}1a`, color: t.tag.color }}>
-                            {t.tag.name}
-                          </span>
-                        ))}
+                    <div className={`flex items-start gap-3 p-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700/30 border-gray-700' : 'bg-gray-50/60 border-gray-100'}`}>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-600'}`}>
+                        T
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Tags</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {post.tags.map((t) => (
+                            <span key={t.tag.id}
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                              style={{ backgroundColor: `${t.tag.color}1a`, color: t.tag.color }}>
+                              {t.tag.name}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
