@@ -245,7 +245,17 @@ const getPostBySlug = async (req, res, next) => {
 
     const actualVoteCount = post._count.votes;
 
-    res.json({ success: true, data: { post: { ...post, voteCount: actualVoteCount, hasVoted } } });
+    // canPostInternal: admin OR board manager of this post's board
+    let canPostInternal = isAdmin;
+    if (!canPostInternal && req.user?.userId) {
+      const membership = await prisma.boardMember.findUnique({
+        where: { userId_boardId: { userId: req.user.userId, boardId: post.boardId } },
+        select: { id: true },
+      });
+      canPostInternal = !!membership;
+    }
+
+    res.json({ success: true, data: { post: { ...post, voteCount: actualVoteCount, hasVoted, canPostInternal } } });
   } catch (error) {
     next(error);
   }
@@ -660,7 +670,17 @@ const getPostById = async (req, res, next) => {
     const hasVoted = userId ? post.votes.some(v => v.userId === userId) : false;
     const actualVoteCount = post._count.votes;
 
-    res.json({ success: true, data: { post: { ...post, voteCount: actualVoteCount, hasVoted } } });
+    // canPostInternal: admin OR board manager of this post's board
+    let canPostInternal = isAdmin;
+    if (!canPostInternal && userId) {
+      const membership = await prisma.boardMember.findUnique({
+        where: { userId_boardId: { userId, boardId: post.boardId } },
+        select: { id: true },
+      });
+      canPostInternal = !!membership;
+    }
+
+    res.json({ success: true, data: { post: { ...post, voteCount: actualVoteCount, hasVoted, canPostInternal } } });
   } catch (error) {
     next(error);
   }
