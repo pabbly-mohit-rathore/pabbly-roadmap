@@ -15,6 +15,8 @@ import StarterKit from '@tiptap/starter-kit';
 import UnderlineExt from '@tiptap/extension-underline';
 import LinkExt from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import Mention from '@tiptap/extension-mention';
+import mentionSuggestion from '../../components/rich-text-editor/mentionSuggestion';
 import TextAlign from '@tiptap/extension-text-align';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
@@ -172,6 +174,20 @@ export default function PostEditor() {
       TableHeader.extend({ content: 'block+' }),
       TextStyle, FontSize, FontFamily, Color,
       HighlightExt.configure({ multicolor: true }),
+      Mention.configure({
+        HTMLAttributes: { class: 'mention-tag', 'data-type': 'mention' },
+        renderText: ({ node }) => `@${node.attrs.label ?? node.attrs.id}`,
+        renderHTML: ({ node, options }) => [
+          'span',
+          {
+            ...options.HTMLAttributes,
+            'data-mention-id': node.attrs.id,
+            'data-mention-label': node.attrs.label,
+          },
+          `@${node.attrs.label ?? node.attrs.id}`,
+        ],
+        suggestion: mentionSuggestion,
+      }),
     ],
     onUpdate: ({ editor: e }) => {
       const html = e.getHTML();

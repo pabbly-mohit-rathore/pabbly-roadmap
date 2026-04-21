@@ -7,6 +7,8 @@ import UnderlineExt from '@tiptap/extension-underline';
 import LinkExt from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
+import Mention from '@tiptap/extension-mention';
+import mentionSuggestion from './rich-text-editor/mentionSuggestion';
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading2,
   List, ListOrdered, Code, Link as LinkIcon,
@@ -95,6 +97,20 @@ export default function CommentEditor({
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder }),
       ButtonExtension,
+      Mention.configure({
+        HTMLAttributes: { class: 'mention-tag', 'data-type': 'mention' },
+        renderText: ({ node }) => `@${node.attrs.label ?? node.attrs.id}`,
+        renderHTML: ({ node, options }) => [
+          'span',
+          {
+            ...options.HTMLAttributes,
+            'data-mention-id': node.attrs.id,
+            'data-mention-label': node.attrs.label,
+          },
+          `@${node.attrs.label ?? node.attrs.id}`,
+        ],
+        suggestion: mentionSuggestion,
+      }),
     ],
     content: initialContent || '',
     onUpdate: ({ editor: e }) => {

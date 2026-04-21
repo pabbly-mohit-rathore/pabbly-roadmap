@@ -118,12 +118,27 @@ html.dark .float-label-bg-dropdown {
   color: #2563eb;
   text-decoration: underline;
 }
-/* @mention tag in replies */
+/* @mention tag in replies and editor */
 .mention-tag {
   color: #0c68e9;
   font-weight: 600;
   cursor: default;
+  background: rgba(12, 104, 233, 0.08);
+  padding: 0 4px;
+  border-radius: 4px;
 }
+html.dark .mention-tag {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.12);
+}
+
+/* Tippy popup for mention dropdown — transparent container so our React component styles show */
+.tippy-box[data-theme~='mention'] {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.tippy-box[data-theme~='mention'] .tippy-content { padding: 0; }
 
 /* Table Styles */
 :is(.tiptap, .tiptap-preview) table {
