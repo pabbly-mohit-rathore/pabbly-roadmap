@@ -359,23 +359,12 @@ const assignTagToPost = async (req, res, next) => {
       });
     }
 
-    // Check: Tag aur Post same board ke hone chahiye
-    if (tag.boardId !== post.boardId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Tag and post must belong to the same board.',
-      });
-    }
+    // Tags are global — any tag can be assigned to any post regardless of board.
 
-    // Check permission
-    if (role !== 'admin') {
+    // Check permission: admin OR team access OR board manager
+    if (role !== 'admin' && !req.user.teamAccess) {
       const isBoardManager = await prisma.boardMember.findUnique({
-        where: {
-          userId_boardId: {
-            userId,
-            boardId: post.boardId,
-          },
-        },
+        where: { userId_boardId: { userId, boardId: post.boardId } },
       });
       if (!isBoardManager) {
         return res.status(403).json({
@@ -434,15 +423,10 @@ const removeTagFromPost = async (req, res, next) => {
       });
     }
 
-    // Check permission
-    if (role !== 'admin') {
+    // Check permission: admin OR team access OR board manager
+    if (role !== 'admin' && !req.user.teamAccess) {
       const isBoardManager = await prisma.boardMember.findUnique({
-        where: {
-          userId_boardId: {
-            userId,
-            boardId: post.boardId,
-          },
-        },
+        where: { userId_boardId: { userId, boardId: post.boardId } },
       });
       if (!isBoardManager) {
         return res.status(403).json({
