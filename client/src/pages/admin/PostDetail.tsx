@@ -21,6 +21,8 @@ interface Tag {
   color: string;
 }
 
+interface Voter { id: string; name: string; email: string; avatar?: string }
+
 interface Post {
   id: string;
   title: string;
@@ -36,6 +38,7 @@ interface Post {
   author: { name: string; avatar?: string };
   board: { name: string; id: string };
   tags?: { tag: Tag }[];
+  votes?: { userId: string; user: Voter }[];
   canPostInternal?: boolean;
 }
 
@@ -82,6 +85,7 @@ export default function AdminPostDetail() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [tagMenuOpen, setTagMenuOpen] = useState(false);
+  const [upvotersDialogOpen, setUpvotersDialogOpen] = useState(false);
   const [loading, setLoading] = useState(!post);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -547,28 +551,66 @@ export default function AdminPostDetail() {
                 <div className={`rounded-t-xl border border-b-0 p-6 ${
                   theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                 }`}>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {post?.title}
                     </h1>
-                    <div
-                      onClick={handleVote}
-                      className="inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden flex-shrink-0"
-                      style={{
-                        padding: '8px 14px',
-                        fontSize: '13px',
-                        gap: '6px',
-                        backgroundColor: 'transparent',
-                        borderColor: votes[post!.id]?.voted ? '#059669' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
-                        color: votes[post!.id]?.voted ? '#059669' : (theme === 'dark' ? '#d1d5db' : '#374151'),
-                      }}
-                      onMouseEnter={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
-                      onMouseLeave={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = theme === 'dark' ? '#4b5563' : '#e5e7eb'; }}
-                    >
-                      <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
-                      <span style={{ animation: animating ? 'slideUpCount 0.35s cubic-bezier(0.34,1.56,0.64,1)' : 'none', display: 'block' }}>
-                        {votes[post!.id]?.count ?? 0}
-                      </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div
+                        onClick={handleVote}
+                        className="inline-flex flex-row items-center justify-center rounded-lg border font-bold transition-all cursor-pointer overflow-hidden flex-shrink-0"
+                        style={{
+                          padding: '8px 14px',
+                          fontSize: '13px',
+                          gap: '6px',
+                          backgroundColor: 'transparent',
+                          borderColor: votes[post!.id]?.voted ? '#059669' : (theme === 'dark' ? '#4b5563' : '#e5e7eb'),
+                          color: votes[post!.id]?.voted ? '#059669' : (theme === 'dark' ? '#d1d5db' : '#374151'),
+                        }}
+                        onMouseEnter={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = '#059669'; }}
+                        onMouseLeave={e => { if (!votes[post!.id]?.voted) e.currentTarget.style.borderColor = theme === 'dark' ? '#4b5563' : '#e5e7eb'; }}
+                      >
+                        <ArrowUpRight className="w-4 h-4 rotate-[-45deg]" />
+                        <span style={{ animation: animating ? 'slideUpCount 0.35s cubic-bezier(0.34,1.56,0.64,1)' : 'none', display: 'block' }}>
+                          {votes[post!.id]?.count ?? 0}
+                        </span>
+                      </div>
+                      {/* Upvoter avatars (admin/team only) */}
+                      {(isMainAdmin || isTeamAccess) && post?.votes && post.votes.length > 0 && (() => {
+                        const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+                        const shown = post.votes.slice(0, 3);
+                        const extra = post.votes.length - shown.length;
+                        return (
+                          <div className="flex -space-x-2">
+                            {shown.map((v) => {
+                              const av = v.user.avatar;
+                              const url = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
+                              return (
+                                <Tooltip key={v.userId} title={v.user.name}>
+                                  {url ? (
+                                    <img src={url} alt="" onClick={() => setUpvotersDialogOpen(true)}
+                                      className={`w-8 h-8 rounded-full object-cover ring-2 cursor-pointer transition-opacity hover:opacity-80 ${theme === 'dark' ? 'ring-gray-800' : 'ring-white'}`} />
+                                  ) : (
+                                    <div onClick={() => setUpvotersDialogOpen(true)}
+                                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 cursor-pointer transition-opacity hover:opacity-80 ${theme === 'dark' ? 'bg-blue-500/30 text-blue-200 ring-gray-800' : 'bg-blue-100 text-blue-700 ring-white'}`}>
+                                      {v.user.name?.[0]?.toUpperCase()}
+                                    </div>
+                                  )}
+                                </Tooltip>
+                              );
+                            })}
+                            {extra > 0 && (
+                              <Tooltip title="Click here to view all upvoters.">
+                                <div onClick={() => setUpvotersDialogOpen(true)}
+                                  style={{ boxShadow: theme === 'dark' ? '0 0 0 1px #6b7280, 0 0 0 3px #1f2937' : '0 0 0 1px #9ca3af, 0 0 0 3px #ffffff' }}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold cursor-pointer ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-white text-gray-700'}`}>
+                                  +{extra}
+                                </div>
+                              </Tooltip>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -1093,6 +1135,50 @@ export default function AdminPostDetail() {
         </div>
         )}
       </div>
+
+      {/* Upvoters Dialog (admin/team only) */}
+      {upvotersDialogOpen && post?.votes && (() => {
+        const d = theme === 'dark';
+        const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setUpvotersDialogOpen(false)}>
+            <div className={`rounded-xl w-full max-h-[600px] flex flex-col ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
+              <div className={`flex items-center justify-between border-b shrink-0 ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '20px 24px' }}>
+                <div>
+                  <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Upvoters</h2>
+                  <p className={`text-xs mt-0.5 ${d ? 'text-gray-400' : 'text-gray-500'}`}>{post.votes.length} {post.votes.length === 1 ? 'person' : 'people'} upvoted this post</p>
+                </div>
+                <Tooltip title="Click here to close."><button onClick={() => setUpvotersDialogOpen(false)}
+                  className={`p-2 rounded-lg ${d ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+                  <X className="w-5 h-5" />
+                </button></Tooltip>
+              </div>
+              <div className="overflow-y-auto flex-1 py-2">
+                {post.votes.map((v, i) => {
+                  const av = v.user.avatar;
+                  const url = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
+                  const isLast = i === post.votes!.length - 1;
+                  return (
+                    <div key={v.userId} className={`flex items-center gap-3 px-6 py-3 ${!isLast ? (d ? 'border-b border-gray-800' : 'border-b border-gray-100') : ''} ${d ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}`}>
+                      {url ? (
+                        <img src={url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${d ? 'bg-blue-500/30 text-blue-200' : 'bg-blue-100 text-blue-700'}`}>
+                          {v.user.name?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-sm font-semibold truncate ${d ? 'text-white' : 'text-gray-900'}`}>{v.user.name}</p>
+                        <p className={`text-xs truncate ${d ? 'text-gray-400' : 'text-gray-500'}`}>{v.user.email}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* User Detail Drawer */}
       {userDrawerOpen && (() => {

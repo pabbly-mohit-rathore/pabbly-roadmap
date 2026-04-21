@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, cloneElement, Children } from 'react';
+import { createPortal } from 'react-dom';
 
 interface TooltipProps {
   title: string;
@@ -57,7 +58,7 @@ export default function Tooltip({ title, children }: TooltipProps) {
   return (
     <>
       {enhanced}
-      {show && (
+      {show && createPortal(
         <div
           ref={tipRef}
           style={{
@@ -97,7 +98,8 @@ export default function Tooltip({ title, children }: TooltipProps) {
               margin: '0 auto',
             }}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
