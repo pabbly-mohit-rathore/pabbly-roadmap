@@ -9,7 +9,7 @@ import CustomDropdown from '../../components/ui/CustomDropdown';
 import Tooltip from '../../components/ui/Tooltip';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
-interface Tag { id: string; name: string; slug: string; color: string; boardId: string; }
+interface Tag { id: string; name: string; slug: string; color: string; boardId: string; createdAt?: string; _count?: { posts: number }; }
 interface Board { id: string; name: string; }
 
 const COLORS = ['#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6'];
@@ -37,7 +37,7 @@ export default function AdminTags({ triggerCreate, showFilters = false }: { trig
   const [rowsDropOpen, setRowsDropOpen] = useState(false);
 
   useEffect(() => { fetchBoards(); }, []);
-  useEffect(() => { if (selectedBoard) fetchTags(); }, [selectedBoard]);
+  useEffect(() => { fetchTags(); }, []);
   useEffect(() => { if (triggerCreate && triggerCreate > 0) setShowCreateModal(true); }, [triggerCreate]);
 
   const fetchBoards = async () => {
@@ -51,7 +51,7 @@ export default function AdminTags({ triggerCreate, showFilters = false }: { trig
   };
 
   const fetchTags = async () => {
-    try { setLoading(true); const r = await api.get(`/tags?boardId=${selectedBoard}`); if (r.data.success) setTags(r.data.data.tags); } catch {} finally { setLoading(false); }
+    try { setLoading(true); const r = await api.get('/tags'); if (r.data.success) setTags(r.data.data.tags); } catch {} finally { setLoading(false); }
   };
 
   const handleCreateTag = async () => {
@@ -111,14 +111,14 @@ export default function AdminTags({ triggerCreate, showFilters = false }: { trig
           <table className="w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
-                {[{ label: 'S.No', tip: 'Serial number of the row' }, { label: 'Tag Name', tip: 'Name of the tag' }, { label: 'Color', tip: 'Color assigned to the tag' }, { label: 'Slug', tip: 'URL-friendly identifier' }, { label: 'Board', tip: 'Board name this item belongs to' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
+                {[{ label: 'S.No', tip: 'Serial number of the row' }, { label: 'Tag Name', tip: 'Name of the tag' }, { label: 'Number of Posts', tip: 'Number of posts using this tag' }, { label: 'Created Date', tip: 'When this tag was created' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
                   <th key={h.label} className={`font-semibold ${d ? 'text-gray-400' : ''}`}
                     style={{
                       fontSize: '14px', color: d ? undefined : '#1C252E',
-                      textAlign: i === 5 ? 'right' as const : i === 2 ? 'center' as const : 'left' as const,
-                      width: i === 0 ? '80px' : i === 2 ? '280px' : i === 3 ? '250px' : i === 4 ? '200px' : i === 5 ? '70px' : undefined,
+                      textAlign: i === 4 ? 'right' as const : 'left' as const,
+                      width: i === 0 ? '80px' : i === 1 ? '550px' : i === 3 ? '220px' : i === 4 ? '70px' : undefined,
                     }}>
-                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 5 ? '24px' : '16px' }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
+                    <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 4 ? '24px' : '16px' }}><Tooltip title={h.tip}><span>{h.label}</span></Tooltip></div>
                   </th>
                 ))}
               </tr>
@@ -137,17 +137,13 @@ export default function AdminTags({ triggerCreate, showFilters = false }: { trig
                       {tag.name}
                     </span>
                   </td>
-                  {/* Color */}
-                  <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-center`}>
-                    <div className="w-6 h-6 rounded-full mx-auto" style={{ backgroundColor: tag.color }} />
+                  {/* Number of Posts */}
+                  <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {tag._count?.posts ?? 0}
                   </td>
-                  {/* Slug */}
+                  {/* Created Date */}
                   <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                    <code className={`px-2 py-0.5 rounded text-xs ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>{tag.slug}</code>
-                  </td>
-                  {/* Board */}
-                  <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {boards.find(b => b.id === tag.boardId)?.name || '-'}
+                    {tag.createdAt ? new Date(tag.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
                   </td>
                   <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }}>
                     <div className="relative inline-block">
@@ -185,7 +181,7 @@ export default function AdminTags({ triggerCreate, showFilters = false }: { trig
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan={6}>
+                <tr><td colSpan={5}>
                   <div className={`flex flex-col items-center justify-center rounded-xl mx-4 my-4 ${d ? 'bg-gray-900/50' : 'bg-gray-50/80'}`} style={{ height: '400px' }}>
                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${d ? 'bg-gray-700' : 'bg-gray-100'}`}>
                       <TagIcon className={`w-8 h-8 ${d ? 'text-gray-500' : 'text-gray-400'}`} />

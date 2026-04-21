@@ -165,13 +165,12 @@ export default function AdminPostDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
 
-  // Fetch available tags for this post's board (for tag assignment dropdown)
+  // Fetch ALL available tags (across all boards) for the assignment dropdown
   useEffect(() => {
-    if (!post?.board?.id) return;
-    api.get(`/tags?boardId=${post.board.id}`)
+    api.get('/tags')
       .then(r => { if (r.data.success) setAvailableTags(r.data.data.tags || []); })
       .catch(() => {});
-  }, [post?.board?.id]);
+  }, []);
 
   const handleAssignTag = async (tagId: string) => {
     if (!post) return;
