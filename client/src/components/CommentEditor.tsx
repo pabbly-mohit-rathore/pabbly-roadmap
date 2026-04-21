@@ -341,12 +341,12 @@ export default function CommentEditor({
               </Tooltip>
               {modeMenuOpen && (
                 <div ref={modeMenuPortalRef}
-                  className={`absolute right-0 top-full mt-1 rounded-lg border shadow-2xl p-1 ${
+                  className={`absolute right-0 top-full mt-1.5 rounded-lg border shadow-2xl p-2 space-y-1 ${
                     d ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
                   }`}
-                  style={{ minWidth: '220px', zIndex: 50 }}>
+                  style={{ minWidth: '240px', zIndex: 50 }}>
                   <button type="button" onClick={() => { setCommentMode('public'); setModeMenuOpen(false); }}
-                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-left rounded-md transition-colors ${
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left rounded-md transition-colors ${
                       commentMode === 'public'
                         ? d ? 'bg-emerald-500/10 text-emerald-300' : 'bg-emerald-50 text-emerald-700'
                         : d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
@@ -362,7 +362,7 @@ export default function CommentEditor({
                     {commentMode === 'public' && <Check className="w-4 h-4 text-[#059669] flex-shrink-0" />}
                   </button>
                   <button type="button" onClick={() => { setCommentMode('internal'); setModeMenuOpen(false); }}
-                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-left rounded-md transition-colors ${
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left rounded-md transition-colors ${
                       commentMode === 'internal'
                         ? d ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-50 text-amber-800'
                         : d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
