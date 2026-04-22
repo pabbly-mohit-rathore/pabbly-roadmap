@@ -255,19 +255,19 @@ export default function AdminWebhooks({ triggerCreate, showFilters = false }: { 
                       {w.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  {/* Events — show actual event names as chips */}
+                  {/* Events — show 1 chip + N-more counter (hover reveals all) */}
                   <td className={`px-4 ${denseMode ? 'py-1.5' : 'py-4'} text-sm`}>
-                    <div className="flex flex-wrap gap-1">
-                      {w.events.slice(0, 2).map((ev) => (
+                    <div className="flex flex-wrap items-center gap-1">
+                      {w.events.slice(0, 1).map((ev) => (
                         <span key={ev}
                           className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${d ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
                           {eventLabel(ev)}
                         </span>
                       ))}
-                      {w.events.length > 2 && (
-                        <Tooltip title={w.events.slice(2).map(eventLabel).join(', ')}>
+                      {w.events.length > 1 && (
+                        <Tooltip title={w.events.map(eventLabel).join(', ')}>
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold cursor-help ${d ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'}`}>
-                            +{w.events.length - 2} more
+                            +{w.events.length - 1} more
                           </span>
                         </Tooltip>
                       )}
