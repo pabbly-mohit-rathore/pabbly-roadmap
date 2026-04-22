@@ -239,13 +239,16 @@ const addComment = async (req, res, next) => {
           }).catch(() => {});
 
           const { sendPushToUser } = require('../utils/webPush');
-          sendPushToUser(parentComment.authorId, {
+          const { sendEmailToUser } = require('../utils/emailService');
+          const replyPayload = {
             title,
             body: message,
             url: post.slug ? `/user/posts/${post.slug}` : '/',
             adminUrl: post.slug ? `/admin/posts/${post.slug}` : '/',
             type: 'comment_reply',
-          }).catch(() => {});
+          };
+          sendPushToUser(parentComment.authorId, replyPayload).catch(() => {});
+          sendEmailToUser(parentComment.authorId, replyPayload).catch(() => {});
         }
       }
     }
@@ -744,13 +747,16 @@ const toggleCommentLike = async (req, res, next) => {
       }).catch(() => {});
 
       const { sendPushToUser } = require('../utils/webPush');
-      sendPushToUser(comment.authorId, {
+      const { sendEmailToUser } = require('../utils/emailService');
+      const likedPayload = {
         title,
         body: message,
         url: post?.slug ? `/user/posts/${post.slug}` : '/',
         adminUrl: post?.slug ? `/admin/posts/${post.slug}` : '/',
         type: 'comment_liked',
-      }).catch(() => {});
+      };
+      sendPushToUser(comment.authorId, likedPayload).catch(() => {});
+      sendEmailToUser(comment.authorId, likedPayload).catch(() => {});
     }
 
     const io = req.app.get('io');

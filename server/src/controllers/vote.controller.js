@@ -134,13 +134,16 @@ const upvotePost = async (req, res, next) => {
         });
 
         const { sendPushToUsers } = require('../utils/webPush');
-        sendPushToUsers(recipientIds, {
+        const { sendEmailToUsers } = require('../utils/emailService');
+        const notifPayload = {
           title,
           body: message,
           url: post.slug ? `/user/posts/${post.slug}` : '/',
           adminUrl: post.slug ? `/admin/posts/${post.slug}` : '/',
           type: 'post_voted',
-        }).catch(() => {});
+        };
+        sendPushToUsers(recipientIds, notifPayload).catch(() => {});
+        sendEmailToUsers(recipientIds, notifPayload).catch(() => {});
       })().catch(err => console.error('vote notification failed:', err));
     }
 

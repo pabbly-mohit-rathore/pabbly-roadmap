@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const { sendPushToUsers } = require('./webPush');
+const { sendEmailToUsers } = require('./emailService');
 
 /**
  * Creates in-app notification + browser push for:
@@ -48,13 +49,16 @@ async function notifySubscribers(postId, { type, title, message, excludeUserIds 
 
     console.log(`[notifySubscribers] Notifying ${userIds.length} user(s) — ${title}`);
 
-    sendPushToUsers(userIds, {
+    const dispatchPayload = {
       title,
       body: message,
       url: post.slug ? `/user/posts/${post.slug}` : '/',
       adminUrl: post.slug ? `/admin/posts/${post.slug}` : '/',
       type,
-    }).catch((err) => console.error('[notifySubscribers] Push failed:', err));
+    };
+
+    sendPushToUsers(userIds, dispatchPayload).catch((err) => console.error('[notifySubscribers] Push failed:', err));
+    sendEmailToUsers(userIds, dispatchPayload).catch((err) => console.error('[notifySubscribers] Email failed:', err));
   } catch (error) {
     console.error('[notifySubscribers] Error:', error);
   }

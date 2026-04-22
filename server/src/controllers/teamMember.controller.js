@@ -238,12 +238,15 @@ const addTeamMember = async (req, res, next) => {
     });
 
     const { sendPushToUser } = require('../utils/webPush');
-    sendPushToUser(user.id, {
+    const { sendEmailToUser } = require('../utils/emailService');
+    const invitePayload = {
       title: inviteTitle,
       body: inviteMessage,
       url: '/notifications',
       type: 'team_access_request',
-    }).catch(() => {});
+    };
+    sendPushToUser(user.id, invitePayload).catch(() => {});
+    sendEmailToUser(user.id, invitePayload).catch(() => {});
 
     res.status(201).json({
       success: true,
@@ -311,12 +314,15 @@ const acceptTeamInvitation = async (req, res, next) => {
     ]);
 
     const { sendPushToUser } = require('../utils/webPush');
-    sendPushToUser(invitation.invitedById, {
+    const { sendEmailToUser } = require('../utils/emailService');
+    const acceptPayload = {
       title: 'Team Invitation Accepted',
       body: `Your team access invitation for "${invitation.board.name}" was accepted.`,
       url: '/notifications',
       type: 'team_access_accepted',
-    }).catch(() => {});
+    };
+    sendPushToUser(invitation.invitedById, acceptPayload).catch(() => {});
+    sendEmailToUser(invitation.invitedById, acceptPayload).catch(() => {});
 
     // Update notification data to mark action as taken (data is a JSON string)
     const reqNotifications = await prisma.notification.findMany({
@@ -383,12 +389,15 @@ const rejectTeamInvitation = async (req, res, next) => {
     ]);
 
     const { sendPushToUser } = require('../utils/webPush');
-    sendPushToUser(invitation.invitedById, {
+    const { sendEmailToUser } = require('../utils/emailService');
+    const rejectPayload = {
       title: 'Team Invitation Declined',
       body: `${name} declined your team access invitation for "${invitation.board.name}".`,
       url: '/notifications',
       type: 'team_access_rejected',
-    }).catch(() => {});
+    };
+    sendPushToUser(invitation.invitedById, rejectPayload).catch(() => {});
+    sendEmailToUser(invitation.invitedById, rejectPayload).catch(() => {});
 
     // Update notification data to mark action as taken (data is a JSON string)
     const reqNotifications = await prisma.notification.findMany({

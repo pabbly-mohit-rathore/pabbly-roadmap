@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const { sendPushToUser } = require('./webPush');
+const { sendEmailToUser } = require('./emailService');
 
 /**
  * Extract unique user IDs from mention tags in HTML.
@@ -57,14 +58,19 @@ async function notifyMentions({ html, actorId, actorName, context, postId, postT
 
     console.log(`[notifyMentions] Notified ${validUsers.length} mentioned user(s)`);
 
-    const pushPayload = {
+    const dispatchPayload = {
       title,
       body: message,
       url: postSlug ? `/user/posts/${postSlug}` : '/',
       adminUrl: postSlug ? `/admin/posts/${postSlug}` : '/',
       type: 'mention',
     };
-    await Promise.all(validUsers.map((u) => sendPushToUser(u.id, pushPayload).catch(() => {})));
+    await Promise.all(
+      validUsers.flatMap((u) => [
+        sendPushToUser(u.id, dispatchPayload).catch(() => {}),
+        sendEmailToUser(u.id, dispatchPayload).catch(() => {}),
+      ])
+    );
   } catch (error) {
     console.error('[notifyMentions] Error:', error);
   }
