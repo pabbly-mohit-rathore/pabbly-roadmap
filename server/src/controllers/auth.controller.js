@@ -598,15 +598,15 @@ const magicLogin = async (req, res, next) => {
 
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, name: true, email: true, role: true, avatar: true, isActive: true, isBanned: true },
+      select: { id: true, name: true, email: true, role: true, avatar: true, isActive: true },
     });
 
-    if (!user || !user.isActive) {
-      return res.status(401).json({ success: false, message: 'Account is no longer active.' });
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Account no longer exists.' });
     }
 
-    if (user.isBanned) {
-      return res.status(403).json({ success: false, message: 'This account has been banned.' });
+    if (!user.isActive) {
+      return res.status(403).json({ success: false, message: 'This account has been banned or deactivated.' });
     }
 
     const accessToken = generateAccessToken(user.id, user.role);
