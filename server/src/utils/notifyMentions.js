@@ -71,6 +71,14 @@ async function notifyMentions({ html, actorId, actorName, context, postId, postT
         sendEmailToUser(u.id, dispatchPayload).catch(() => {}),
       ])
     );
+
+    const { dispatchWebhook } = require('./webhookDispatcher');
+    dispatchWebhook('user.mentioned', {
+      mentionedUserIds: validUsers.map((u) => u.id),
+      context,
+      post: { id: postId, title: postTitle, slug: postSlug },
+      actor: { id: actorId, name: actorName },
+    });
   } catch (error) {
     console.error('[notifyMentions] Error:', error);
   }

@@ -290,6 +290,26 @@ const addComment = async (req, res, next) => {
       postSlug: post.slug,
     }).catch(err => console.error('notifyMentions failed:', err));
 
+    if (!isInternal) {
+      const { dispatchWebhook } = require('../utils/webhookDispatcher');
+      const commentPayload = {
+        comment: {
+          id: comment.id,
+          content: comment.content,
+          parentId: comment.parentId || null,
+          createdAt: comment.createdAt,
+        },
+        post: {
+          id: post.id,
+          title: post.title,
+          slug: post.slug,
+          boardId: post.boardId,
+        },
+        author: { id: userId, name: comment.author.name },
+      };
+      dispatchWebhook(parentId ? 'comment.replied' : 'comment.created', commentPayload);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Comment added successfully.',

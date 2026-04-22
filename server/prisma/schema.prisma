@@ -54,6 +54,7 @@ model User {
   receivedInvitations  TeamInvitation[] @relation("ReceivedInvitations")
   sentInvitations      TeamInvitation[] @relation("SentInvitations")
   pushSubscriptions    PushSubscription[]
+  createdWebhooks      Webhook[]         @relation("CreatedWebhooks")
 
   @@map("users")  // Database mein table ka naam "users" hoga
 }
@@ -631,4 +632,50 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// ============================================================
+// MODEL: Webhook
+// Outgoing HTTP callbacks — admins subscribe a URL to a set of
+// events (post.created, comment.created, etc). When those events
+// fire, backend POSTs a JSON payload to the URL.
+// ============================================================
+model Webhook {
+  id          String   @id @default(uuid())
+  name        String                              // Display name (e.g., "Slack #product")
+  url         String   @db.Text                   // Destination URL
+  events      String[]                            // Subscribed event names ["post.created", ...]
+  isActive    Boolean  @default(true)
+  secret      String?  @db.Text                   // Optional HMAC signing secret
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy  User?              @relation("CreatedWebhooks", fields: [createdById], references: [id], onDelete: SetNull)
+  deliveries WebhookDelivery[]
+
+  @@index([createdById])
+  @@map("webhooks")
+}
+
+// ============================================================
+// MODEL: WebhookDelivery
+// Log of every webhook fire attempt — useful for debugging.
+// Pruned periodically; keeps last N per webhook.
+// ============================================================
+model WebhookDelivery {
+  id           String   @id @default(uuid())
+  webhookId    String
+  event        String                              // Event name
+  payload      String   @db.Text                   // JSON payload sent
+  statusCode   Int?                                // HTTP response code (null if network error)
+  responseBody String?  @db.Text                   // Truncated response body (first 2KB)
+  error        String?  @db.Text                   // Network/timeout error if any
+  durationMs   Int?                                // Request duration
+  createdAt    DateTime @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt])
+  @@map("webhook_deliveries")
 }

@@ -144,6 +144,19 @@ const upvotePost = async (req, res, next) => {
         };
         sendPushToUsers(recipientIds, notifPayload).catch(() => {});
         sendEmailToUsers(recipientIds, notifPayload).catch(() => {});
+
+        const { dispatchWebhook } = require('../utils/webhookDispatcher');
+        dispatchWebhook('post.upvoted', {
+          post: {
+            id: post.id,
+            title: post.title,
+            slug: post.slug,
+            boardId: post.boardId,
+            authorId: post.authorId,
+          },
+          voter: { id: userId, name: voter?.name || null },
+          totalVotes: updatedPost.voteCount,
+        });
       })().catch(err => console.error('vote notification failed:', err));
     }
 

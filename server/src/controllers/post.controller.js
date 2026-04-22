@@ -330,6 +330,21 @@ const createPost = async (req, res, next) => {
       postSlug: post.slug,
     }).catch(err => console.error('notifyMentions failed:', err));
 
+    const { dispatchWebhook } = require('../utils/webhookDispatcher');
+    dispatchWebhook('post.created', {
+      post: {
+        id: post.id,
+        title: post.title,
+        slug: post.slug,
+        type: post.type,
+        status: post.status,
+        boardId: post.boardId,
+        authorId: post.authorId,
+        author: post.author ? { id: post.author.id, name: post.author.name } : null,
+        createdAt: post.createdAt,
+      },
+    });
+
     res.status(201).json({
       success: true,
       message: 'Post created successfully.',
@@ -392,6 +407,20 @@ const updatePost = async (req, res, next) => {
       },
     });
 
+    const { dispatchWebhook } = require('../utils/webhookDispatcher');
+    dispatchWebhook('post.updated', {
+      post: {
+        id: updatedPost.id,
+        title: updatedPost.title,
+        slug: updatedPost.slug,
+        type: updatedPost.type,
+        status: updatedPost.status,
+        boardId: updatedPost.boardId,
+        authorId: updatedPost.authorId,
+      },
+      updatedBy: { id: userId },
+    });
+
     res.json({ success: true, message: 'Post updated successfully.', data: { post: updatedPost } });
   } catch (error) {
     next(error);
@@ -437,6 +466,18 @@ const deletePost = async (req, res, next) => {
         userId,
         boardId: post.boardId,
       },
+    });
+
+    const { dispatchWebhook } = require('../utils/webhookDispatcher');
+    dispatchWebhook('post.deleted', {
+      post: {
+        id: post.id,
+        title: post.title,
+        slug: post.slug,
+        boardId: post.boardId,
+        authorId: post.authorId,
+      },
+      deletedBy: { id: userId },
     });
 
     res.json({ success: true, message: 'Post deleted successfully.' });
@@ -503,6 +544,20 @@ const changePostStatus = async (req, res, next) => {
       message: `Post "${post.title}" status changed to ${status.replace(/_/g, ' ')}`,
       excludeUserIds: [userId],
     }).catch(err => console.error('notifySubscribers failed:', err));
+
+    const { dispatchWebhook } = require('../utils/webhookDispatcher');
+    dispatchWebhook('post.status_changed', {
+      post: {
+        id: updatedPost.id,
+        title: updatedPost.title,
+        slug: updatedPost.slug,
+        boardId: updatedPost.boardId,
+        authorId: updatedPost.authorId,
+      },
+      previousStatus: post.status,
+      newStatus: status,
+      changedBy: { id: userId },
+    });
 
     res.json({
       success: true,

@@ -140,6 +140,9 @@ app.use('/api/notifications', notificationRoutes);
 const pushSubscriptionRoutes = require('./routes/pushSubscription.routes');
 app.use('/api/push', pushSubscriptionRoutes);
 
+const webhookRoutes = require('./routes/webhook.routes');
+app.use('/api/webhooks', webhookRoutes);
+
 // Expose upload limiter for routes that need it (auth/avatar)
 app.locals.uploadLimiter = uploadLimiter;
 
