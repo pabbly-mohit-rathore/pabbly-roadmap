@@ -81,8 +81,19 @@ function buildHtml({ recipientName, title, body, ctaUrl, type }) {
       <td align="center">
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="560" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
           <tr>
-            <td style="background:linear-gradient(135deg,#6366f1,#4f46e5);padding:24px 32px;">
-              <div style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.3px;">Pabbly Roadmap</div>
+            <td style="background:linear-gradient(135deg,#10b981,#059669);padding:24px 32px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="padding-right:12px;vertical-align:middle;line-height:1;">
+                    <div style="width:36px;height:36px;background:#ffffff;border-radius:8px;text-align:center;line-height:36px;font-size:0;">
+                      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwNTk2NjkiIHN0cm9rZS13aWR0aD0iMi4yNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgMTVhMiAyIDAgMCAxLTIgMkg3bC00IDRWNWEyIDIgMCAwIDEgMi0yaDE0YTIgMiAwIDAgMSAyIDJ6Ii8+PHBhdGggZD0iTTEzIDhINyIvPjxwYXRoIGQ9Ik0xNyAxMkg3Ii8+PC9zdmc+" width="20" height="20" alt="" style="display:inline-block;vertical-align:middle;" />
+                    </div>
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <div style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.3px;">Pabbly Roadmap</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr>
@@ -92,7 +103,7 @@ function buildHtml({ recipientName, title, body, ctaUrl, type }) {
               <p style="margin:0 0 24px 0;color:#374151;font-size:15px;line-height:1.6;">${safeBody}</p>
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
-                  <td align="center" bgcolor="#4f46e5" style="border-radius:8px;">
+                  <td align="center" bgcolor="#059669" style="border-radius:8px;">
                     <a href="${escapeAttr(ctaUrl)}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">View in Roadmap</a>
                   </td>
                 </tr>
@@ -102,7 +113,7 @@ function buildHtml({ recipientName, title, body, ctaUrl, type }) {
           </tr>
           <tr>
             <td style="padding:16px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;">
-              <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">&copy; Pabbly Roadmap · <a href="${escapeAttr(APP_URL)}" style="color:#6366f1;text-decoration:none;">Open dashboard</a></p>
+              <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">&copy; Pabbly Roadmap · <a href="${escapeAttr(APP_URL)}" style="color:#059669;text-decoration:none;">Open dashboard</a></p>
             </td>
           </tr>
         </table>
