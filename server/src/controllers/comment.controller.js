@@ -211,45 +211,56 @@ const addComment = async (req, res, next) => {
     // Notifications & subscriber broadcasts are skipped for internal comments
     // (regular users can't see them, so notifying is pointless).
     if (!isInternal) {
-      notifySubscribers(postId, {
-        type: 'new_comment',
-        title: 'New comment on your post',
-        message: `${comment.author.name} commented on "${post.title}"`,
-        excludeUserIds: [userId],
-      }).catch(err => console.error('notifySubscribers failed:', err));
-
-      // Reply notification — parent comment author ko batao
+      // For replies, look up parent author FIRST so we can exclude them from the
+      // "new_comment" broadcast — they'll get the specific "comment_reply"
+      // notification instead, avoiding duplicate emails/pushes.
+      let parentAuthorId = null;
       if (parentId) {
         const parentComment = await prisma.comment.findUnique({
           where: { id: parentId },
           select: { authorId: true },
         });
         if (parentComment && parentComment.authorId !== userId) {
-          const title = 'New reply to your comment';
-          const message = `${comment.author.name} replied to your comment on "${post.title}"`;
-          await prisma.notification.create({
-            data: {
-              userId: parentComment.authorId,
-              type: 'comment_reply',
-              title,
-              message,
-              postId,
-              data: JSON.stringify({ commentId: comment.id, parentId }),
-            },
-          }).catch(() => {});
-
-          const { sendPushToUser } = require('../utils/webPush');
-          const { sendEmailToUser } = require('../utils/emailService');
-          const replyPayload = {
-            title,
-            body: message,
-            url: post.slug ? `/user/posts/${post.slug}` : '/',
-            adminUrl: post.slug ? `/admin/posts/${post.slug}` : '/',
-            type: 'comment_reply',
-          };
-          sendPushToUser(parentComment.authorId, replyPayload).catch(() => {});
-          sendEmailToUser(parentComment.authorId, replyPayload).catch(() => {});
+          parentAuthorId = parentComment.authorId;
         }
+      }
+
+      const broadcastExcludeIds = [userId];
+      if (parentAuthorId) broadcastExcludeIds.push(parentAuthorId);
+
+      notifySubscribers(postId, {
+        type: 'new_comment',
+        title: 'New comment on your post',
+        message: `${comment.author.name} commented on "${post.title}"`,
+        excludeUserIds: broadcastExcludeIds,
+      }).catch(err => console.error('notifySubscribers failed:', err));
+
+      // Reply notification — parent comment author ko batao
+      if (parentAuthorId) {
+        const title = 'New reply to your comment';
+        const message = `${comment.author.name} replied to your comment on "${post.title}"`;
+        await prisma.notification.create({
+          data: {
+            userId: parentAuthorId,
+            type: 'comment_reply',
+            title,
+            message,
+            postId,
+            data: JSON.stringify({ commentId: comment.id, parentId }),
+          },
+        }).catch(() => {});
+
+        const { sendPushToUser } = require('../utils/webPush');
+        const { sendEmailToUser } = require('../utils/emailService');
+        const replyPayload = {
+          title,
+          body: message,
+          url: post.slug ? `/user/posts/${post.slug}` : '/',
+          adminUrl: post.slug ? `/admin/posts/${post.slug}` : '/',
+          type: 'comment_reply',
+        };
+        sendPushToUser(parentAuthorId, replyPayload).catch(() => {});
+        sendEmailToUser(parentAuthorId, replyPayload).catch(() => {});
       }
     }
 

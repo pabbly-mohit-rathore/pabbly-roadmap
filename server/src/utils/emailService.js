@@ -50,11 +50,14 @@ if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
 }
 
 // ============================================================
-// URL resolver — admins get admin routes, everyone else gets user routes.
+// URL resolver — emails ALWAYS go to the canonical user-facing URL
+// (not /admin/...). Reason: recipient may click from any device/session,
+// so the link must render for anyone logged in. Admins still get their
+// admin controls inline on the user post page based on live session role.
 // Converts relative path to absolute URL using APP_URL.
 // ============================================================
-function resolveUrlForUser(payload, userRole) {
-  const path = (userRole === 'admin' && payload.adminUrl) ? payload.adminUrl : (payload.url || '/');
+function resolveUrlForUser(payload) {
+  const path = payload.url || '/';
   if (/^https?:\/\//i.test(path)) return path;
   return `${APP_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
@@ -84,10 +87,8 @@ function buildHtml({ recipientName, title, body, ctaUrl, type }) {
             <td style="background:linear-gradient(135deg,#10b981,#059669);padding:24px 32px;">
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
-                  <td style="padding-right:12px;vertical-align:middle;line-height:1;">
-                    <div style="width:36px;height:36px;background:#ffffff;border-radius:8px;text-align:center;line-height:36px;font-size:0;">
-                      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwNTk2NjkiIHN0cm9rZS13aWR0aD0iMi4yNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgMTVhMiAyIDAgMCAxLTIgMkg3bC00IDRWNWEyIDIgMCAwIDEgMi0yaDE0YTIgMiAwIDAgMSAyIDJ6Ii8+PHBhdGggZD0iTTEzIDhINyIvPjxwYXRoIGQ9Ik0xNyAxMkg3Ii8+PC9zdmc+" width="20" height="20" alt="" style="display:inline-block;vertical-align:middle;" />
-                    </div>
+                  <td style="padding-right:12px;vertical-align:middle;">
+                    <div style="width:36px;height:36px;background:#ffffff;border-radius:8px;text-align:center;line-height:36px;font-size:20px;font-weight:800;color:#059669;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">P</div>
                   </td>
                   <td style="vertical-align:middle;">
                     <div style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.3px;">Pabbly Roadmap</div>
@@ -147,7 +148,7 @@ async function sendEmailToUser(userId, payload) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true, name: true, role: true, isActive: true },
+      select: { email: true, name: true, isActive: true },
     });
 
     if (!user || !user.email || !user.isActive) {
@@ -155,7 +156,7 @@ async function sendEmailToUser(userId, payload) {
       return;
     }
 
-    const ctaUrl = resolveUrlForUser(payload, user.role);
+    const ctaUrl = resolveUrlForUser(payload);
     const subject = payload.title || 'Pabbly Roadmap notification';
     const html = buildHtml({ recipientName: user.name, title: payload.title, body: payload.body, ctaUrl, type: payload.type });
     const text = buildText({ recipientName: user.name, title: payload.title, body: payload.body, ctaUrl });
