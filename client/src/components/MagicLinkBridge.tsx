@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
+import pushNotifications from '../services/pushNotification.service';
 
 /**
  * Intercepts `?mt=<token>` on page load (from email "View in Roadmap" button).
@@ -44,6 +45,14 @@ export default function MagicLinkBridge({ children }: { children: React.ReactNod
           useAuthStore.getState().login(user, accessToken, refreshToken);
           if (currentEmail && currentEmail !== user.email) {
             toast.success(`Signed in as ${user.name}`);
+          }
+
+          // Re-sync push subscription under the new user's ID. Backend upserts
+          // by endpoint, so the same browser endpoint gets re-linked to this
+          // user — future push notifications route correctly. Only runs if
+          // permission is already granted (won't prompt).
+          if (pushNotifications.isSupported() && pushNotifications.getPermission() === 'granted') {
+            pushNotifications.subscribe().catch(() => {});
           }
         } else {
           toast.error(data?.message || 'This link has expired. Please sign in manually.');
