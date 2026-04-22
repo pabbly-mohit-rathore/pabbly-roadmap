@@ -93,10 +93,25 @@ const upvotePost = async (req, res, next) => {
       },
     }).catch(err => console.error('activity log failed:', err));
 
-    // Notification — post author + all admins + board managers (sirf new vote pe)
+    // Webhook dispatch runs independently of notification recipients —
+    // webhook subscribers expect this event regardless of who gets notified.
     if (!existingVote) {
       (async () => {
         const voter = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+
+        const { dispatchWebhook } = require('../utils/webhookDispatcher');
+        dispatchWebhook('post.upvoted', {
+          post: {
+            id: post.id,
+            title: post.title,
+            slug: post.slug,
+            boardId: post.boardId,
+            authorId: post.authorId,
+          },
+          voter: { id: userId, name: voter?.name || null },
+          totalVotes: updatedPost.voteCount,
+        });
+
         const title = 'New vote on a post';
         const message = `${voter?.name || 'Someone'} upvoted "${post.title}"`;
 
@@ -144,19 +159,6 @@ const upvotePost = async (req, res, next) => {
         };
         sendPushToUsers(recipientIds, notifPayload).catch(() => {});
         sendEmailToUsers(recipientIds, notifPayload).catch(() => {});
-
-        const { dispatchWebhook } = require('../utils/webhookDispatcher');
-        dispatchWebhook('post.upvoted', {
-          post: {
-            id: post.id,
-            title: post.title,
-            slug: post.slug,
-            boardId: post.boardId,
-            authorId: post.authorId,
-          },
-          voter: { id: userId, name: voter?.name || null },
-          totalVotes: updatedPost.voteCount,
-        });
       })().catch(err => console.error('vote notification failed:', err));
     }
 
