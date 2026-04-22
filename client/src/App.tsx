@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import CustomToaster from './components/ui/CustomToaster';
 import BannedDialog from './components/ui/BannedDialog';
+import MagicLinkBridge from './components/MagicLinkBridge';
 import { useEffect, lazy, Suspense } from 'react';
 import Navbar from './components/layout/Navbar';
 import AdminLayout from './components/admin/Layout';
@@ -60,6 +61,7 @@ function App() {
     <BrowserRouter>
       <PushNavigationBridge />
       <FeedSocketBridge enabled={isAuthenticated} />
+      <MagicLinkBridge>
       <Suspense fallback={null}>
         <Routes>
           {/* Public Routes */}
@@ -172,6 +174,7 @@ function App() {
           <Route path="*" element={<Navigate to={isAdmin ? "/admin/dashboard" : "/user/all-posts"} />} />
         </Routes>
       </Suspense>
+      </MagicLinkBridge>
       <CustomToaster />
       <BannedDialog />
     </BrowserRouter>
