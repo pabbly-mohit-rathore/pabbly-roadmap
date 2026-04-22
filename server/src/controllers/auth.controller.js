@@ -575,6 +575,56 @@ const uploadAvatarHandler = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// MAGIC-LINK LOGIN
+//
+// Used by email "View in Roadmap" button. Exchanges a short-lived
+// magic token (JWT with purpose='magic-link') for a fresh access +
+// refresh token pair — so the email recipient is signed in as
+// themselves, regardless of who was logged in on that browser.
+// ============================================================
+const magicLogin = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Magic token is required.' });
+    }
+
+    const { verifyMagicToken } = require('../utils/magicToken');
+    const payload = verifyMagicToken(token);
+    if (!payload) {
+      return res.status(401).json({ success: false, message: 'This link has expired or is invalid. Please sign in manually.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, name: true, email: true, role: true, avatar: true, isActive: true, isBanned: true },
+    });
+
+    if (!user || !user.isActive) {
+      return res.status(401).json({ success: false, message: 'Account is no longer active.' });
+    }
+
+    if (user.isBanned) {
+      return res.status(403).json({ success: false, message: 'This account has been banned.' });
+    }
+
+    const accessToken = generateAccessToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id);
+
+    res.json({
+      success: true,
+      data: {
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -586,4 +636,5 @@ module.exports = {
   resetPassword,
   googleLogin,
   uploadAvatarHandler,
+  magicLogin,
 };

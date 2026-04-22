@@ -14,6 +14,7 @@
 
 const nodemailer = require('nodemailer');
 const prisma = require('../config/database');
+const { issueMagicToken } = require('./magicToken');
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
@@ -51,15 +52,19 @@ if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
 
 // ============================================================
 // URL resolver — emails ALWAYS go to the canonical user-facing URL
-// (not /admin/...). Reason: recipient may click from any device/session,
-// so the link must render for anyone logged in. Admins still get their
-// admin controls inline on the user post page based on live session role.
+// (not /admin/...). The magic-link token embedded in the URL ensures
+// that no matter who is currently logged in on the clicking device,
+// the recipient will be signed in as themselves on page load.
 // Converts relative path to absolute URL using APP_URL.
 // ============================================================
-function resolveUrlForUser(payload) {
+function resolveUrlForUser(payload, magicToken) {
   const path = payload.url || '/';
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${APP_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  const absoluteUrl = /^https?:\/\//i.test(path)
+    ? path
+    : `${APP_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  if (!magicToken) return absoluteUrl;
+  const separator = absoluteUrl.includes('?') ? '&' : '?';
+  return `${absoluteUrl}${separator}mt=${encodeURIComponent(magicToken)}`;
 }
 
 // ============================================================
@@ -156,7 +161,8 @@ async function sendEmailToUser(userId, payload) {
       return;
     }
 
-    const ctaUrl = resolveUrlForUser(payload);
+    const magicToken = issueMagicToken(userId);
+    const ctaUrl = resolveUrlForUser(payload, magicToken);
     const subject = payload.title || 'Pabbly Roadmap notification';
     const html = buildHtml({ recipientName: user.name, title: payload.title, body: payload.body, ctaUrl, type: payload.type });
     const text = buildText({ recipientName: user.name, title: payload.title, body: payload.body, ctaUrl });

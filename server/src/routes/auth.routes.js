@@ -29,6 +29,7 @@ const {
   resetPassword,
   googleLogin,
   uploadAvatarHandler,
+  magicLogin,
 } = require('../controllers/auth.controller');
 const { uploadAvatar } = require('../middleware/upload');
 
@@ -105,6 +106,7 @@ router.post('/register', registerRules, validate, register);
 router.post('/login', loginRules, validate, login);
 router.post('/google', googleLogin);
 router.post('/refresh-token', refreshToken);
+router.post('/magic-link', magicLogin);
 router.post('/forgot-password', forgotPasswordRules, validate, forgotPassword);
 router.post('/reset-password', resetPasswordRules, validate, resetPassword);
 
