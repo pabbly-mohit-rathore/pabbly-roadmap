@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarChart3, Users, Plus, Tag as TagIcon } from 'lucide-react';
+import { BarChart3, Users, Plus, Tag as TagIcon, Webhook as WebhookIcon } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import useThemeStore from '../../store/themeStore';
 import useAuthStore from '../../store/authStore';
@@ -9,6 +9,7 @@ import AdminReporting from './Reporting';
 import AdminUsers from './Users';
 import AdminTeamMembers from './TeamMembers';
 import AdminTags from './Tags';
+import AdminWebhooks from './Webhooks';
 import Tooltip from '../../components/ui/Tooltip';
 
 const ALL_TABS = [
@@ -16,6 +17,7 @@ const ALL_TABS = [
   { id: 'users', label: 'Users', icon: Users, heading: 'Users', description: 'Manage registered users and their accounts.', btnLabel: '' },
   { id: 'team-members', label: 'Team Members', icon: Users, heading: 'Team Members', description: 'Manage team members and their access levels.', btnLabel: 'Add Team Member' },
   { id: 'tags', label: 'Tags', icon: TagIcon, heading: 'Tags', description: 'Create and manage tags to categorize posts.', btnLabel: 'Create Tag' },
+  { id: 'webhooks', label: 'Webhooks', icon: WebhookIcon, heading: 'Webhooks', description: 'Send real-time event notifications to external URLs.', btnLabel: 'Add Webhook' },
 ];
 
 export default function AdminSettings() {
@@ -28,7 +30,7 @@ export default function AdminSettings() {
   const isTeamMember = isTeamAccess && !isRealAdmin;
 
   const tabs = useMemo(() => {
-    if (isTeamMember) return ALL_TABS.filter(t => t.id !== 'team-members');
+    if (isTeamMember) return ALL_TABS.filter(t => t.id !== 'team-members' && t.id !== 'webhooks');
     return ALL_TABS;
   }, [isTeamMember]);
 
@@ -103,6 +105,7 @@ export default function AdminSettings() {
       {activeTab === 'users' && !isTeamMember && <AdminUsers showFilters={showFilters} />}
       {activeTab === 'team-members' && !isTeamMember && <AdminTeamMembers triggerCreate={triggerAction} showFilters={showFilters} />}
       {activeTab === 'tags' && <AdminTags triggerCreate={triggerAction} showFilters={showFilters} />}
+      {activeTab === 'webhooks' && !isTeamMember && <AdminWebhooks triggerCreate={triggerAction} showFilters={showFilters} />}
     </div>
   );
 }
