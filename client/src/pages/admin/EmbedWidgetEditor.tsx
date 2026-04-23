@@ -7,7 +7,8 @@ import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import Tooltip from '../../components/ui/Tooltip';
-import WidgetPreview, { WidgetConfig } from '../../components/admin/WidgetPreview';
+import WidgetPreview from '../../components/admin/WidgetPreview';
+import type { WidgetConfig } from '../../components/admin/WidgetPreview';
 
 interface Widget extends WidgetConfig {
   id: string;

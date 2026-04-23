@@ -107,17 +107,17 @@ export default function WidgetPreview({ config, onClose }: { config: WidgetConfi
         {!config.showSubmissionFormOnly && (hasPosts || hasChangelog) && (
           <div style={{ display: 'flex', borderBottom: `1px solid ${border}`, background: softBg }}>
             {hasPosts && (
-              <TabBtn active={activeTab === 'posts'} onClick={() => setActiveTab('posts')} accent={accent} dark={dark} text={text} muted={muted}>
+              <TabBtn active={activeTab === 'posts'} onClick={() => setActiveTab('posts')} accent={accent} muted={muted}>
                 <Sparkles style={{ width: 14, height: 14 }} /> Feature Requests
               </TabBtn>
             )}
             {hasChangelog && (
-              <TabBtn active={activeTab === 'changelog'} onClick={() => setActiveTab('changelog')} accent={accent} dark={dark} text={text} muted={muted}>
+              <TabBtn active={activeTab === 'changelog'} onClick={() => setActiveTab('changelog')} accent={accent} muted={muted}>
                 <FileText style={{ width: 14, height: 14 }} /> Changelog
               </TabBtn>
             )}
             {hasPosts && (
-              <TabBtn active={activeTab === 'submit'} onClick={() => setActiveTab('submit')} accent={accent} dark={dark} text={text} muted={muted}>
+              <TabBtn active={activeTab === 'submit'} onClick={() => setActiveTab('submit')} accent={accent} muted={muted}>
                 <Send style={{ width: 14, height: 14 }} /> Submit
               </TabBtn>
             )}
@@ -126,9 +126,9 @@ export default function WidgetPreview({ config, onClose }: { config: WidgetConfi
 
         {/* Body */}
         <div style={{ padding: 18, overflowY: 'auto', flex: 1, minHeight: 240, maxHeight: 520 }}>
-          {activeTab === 'posts' && <PostsPreview accent={accent} dark={dark} text={text} muted={muted} border={border} softBg={softBg} />}
-          {activeTab === 'changelog' && <ChangelogPreview accent={accent} dark={dark} text={text} muted={muted} border={border} />}
-          {activeTab === 'submit' && <SubmitPreview accent={accent} dark={dark} text={text} muted={muted} border={border} softBg={softBg} hideBoardSelection={config.hideBoardSelection} suggestSimilar={config.suggestSimilarPosts} />}
+          {activeTab === 'posts' && <PostsPreview accent={accent} text={text} muted={muted} border={border} softBg={softBg} />}
+          {activeTab === 'changelog' && <ChangelogPreview accent={accent} text={text} muted={muted} border={border} />}
+          {activeTab === 'submit' && <SubmitPreview accent={accent} text={text} muted={muted} border={border} softBg={softBg} hideBoardSelection={config.hideBoardSelection} suggestSimilar={config.suggestSimilarPosts} />}
         </div>
 
         {/* Footer */}
@@ -140,7 +140,7 @@ export default function WidgetPreview({ config, onClose }: { config: WidgetConfi
   );
 }
 
-function TabBtn({ children, active, onClick, accent, text, muted }: { children: React.ReactNode; active: boolean; onClick: () => void; accent: string; dark: boolean; text: string; muted: string }) {
+function TabBtn({ children, active, onClick, accent, muted }: { children: React.ReactNode; active: boolean; onClick: () => void; accent: string; muted: string }) {
   return (
     <button onClick={onClick}
       style={{
@@ -166,7 +166,7 @@ function TabBtn({ children, active, onClick, accent, text, muted }: { children: 
   );
 }
 
-function PostsPreview({ accent, dark, text, muted, border, softBg }: any) {
+function PostsPreview({ accent, text, muted, border, softBg }: any) {
   const samples = [
     { title: 'Add dark mode to dashboard', votes: 24, status: 'Under Review' },
     { title: 'Export data as CSV', votes: 18, status: 'Planned' },
@@ -212,7 +212,7 @@ function ChangelogPreview({ accent, text, muted, border }: any) {
   );
 }
 
-function SubmitPreview({ accent, dark, text, muted, border, softBg, hideBoardSelection, suggestSimilar }: any) {
+function SubmitPreview({ accent, text, muted, border, softBg, hideBoardSelection, suggestSimilar }: any) {
   return (
     <div>
       {!hideBoardSelection && (
