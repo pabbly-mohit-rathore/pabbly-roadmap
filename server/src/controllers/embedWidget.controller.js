@@ -399,16 +399,13 @@ const submitPublicPost = async (req, res, next) => {
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
-    let user = await prisma.user.findUnique({ where: { email: cleanEmail } });
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: cleanEmail,
-          name: (name && name.trim()) || cleanEmail.split('@')[0],
-          role: 'user',
-          isActive: true,
-          emailVerified: false,
-        },
+    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    // Only existing, active roadmap users can submit through the widget.
+    if (!user || !user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: 'This email is not registered on our roadmap. Please sign up first to submit feedback.',
+        code: 'USER_NOT_REGISTERED',
       });
     }
 
