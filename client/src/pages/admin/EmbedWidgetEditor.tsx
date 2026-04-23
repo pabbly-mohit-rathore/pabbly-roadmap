@@ -226,9 +226,9 @@ export default function EmbedWidgetEditor() {
           </Tooltip>
           <div>
             <input type="text" value={widget.name} onChange={(e) => update({ name: e.target.value })}
-              className={`text-2xl font-bold bg-transparent border-none outline-none ${d ? 'text-white' : 'text-gray-900'}`}
+              className={`text-2xl font-bold mb-2 bg-transparent border-none outline-none p-0 ${d ? 'text-white' : 'text-gray-900'}`}
               style={{ width: `${Math.max(240, widget.name.length * 14)}px` }} />
-            <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>Customize this widget and grab the embed code.</p>
+            <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>Customize this widget and grab the embed code.</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
