@@ -175,7 +175,7 @@ export default function EmbedWidgetEditor() {
               <ChevronDown className={`w-4 h-4 transition-transform ${appearanceOpen ? 'rotate-180' : ''} text-gray-400`} />
             </button>
             {appearanceOpen && (
-              <div className="px-5 pb-5 space-y-5 border-t border-dashed"
+              <div className="px-5 pt-5 pb-5 space-y-5 border-t border-dashed"
                 style={{ borderColor: d ? '#374151' : '#e5e7eb' }}>
                 {/* Type */}
                 <FieldGroup label="Type" help="Choose how the widget opens." d={d}>
@@ -191,9 +191,9 @@ export default function EmbedWidgetEditor() {
                   </div>
                 </FieldGroup>
 
-                {/* Open From (only for popover) */}
-                {widget.type === 'popover' && (
-                  <FieldGroup label="Open From" d={d}>
+                {/* Open From — only for Modal (drawer direction). Popover is always centered. */}
+                {widget.type === 'modal' && (
+                  <FieldGroup label="Open From" help="Which edge the drawer slides in from." d={d}>
                     <div className={`flex gap-2 flex-wrap`}>
                       {['left', 'right', 'top', 'bottom'].map((p) => (
                         <button key={p} onClick={() => update({ openFrom: p })}
@@ -236,14 +236,12 @@ export default function EmbedWidgetEditor() {
                 </FieldGroup>
 
                 {/* Widget width */}
-                {widget.type === 'popover' && (
-                  <FieldGroup label="Widget Width" help="Width in pixels (200–1200). Leave blank for default." d={d}>
-                    <input type="number" min={200} max={1200}
-                      value={widget.widgetWidth || ''} placeholder="400"
-                      onChange={(e) => update({ widgetWidth: e.target.value ? parseInt(e.target.value, 10) : null })}
-                      className={`text-sm px-3 py-2 rounded-lg border w-[160px] ${d ? 'bg-gray-900 border-gray-700 text-gray-200' : 'bg-white border-gray-300 text-gray-700'}`} />
-                  </FieldGroup>
-                )}
+                <FieldGroup label="Widget Width" help="Width in pixels (200–1200). Leave blank for default (380 px)." d={d}>
+                  <input type="number" min={200} max={1200}
+                    value={widget.widgetWidth || ''} placeholder="380"
+                    onChange={(e) => update({ widgetWidth: e.target.value ? parseInt(e.target.value, 10) : null })}
+                    className={`text-sm px-3 py-2 rounded-lg border w-[160px] ${d ? 'bg-gray-900 border-gray-700 text-gray-200' : 'bg-white border-gray-300 text-gray-700'}`} />
+                </FieldGroup>
 
                 <ToggleRow
                   label="Hide default trigger"
@@ -289,7 +287,7 @@ export default function EmbedWidgetEditor() {
               <ChevronDown className={`w-4 h-4 transition-transform ${configOpen ? 'rotate-180' : ''} text-gray-400`} />
             </button>
             {configOpen && (
-              <div className="px-5 pb-5 space-y-5 border-t border-dashed"
+              <div className="px-5 pt-5 pb-5 space-y-5 border-t border-dashed"
                 style={{ borderColor: d ? '#374151' : '#e5e7eb' }}>
                 {/* Token */}
                 <FieldGroup label="Widget Token" help="Read-only unique token used in the embed script." d={d}>
@@ -339,9 +337,9 @@ export default function EmbedWidgetEditor() {
               <ChevronDown className={`w-4 h-4 transition-transform ${filtersOpen ? 'rotate-180' : ''} text-gray-400`} />
             </button>
             {filtersOpen && (
-              <div className="px-5 pb-5 space-y-5 border-t border-dashed"
+              <div className="px-5 pt-5 pb-5 space-y-5 border-t border-dashed"
                 style={{ borderColor: d ? '#374151' : '#e5e7eb' }}>
-                <div style={{ paddingTop: 20 }}>
+                <div>
                   <MultiSelectField
                     label="Show posts in statuses"
                     placeholder="Select status"
