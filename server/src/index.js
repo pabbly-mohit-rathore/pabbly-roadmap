@@ -98,6 +98,15 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
   immutable: false,
 }));
 
+// Public static files (embed widget runtime). Served with permissive CORS
+// so third-party origins can load widget.js without issue.
+app.use('/', express.static(path.join(__dirname, '../public'), {
+  maxAge: '1h',
+  setHeaders: function (res) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  },
+}));
+
 // Health check (no rate limit)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });

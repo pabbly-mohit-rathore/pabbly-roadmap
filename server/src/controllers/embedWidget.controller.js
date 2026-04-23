@@ -166,6 +166,30 @@ const toggleWidget = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// Build the Prisma where clause for a widget's public data queries
+function buildWidgetPostWhere(widget) {
+  const where = {
+    isDraft: false,
+  };
+  if (Array.isArray(widget.boardIds) && widget.boardIds.length > 0) {
+    where.boardId = { in: widget.boardIds };
+  }
+  if (Array.isArray(widget.postStatuses) && widget.postStatuses.length > 0) {
+    where.status = { in: widget.postStatuses };
+  }
+  return where;
+}
+
+function buildWidgetOrderBy(sort) {
+  switch (sort) {
+    case 'oldest':         return { createdAt: 'asc' };
+    case 'most_voted':     return { voteCount: 'desc' };
+    case 'most_commented': return { comments: { _count: 'desc' } };
+    case 'newest':
+    default:               return { createdAt: 'desc' };
+  }
+}
+
 // PUBLIC — widget script on customer sites calls this with ?token=xxx
 const getPublicConfig = async (req, res, next) => {
   try {
@@ -190,6 +214,113 @@ const getPublicConfig = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// PUBLIC — widget script fetches its posts list, respecting the widget's
+// configured filters (statuses, boardIds) and default sort order.
+const getPublicPosts = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+
+    const widget = await prisma.embedWidget.findUnique({
+      where: { token },
+      select: {
+        isActive: true, boardIds: true, postStatuses: true, defaultSort: true,
+      },
+    });
+    if (!widget || !widget.isActive) {
+      return res.status(404).json({ success: false, message: 'Widget not found or inactive.' });
+    }
+
+    const posts = await prisma.post.findMany({
+      where: buildWidgetPostWhere(widget),
+      orderBy: buildWidgetOrderBy(widget.defaultSort),
+      take: limit,
+      select: {
+        id: true, title: true, slug: true, description: true, status: true,
+        voteCount: true, createdAt: true,
+        board: { select: { id: true, name: true } },
+        _count: { select: { comments: true } },
+      },
+    });
+
+    res.json({ success: true, data: { posts } });
+  } catch (err) { next(err); }
+};
+
+// PUBLIC — widget script submits a post. Finds-or-creates a user by email
+// (no password — passwordless flow). The created post uses the widget's
+// submissionBoardId by default, or the provided boardId if allowed.
+const submitPublicPost = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const { name, email, title, description, boardId } = req.body || {};
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+      return res.status(400).json({ success: false, message: 'A valid email is required.' });
+    }
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, message: 'Title is required.' });
+    }
+
+    const widget = await prisma.embedWidget.findUnique({
+      where: { token },
+      select: {
+        isActive: true, submissionBoardId: true, boardIds: true, hideBoardSelection: true,
+      },
+    });
+    if (!widget || !widget.isActive) {
+      return res.status(404).json({ success: false, message: 'Widget not found or inactive.' });
+    }
+
+    // Resolve target board
+    let targetBoardId = widget.hideBoardSelection
+      ? widget.submissionBoardId
+      : (boardId || widget.submissionBoardId);
+    if (!targetBoardId) {
+      return res.status(400).json({ success: false, message: 'No submission board configured for this widget.' });
+    }
+    // If widget restricts boards, the chosen board must be inside boardIds
+    if (widget.boardIds.length > 0 && !widget.boardIds.includes(targetBoardId)) {
+      return res.status(400).json({ success: false, message: 'That board is not available through this widget.' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    let user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: cleanEmail,
+          name: (name && name.trim()) || cleanEmail.split('@')[0],
+          role: 'user',
+          isActive: true,
+          emailVerified: false,
+        },
+      });
+    }
+
+    // Build a URL-safe slug. Append short random suffix to avoid collisions.
+    const baseSlug = String(title).toLowerCase().trim()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'post';
+    const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const descClean = description ? String(description).trim() : '';
+    const post = await prisma.post.create({
+      data: {
+        title: String(title).trim(),
+        slug,
+        description: descClean, // schema requires non-null
+        content: descClean || null,
+        status: 'under_review',
+        boardId: targetBoardId,
+        authorId: user.id,
+      },
+      select: { id: true, title: true, slug: true },
+    });
+
+    res.status(201).json({ success: true, message: 'Thanks for your feedback!', data: { post } });
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   getWidgets,
   getWidget,
@@ -198,4 +329,6 @@ module.exports = {
   deleteWidget,
   toggleWidget,
   getPublicConfig,
+  getPublicPosts,
+  submitPublicPost,
 };
