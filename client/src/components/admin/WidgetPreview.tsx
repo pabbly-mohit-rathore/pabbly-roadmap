@@ -86,23 +86,31 @@ export default function WidgetPreview({ config, onClose }: { config: WidgetConfi
   const text = dark ? '#ffffff' : '#111827';
   const muted = dark ? '#9ca3af' : '#6b7280';
 
-  // Panel positioning — modal = drawer, popover = dialog (centered/left/right)
+  // Panel positioning
+  //   modal   → right/left drawer OR centered modal dialog
+  //   popover → anchored dialog (auto/top/right/bottom/left)
   let panelStyle: React.CSSProperties = {};
-  const from = config.openFrom || (config.type === 'popover' ? 'center' : 'right');
+  const from = config.openFrom || (config.type === 'modal' ? 'right' : 'auto');
   if (config.type === 'popover') {
     const popWidth = Math.min(560, width);
     const common = { width: popWidth, maxHeight: '88vh', borderRadius: 14 };
-    if (from === 'left') panelStyle = { ...common, top: '50%', left: 48, transform: 'translateY(-50%)' };
-    else if (from === 'right') panelStyle = { ...common, top: '50%', right: 48, transform: 'translateY(-50%)' };
+    if (from === 'top') panelStyle = { ...common, top: 32, left: '50%', transform: 'translateX(-50%)' };
+    else if (from === 'bottom') panelStyle = { ...common, bottom: 32, left: '50%', transform: 'translateX(-50%)' };
+    else if (from === 'left') panelStyle = { ...common, top: '50%', left: 32, transform: 'translateY(-50%)' };
+    else if (from === 'right') panelStyle = { ...common, top: '50%', right: 32, transform: 'translateY(-50%)' };
     else panelStyle = { ...common, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
   } else {
-    // Modal = drawer — "auto" falls back to right
-    const modalFrom = from === 'auto' ? 'right' : from;
-    const baseStyle: React.CSSProperties = { width, height: '100vh', top: 0 };
-    if (modalFrom === 'left') panelStyle = { ...baseStyle, left: 0, borderRight: `1px solid ${border}` };
-    else if (modalFrom === 'top') panelStyle = { left: 0, right: 0, width: 'auto', height: 'auto', maxHeight: '88vh', top: 0, borderBottom: `1px solid ${border}` };
-    else if (modalFrom === 'bottom') panelStyle = { left: 0, right: 0, width: 'auto', height: 'auto', maxHeight: '88vh', bottom: 0, borderTop: `1px solid ${border}` };
-    else panelStyle = { ...baseStyle, right: 0, borderLeft: `1px solid ${border}` };
+    // modal: right | left | center
+    if (from === 'center') {
+      panelStyle = {
+        top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+        width: Math.min(560, width), maxHeight: '88vh', borderRadius: 14,
+      };
+    } else if (from === 'left') {
+      panelStyle = { width, height: '100vh', top: 0, left: 0, borderRight: `1px solid ${border}` };
+    } else {
+      panelStyle = { width, height: '100vh', top: 0, right: 0, borderLeft: `1px solid ${border}` };
+    }
   }
 
   return (

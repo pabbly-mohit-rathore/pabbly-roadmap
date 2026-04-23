@@ -9,8 +9,25 @@ import LoadingButton from '../../components/ui/LoadingButton';
 import Tooltip from '../../components/ui/Tooltip';
 import CustomDropdown from '../../components/ui/CustomDropdown';
 import MultiSelectField from '../../components/ui/MultiSelectField';
-import WidgetPreview from '../../components/admin/WidgetPreview';
-import type { WidgetConfig } from '../../components/admin/WidgetPreview';
+import CodeBlock from '../../components/ui/CodeBlock';
+
+// Minimal shape the editor reads from the widget record. (Previously
+// re-used from WidgetPreview; kept inline now that the preview is
+// replaced with the live widget.js runtime.)
+interface WidgetConfig {
+  name: string;
+  type: 'modal' | 'popover' | string;
+  openFrom: 'left' | 'right' | 'top' | 'bottom' | 'center' | 'auto' | string;
+  theme: 'light' | 'dark' | string;
+  accentColor: string;
+  widgetWidth: number | null;
+  hideDefaultTrigger: boolean;
+  disableExpansion: boolean;
+  modules: string[];
+  showSubmissionFormOnly: boolean;
+  suggestSimilarPosts: boolean;
+  hideBoardSelection: boolean;
+}
 
 const STATUS_OPTIONS = [
   { value: 'under_review', label: 'Under Review' },
@@ -20,18 +37,18 @@ const STATUS_OPTIONS = [
   { value: 'hold', label: 'On Hold' },
 ];
 
-// Per-type options for the "Open From" field.
+// Open From — Modal (drawer/centered-modal) vs Popover (anchored dialog).
 const MODAL_OPEN_FROM = [
+  { value: 'right', label: 'Right' },
+  { value: 'left', label: 'Left' },
+  { value: 'center', label: 'Center' },
+];
+const POPOVER_OPEN_FROM = [
   { value: 'auto', label: 'Auto' },
   { value: 'top', label: 'Top' },
   { value: 'right', label: 'Right' },
   { value: 'bottom', label: 'Bottom' },
   { value: 'left', label: 'Left' },
-];
-const POPOVER_OPEN_FROM = [
-  { value: 'center', label: 'Center' },
-  { value: 'left', label: 'Left' },
-  { value: 'right', label: 'Right' },
 ];
 
 const SORT_OPTIONS = [
@@ -67,7 +84,7 @@ export default function EmbedWidgetEditor() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(true);
   const [configOpen, setConfigOpen] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(true);
@@ -93,17 +110,72 @@ export default function EmbedWidgetEditor() {
     setWidget((w) => (w ? { ...w, ...patch } : w));
   };
 
+  const savePayload = async (silent = false) => {
+    if (!widget) return false;
+    if (!widget.name.trim()) { toast.error('Widget name is required'); return false; }
+    const { id: _id, token: _t, createdAt: _c, ...payload } = widget as any;
+    const r = await api.put(`/embed-widgets/${id}`, payload);
+    if (!r.data.success) throw new Error(r.data.message || 'Save failed');
+    if (!silent) toast.success('Widget saved');
+    return true;
+  };
+
   const handleSave = async () => {
-    if (!widget) return;
-    if (!widget.name.trim()) { toast.error('Widget name is required'); return; }
     setSaving(true);
+    try { await savePayload(); }
+    catch (e: any) { toast.error(e?.response?.data?.message || e?.message || 'Save failed'); }
+    finally { setSaving(false); }
+  };
+
+  // Test Widget: save latest config, load widget.js runtime, open the real
+  // widget so upvote/submit/search all work against live backend.
+  const handleTest = async () => {
+    if (!widget || testing) return;
+    setTesting(true);
+    const loadingToast = toast.loading('Opening test widget…');
     try {
-      const { id: _id, token: _t, createdAt: _c, ...payload } = widget as any;
-      const r = await api.put(`/embed-widgets/${id}`, payload);
-      if (r.data.success) toast.success('Widget saved');
+      await savePayload(true);
+
+      const origin = (import.meta.env.VITE_API_URL as string | undefined)?.replace('/api', '') || window.location.origin;
+      const scriptUrl = `${origin}/widget.js`;
+
+      // Load widget.js once — widget registers itself on window.
+      if (!(window as any).PabblyRoadmapWidget) {
+        await new Promise<void>((resolve, reject) => {
+          const existing = document.querySelector(`script[data-prw="1"]`) as HTMLScriptElement | null;
+          if (existing) { existing.addEventListener('load', () => resolve()); existing.addEventListener('error', () => reject(new Error('Script load failed'))); return; }
+          const s = document.createElement('script');
+          s.src = scriptUrl + '?v=' + Date.now(); // cache-bust during dev
+          s.async = true;
+          s.setAttribute('data-prw', '1');
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error('Script load failed'));
+          document.head.appendChild(s);
+        });
+      }
+
+      const Ctor = (window as any).PabblyRoadmapWidget;
+      if (!Ctor) throw new Error('Widget script not available');
+
+      // Dispose any previous test instance
+      if ((window as any).__prwTestInstance) {
+        try { (window as any).__prwTestInstance.close(); } catch { /* ignore */ }
+      }
+
+      const instance = new Ctor({
+        token: widget.token,
+        autoOpen: true,
+        hideDefaultTrigger: true, // no floating button while testing
+      });
+      (window as any).__prwTestInstance = instance;
+      instance.init();
+      toast.dismiss(loadingToast);
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Save failed');
-    } finally { setSaving(false); }
+      toast.dismiss(loadingToast);
+      toast.error(e?.response?.data?.message || e?.message || 'Test failed');
+    } finally {
+      setTesting(false);
+    }
   };
 
   const embedCode = useMemo(() => {
@@ -160,12 +232,12 @@ export default function EmbedWidgetEditor() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setShowPreview(true)}
+          <LoadingButton onClick={handleTest} loading={testing}
             style={{ padding: '10px 18px', fontSize: '14px' }}
             className={`flex items-center gap-2 rounded-lg border font-medium transition ${d ? 'border-gray-700 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
             <Sparkles className="w-4 h-4" />
             Test Widget
-          </button>
+          </LoadingButton>
           <LoadingButton onClick={handleSave} loading={saving}
             className="flex items-center gap-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition font-medium"
             style={{ padding: '10px 18px', fontSize: '14px' }}>
@@ -197,14 +269,11 @@ export default function EmbedWidgetEditor() {
                     {['modal', 'popover'].map((t) => (
                       <button key={t} onClick={() => {
                         // Reset openFrom when switching types if the current
-                        // value isn't valid in the new type's option set.
-                        const validForNew = t === 'modal'
-                          ? MODAL_OPEN_FROM.some((o) => o.value === widget.openFrom)
-                          : POPOVER_OPEN_FROM.some((o) => o.value === widget.openFrom);
-                        const newOpenFrom = validForNew
-                          ? widget.openFrom
-                          : (t === 'modal' ? 'right' : 'center');
-                        update({ type: t, openFrom: newOpenFrom });
+                        // value isn't available in the new type's option set.
+                        const nextOptions = t === 'modal' ? MODAL_OPEN_FROM : POPOVER_OPEN_FROM;
+                        const isValid = nextOptions.some((o) => o.value === widget.openFrom);
+                        const nextOpenFrom = isValid ? widget.openFrom : (t === 'modal' ? 'right' : 'auto');
+                        update({ type: t, openFrom: nextOpenFrom });
                       }}
                         className={`px-5 py-1.5 text-sm font-medium rounded-md transition-colors capitalize ${
                           widget.type === t
@@ -215,18 +284,22 @@ export default function EmbedWidgetEditor() {
                   </div>
                 </FieldGroup>
 
-                {/* Open From — different options depending on type */}
+                {/* Open From — different options per type */}
                 <FieldGroup
                   label="Open From"
-                  help={widget.type === 'modal' ? 'Which edge the drawer slides in from.' : 'Alignment of the popover dialog.'}
+                  help={widget.type === 'modal' ? 'Right/Left drawer or Center modal dialog.' : 'Where the popover is anchored.'}
                   d={d}
                 >
-                  <CustomDropdown
-                    label="Open From"
-                    value={widget.openFrom}
-                    options={widget.type === 'modal' ? MODAL_OPEN_FROM : POPOVER_OPEN_FROM}
-                    onChange={(v) => update({ openFrom: v })}
-                  />
+                  <div className="flex gap-2 flex-wrap">
+                    {(widget.type === 'modal' ? MODAL_OPEN_FROM : POPOVER_OPEN_FROM).map((opt) => (
+                      <button key={opt.value} onClick={() => update({ openFrom: opt.value })}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                          widget.openFrom === opt.value
+                            ? 'border-[#059669] text-[#059669]'
+                            : (d ? 'border-gray-700 text-gray-400 hover:border-gray-500' : 'border-gray-300 text-gray-600 hover:border-gray-400')
+                        }`}>{opt.label}</button>
+                    ))}
+                  </div>
                 </FieldGroup>
 
                 {/* Theme */}
@@ -325,15 +398,17 @@ export default function EmbedWidgetEditor() {
                   </div>
                 </FieldGroup>
 
-                {/* Submission board */}
-                <FieldGroup label="Submission Board" help="Default board that new submissions go into." d={d}>
+                {/* Submission board — CustomDropdown has its own floating label */}
+                <div>
                   <CustomDropdown label="Submission Board" value={widget.submissionBoardId || ''}
                     options={[
                       { value: '', label: 'Select a board' },
                       ...boards.map((b) => ({ value: b.id, label: b.name })),
                     ]}
-                    onChange={(v) => update({ submissionBoardId: v || null })} />
-                </FieldGroup>
+                    onChange={(v) => update({ submissionBoardId: v || null })}
+                    className="w-full" minWidth="100%" portalMode />
+                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Default board that new submissions go into.</p>
+                </div>
 
                 <ToggleRow label="Show submission form only" help="Hide browse/list views — only the submit form is shown."
                   checked={widget.showSubmissionFormOnly} onChange={(v) => update({ showSubmissionFormOnly: v })} d={d} />
@@ -387,11 +462,13 @@ export default function EmbedWidgetEditor() {
                   </p>
                 </div>
 
-                <FieldGroup label="Default sort" help="Order posts use when the widget first loads." d={d}>
+                <div>
                   <CustomDropdown label="Default sort" value={widget.defaultSort}
                     options={SORT_OPTIONS}
-                    onChange={(v) => update({ defaultSort: v })} />
-                </FieldGroup>
+                    onChange={(v) => update({ defaultSort: v })}
+                    className="w-full" minWidth="100%" portalMode />
+                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>Order posts use when the widget first loads.</p>
+                </div>
               </div>
             )}
           </div>
@@ -399,22 +476,29 @@ export default function EmbedWidgetEditor() {
 
         {/* RIGHT — Embed code + helper */}
         <div className="space-y-4">
-          {/* Embed code */}
-          <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div className={`flex items-center justify-between px-5 py-4 border-b ${d ? 'border-gray-700' : 'border-gray-200'}`}>
-              <div className={`font-semibold ${d ? 'text-white' : 'text-gray-900'}`}>Embed Code</div>
+          {/* Embed code — VS Code-like editor */}
+          <div className={`rounded-xl border overflow-hidden ${d ? 'border-gray-700' : 'border-gray-200'}`}>
+            {/* Editor title bar */}
+            <div style={{ background: '#2d2d2d' }} className="flex items-center justify-between px-4 py-2.5 border-b border-black/30">
+              <div className="flex items-center gap-2">
+                {/* Traffic-light dots like a code editor */}
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f57', display: 'inline-block' }} />
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#febc2e', display: 'inline-block' }} />
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840', display: 'inline-block' }} />
+                <span className="ml-3 text-[12px] font-medium" style={{ color: '#cccccc', fontFamily: '"JetBrains Mono", Menlo, monospace' }}>embed.html</span>
+              </div>
               <Tooltip title="Copy to clipboard">
                 <button onClick={copyEmbed}
-                  className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition ${d ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}>
-                  <Copy className="w-4 h-4" />
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md transition"
+                  style={{ color: '#cccccc' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+                  <Copy className="w-3.5 h-3.5" />
                   Copy
                 </button>
               </Tooltip>
             </div>
-            <pre className={`text-xs font-mono p-4 overflow-x-auto leading-relaxed ${d ? 'text-gray-300' : 'text-gray-700'}`}
-              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {embedCode}
-            </pre>
+            <CodeBlock code={embedCode} />
           </div>
 
           {/* Helper tip */}
@@ -427,8 +511,9 @@ export default function EmbedWidgetEditor() {
         </div>
       </div>
 
-      {/* Preview overlay */}
-      {showPreview && <WidgetPreview config={widget} onClose={() => setShowPreview(false)} />}
+      {/* Test Widget loads the real widget.js runtime directly on top of the
+          editor — all features (upvote, submit, search) run against the live
+          backend via the same public endpoints the embedded widget uses. */}
     </div>
   );
 }

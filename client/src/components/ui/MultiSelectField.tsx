@@ -24,15 +24,29 @@ export default function MultiSelectField({ label, placeholder = 'Select…', opt
   const d = theme === 'dark';
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ left: 0, top: 0, width: 0 });
+  const [pos, setPos] = useState<{
+    left: number; width: number; placement: 'top' | 'bottom';
+    top?: number; bottom?: number;
+  }>({ left: 0, width: 0, placement: 'bottom', top: 0 });
 
   useEffect(() => {
     if (!open) return;
+    const DROPDOWN_MAX_HEIGHT = 320;
+    const GAP = 6;
     const update = () => {
       const el = triggerRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      setPos({ left: r.left, top: r.bottom + 6, width: r.width });
+      const spaceBelow = window.innerHeight - r.bottom;
+      const spaceAbove = r.top;
+      // Flip above trigger if not enough space below AND more space above
+      const placement = (spaceBelow < DROPDOWN_MAX_HEIGHT && spaceAbove > spaceBelow) ? 'top' : 'bottom';
+      if (placement === 'top') {
+        // Anchor with `bottom` so dropdown grows upward from just above the trigger
+        setPos({ left: r.left, width: r.width, placement, bottom: window.innerHeight - r.top + GAP });
+      } else {
+        setPos({ left: r.left, width: r.width, placement, top: r.bottom + GAP });
+      }
     };
     update();
     window.addEventListener('scroll', update, true);
@@ -82,7 +96,15 @@ export default function MultiSelectField({ label, placeholder = 'Select…', opt
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setOpen(false)} />
           <div
-            style={{ position: 'fixed', left: pos.left, top: pos.top, width: pos.width, zIndex: 9999, maxHeight: '320px' }}
+            style={{
+              position: 'fixed',
+              left: pos.left,
+              width: pos.width,
+              ...(pos.placement === 'top' ? { bottom: pos.bottom } : { top: pos.top }),
+              zIndex: 9999,
+              maxHeight: '320px',
+              boxShadow: pos.placement === 'top' ? '0 -8px 24px rgba(0,0,0,0.12)' : '0 8px 24px rgba(0,0,0,0.12)',
+            }}
             className={`rounded-lg border shadow-xl p-1 overflow-y-auto ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             {options.length === 0 ? (
               <div className={`px-3 py-6 text-center text-sm ${d ? 'text-gray-500' : 'text-gray-400'}`}>
