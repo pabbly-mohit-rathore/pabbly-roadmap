@@ -21,6 +21,20 @@
   })();
   var scriptSrc = (scriptEl && scriptEl.src) || '';
   var API_BASE = scriptSrc.replace(/\/widget\.js.*$/, '') || window.location.origin;
+
+  // ---------- auth helper ----------
+  // If the widget runs on the same origin as the main app (e.g. admin's
+  // Test Widget, or pabbly-roadmap.vercel.app users embedding on their
+  // own site) an accessToken may already be in localStorage. Use it so
+  // the visitor doesn't need to re-enter their email to vote or submit.
+  function getAuthToken() {
+    try { return localStorage.getItem('accessToken'); } catch (e) { return null; }
+  }
+  function authHeaders() {
+    var t = getAuthToken();
+    return t ? { 'Authorization': 'Bearer ' + t } : {};
+  }
+  function isAuthed() { return !!getAuthToken(); }
   var APP_URL  = (function () {
     // Best-effort: main app is usually served from a different host.
     // For now use the same origin as API; admin can override with config.appUrl.
@@ -458,16 +472,21 @@
   };
 
   // Post card — mirrors the "All Posts" table row layout from the main app:
-  // left-side vote button (boxed, with count), then title + meta + chips.
+  // left-side compact horizontal vote button, then single-line title and
+  // description (both truncated; full text on hover via native title attr).
+  // Meta row: Board · Status · Comments.
   Widget.prototype._postCard = function (p) {
     var self = this, e = this.els;
     var hasVoted = !!this.state.votedIds[p.id];
+    var descClean = p.description ? stripHtml(p.description) : '';
 
     var card = el('div', {
+      // Native browser tooltip shows full title + description on hover
+      title: descClean ? (p.title + '\n\n' + descClean) : p.title,
       style: [
         'background:' + (e.dark ? '#1f2937' : '#ffffff'),
         'border:1px solid ' + e.border,
-        'border-radius:12px', 'padding:14px', 'margin-bottom:10px',
+        'border-radius:12px', 'padding:12px 14px', 'margin-bottom:10px',
         'cursor:pointer', 'transition:border-color 0.15s ease, box-shadow 0.15s ease',
         'display:flex', 'gap:12px', 'align-items:flex-start',
       ].join(';'),
@@ -476,18 +495,18 @@
     card.addEventListener('mouseenter', function () { card.style.borderColor = e.accent; card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; });
     card.addEventListener('mouseleave', function () { card.style.borderColor = e.border; card.style.boxShadow = 'none'; });
 
-    // Vote button on left — app's upvote column style
+    // Compact horizontal vote button — matches app's upvote chip size
     var voteBtn = el('button', {
+      'aria-label': 'Upvote',
       style: [
-        'display:inline-flex', 'flex-direction:column', 'align-items:center',
-        'justify-content:center', 'gap:2px',
-        'min-width:48px', 'padding:8px 4px',
+        'display:inline-flex', 'align-items:center', 'gap:6px',
+        'padding:6px 12px', 'height:32px',
         'border:1px solid ' + (hasVoted ? e.accent : e.border),
         'background:' + (e.dark ? '#0f172a' : '#fff'),
         'color:' + (hasVoted ? e.accent : e.text),
         'border-radius:8px', 'cursor:pointer',
         'font-size:13px', 'font-weight:600',
-        'flex-shrink:0',
+        'flex-shrink:0', 'line-height:1',
       ].join(';'),
       onclick: function (ev) { ev.stopPropagation(); self._toggleVote(p); },
     });
@@ -497,73 +516,57 @@
     // Right content
     var content = el('div', { style: 'flex:1;min-width:0;' });
 
+    // Title — single line, truncated
     var titleEl = el('div', {
       style: [
-        'font-size:15px', 'font-weight:600',
-        'color:' + e.text, 'line-height:1.35', 'margin-bottom:4px',
+        'font-size:14px', 'font-weight:600',
+        'color:' + e.text, 'line-height:1.4', 'margin-bottom:2px',
         'overflow:hidden', 'text-overflow:ellipsis', 'white-space:nowrap',
       ].join(';'),
     });
     titleEl.textContent = p.title;
     content.appendChild(titleEl);
 
-    if (p.description) {
+    // Description — single line, truncated
+    if (descClean) {
       var desc = el('div', {
         style: [
-          'font-size:13px', 'color:' + e.muted, 'line-height:1.5',
-          'margin-bottom:10px',
-          'display:-webkit-box', '-webkit-line-clamp:2', '-webkit-box-orient:vertical', 'overflow:hidden',
+          'font-size:12.5px', 'color:' + e.muted, 'line-height:1.45',
+          'margin-bottom:8px',
+          'overflow:hidden', 'text-overflow:ellipsis', 'white-space:nowrap',
         ].join(';'),
       });
-      desc.textContent = stripHtml(p.description);
+      desc.textContent = descClean;
       content.appendChild(desc);
     }
 
-    // Chips row: status + board + comments (tags only if present)
-    var chips = el('div', { style: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;' });
-
-    // Status badge — app's pill style
-    if (p.status) {
-      var sBg = statusBadgeBg(p.status, e.dark);
-      var sColor = statusBadgeColor(p.status, e.dark);
-      var statusChip = el('span', {
-        style: 'display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:' + sBg + ';color:' + sColor + ';',
-      });
-      statusChip.textContent = prettyStatus(p.status);
-      chips.appendChild(statusChip);
-    }
+    // Meta row: Board · Status · Comments (left → right)
+    var meta = el('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;' });
 
     if (p.board) {
-      var boardChip = el('span', {
+      var boardEl = el('span', {
         style: 'font-size:12px;color:' + e.muted + ';font-weight:500;',
       });
-      boardChip.textContent = p.board.name;
-      chips.appendChild(boardChip);
+      boardEl.textContent = p.board.name;
+      meta.appendChild(boardEl);
     }
 
-    // Tags (max 2)
-    (p.tags || []).slice(0, 2).forEach(function (t) {
-      var tag = t.tag || t;
-      if (!tag) return;
-      var c = tag.color || '#6366f1';
-      var chip = el('span', {
-        style: 'display:inline-block;padding:2px 8px;border-radius:4px;background:' + c + '1a;color:' + c + ';font-size:11px;font-weight:600;',
+    if (p.status) {
+      var sChip = el('span', {
+        style: 'display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:' + statusBadgeBg(p.status, e.dark) + ';color:' + statusBadgeColor(p.status, e.dark) + ';',
       });
-      chip.textContent = tag.name;
-      chips.appendChild(chip);
-    });
+      sChip.textContent = prettyStatus(p.status);
+      meta.appendChild(sChip);
+    }
 
-    // Comments count — push to right
     var cc = (p._count && p._count.comments) || 0;
-    if (cc > 0) {
-      var commentChip = el('span', {
-        style: 'display:inline-flex;align-items:center;gap:3px;font-size:12px;color:' + e.muted + ';margin-left:auto;',
-      });
-      commentChip.innerHTML = ICON.comment + '<span>' + cc + '</span>';
-      chips.appendChild(commentChip);
-    }
+    var commentEl = el('span', {
+      style: 'display:inline-flex;align-items:center;gap:3px;font-size:12px;color:' + e.muted + ';',
+    });
+    commentEl.innerHTML = ICON.comment + '<span>' + cc + '</span>';
+    meta.appendChild(commentEl);
 
-    content.appendChild(chips);
+    content.appendChild(meta);
     card.appendChild(content);
     return card;
   };
@@ -737,7 +740,9 @@
       return w;
     }
 
-    // Info banner — only existing users can post
+    var authed = isAuthed();
+
+    // Info banner — tailored message depending on auth state
     var notice = el('div', {
       style: [
         'padding:10px 12px', 'border-radius:8px',
@@ -747,14 +752,19 @@
         'font-size:12px', 'margin-bottom:14px', 'line-height:1.5',
       ].join(';'),
     });
-    notice.innerHTML = 'Only registered roadmap users can submit feedback. Please use the email you signed up with.';
+    notice.innerHTML = authed
+      ? 'Submitting as your signed-in roadmap account.'
+      : 'Only registered roadmap users can submit feedback. Please use the email you signed up with.';
     wrap.appendChild(notice);
 
-    var emailInput = el('input', { type: 'email', placeholder: 'Your registered email', value: self.state.voterEmail || '', style: inputBase });
+    var emailInput = null;
+    if (!authed) {
+      emailInput = el('input', { type: 'email', placeholder: 'Your registered email', value: self.state.voterEmail || '', style: inputBase });
+      wrap.appendChild(field('Registered Email', emailInput));
+    }
     var titleInput = el('input', { type: 'text', placeholder: 'What would you like to request?', style: inputBase });
     var descInput  = el('textarea', { placeholder: 'Tell us more about what you need…', style: inputBase + ';min-height:120px;resize:vertical;' });
 
-    wrap.appendChild(field('Registered Email', emailInput));
     wrap.appendChild(field('Title', titleInput));
     wrap.appendChild(field('Description (optional)', descInput));
 
@@ -768,20 +778,23 @@
       msg.style.color = e.muted;
       msg.textContent = 'Submitting…';
       btn.disabled = true;
+      var headers = { 'Content-Type': 'application/json' };
+      if (authed) Object.assign(headers, authHeaders());
+      var body = {
+        title: titleInput.value.trim(),
+        description: descInput.value.trim(),
+      };
+      if (!authed && emailInput) body.email = emailInput.value.trim();
       fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: emailInput.value.trim(),
-          title: titleInput.value.trim(),
-          description: descInput.value.trim(),
-        }),
+        headers: headers,
+        body: JSON.stringify(body),
       })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d, status: r.status }; }); })
         .then(function (res) {
           btn.disabled = false;
           if (res.ok && res.d && res.d.success) {
-            if (emailInput.value.trim()) {
+            if (!authed && emailInput && emailInput.value.trim()) {
               self.state.voterEmail = emailInput.value.trim().toLowerCase();
               localStorage.setItem(self._lsKey('email'), self.state.voterEmail);
             }
@@ -861,22 +874,33 @@
   // ============================================================
   Widget.prototype._toggleVote = function (post) {
     var self = this;
-    var email = this.state.voterEmail;
-    if (!email) {
-      email = window.prompt('Enter your email to vote:');
-      if (!email) return;
-      email = email.trim().toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        alert('Please enter a valid email.');
-        return;
+    var headers = { 'Content-Type': 'application/json' };
+    var body = { postId: post.id };
+
+    if (isAuthed()) {
+      // Logged-in path — no email prompt needed
+      Object.assign(headers, authHeaders());
+    } else {
+      // Fall back to email prompt for anonymous visitors on external sites
+      var email = this.state.voterEmail;
+      if (!email) {
+        email = window.prompt('Enter your email to vote:');
+        if (!email) return;
+        email = email.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          alert('Please enter a valid email.');
+          return;
+        }
+        this.state.voterEmail = email;
+        localStorage.setItem(this._lsKey('email'), email);
       }
-      this.state.voterEmail = email;
-      localStorage.setItem(this._lsKey('email'), email);
+      body.email = email;
     }
+
     fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(this.opts.token) + '/vote', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postId: post.id, email: email }),
+      headers: headers,
+      body: JSON.stringify(body),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {

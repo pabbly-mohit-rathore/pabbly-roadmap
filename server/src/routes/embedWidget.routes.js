@@ -15,7 +15,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
+const { authenticate, optionalAuth } = require('../middleware/auth');
 const {
   getWidgets,
   getWidget,
@@ -30,14 +30,15 @@ const {
   submitPublicPost,
 } = require('../controllers/embedWidget.controller');
 
-// Public — no auth. CORS is mounted globally in index.js on
-// /api/embed-widgets/public to allow any origin (embed script runs on
-// third-party sites and can't be restricted).
+// Public — CORS mounted globally in index.js. Vote + submit use
+// optionalAuth: if the caller has a valid accessToken (e.g. embedded
+// on the same origin where user is already logged in), we use the
+// authenticated user and skip the email prompt.
 router.get('/public/:token', getPublicConfig);
 router.get('/public/:token/posts', getPublicPosts);
 router.get('/public/:token/posts/:postId', getPublicPost);
-router.post('/public/:token/vote', togglePublicVote);
-router.post('/public/:token/submit', submitPublicPost);
+router.post('/public/:token/vote', optionalAuth, togglePublicVote);
+router.post('/public/:token/submit', optionalAuth, submitPublicPost);
 
 // Admin
 router.get('/', authenticate, getWidgets);

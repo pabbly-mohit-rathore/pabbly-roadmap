@@ -297,9 +297,10 @@ const getPublicPost = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUBLIC — toggle upvote. Visitor is identified by the provided email
-// (stored in browser after first interaction). Anonymous user is
-// created on first vote if needed.
+// PUBLIC — toggle upvote. If caller is authenticated (optionalAuth set
+// req.user), use that user and skip email. Otherwise fall back to email
+// (creates anonymous user on first vote) — kept for external embeds
+// where user isn't logged in.
 const togglePublicVote = async (req, res, next) => {
   try {
     const { token } = req.params;
@@ -313,8 +314,14 @@ const togglePublicVote = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Widget not found or inactive.' });
     }
     if (!postId) return res.status(400).json({ success: false, message: 'postId is required.' });
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
-      return res.status(400).json({ success: false, message: 'A valid email is required to vote.' });
+
+    let user;
+    if (req.user && req.user.isActive) {
+      user = req.user;
+    } else {
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+        return res.status(401).json({ success: false, message: 'Please sign in to vote.', code: 'AUTH_REQUIRED' });
+      }
     }
 
     const post = await prisma.post.findUnique({
@@ -328,18 +335,21 @@ const togglePublicVote = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Post not available through this widget.' });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
-    let user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    // If no authenticated user, resolve by email (create on-the-fly)
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: cleanEmail,
-          name: cleanEmail.split('@')[0],
-          role: 'user',
-          isActive: true,
-          emailVerified: false,
-        },
-      });
+      const cleanEmail = String(email).trim().toLowerCase();
+      user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email: cleanEmail,
+            name: cleanEmail.split('@')[0],
+            role: 'user',
+            isActive: true,
+            emailVerified: false,
+          },
+        });
+      }
     }
 
     const existing = await prisma.vote.findUnique({
@@ -361,17 +371,14 @@ const togglePublicVote = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUBLIC — widget script submits a post. Finds-or-creates a user by email
-// (no password — passwordless flow). The created post uses the widget's
-// submissionBoardId by default, or the provided boardId if allowed.
+// PUBLIC — widget script submits a post. If caller is authenticated we
+// use that user directly (no email needed). Otherwise we require a
+// registered roadmap-user email to attribute the submission to.
 const submitPublicPost = async (req, res, next) => {
   try {
     const { token } = req.params;
-    const { name, email, title, description, boardId } = req.body || {};
+    const { email, title, description, boardId } = req.body || {};
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
-      return res.status(400).json({ success: false, message: 'A valid email is required.' });
-    }
     if (!title || !title.trim()) {
       return res.status(400).json({ success: false, message: 'Title is required.' });
     }
@@ -398,15 +405,23 @@ const submitPublicPost = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'That board is not available through this widget.' });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
-    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
-    // Only existing, active roadmap users can submit through the widget.
-    if (!user || !user.isActive) {
-      return res.status(403).json({
-        success: false,
-        message: 'This email is not registered on our roadmap. Please sign up first to submit feedback.',
-        code: 'USER_NOT_REGISTERED',
-      });
+    // Resolve author — authenticated user first, otherwise lookup by email
+    let user;
+    if (req.user && req.user.isActive) {
+      user = req.user;
+    } else {
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+        return res.status(401).json({ success: false, message: 'Please sign in to submit feedback.', code: 'AUTH_REQUIRED' });
+      }
+      const cleanEmail = String(email).trim().toLowerCase();
+      user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      if (!user || !user.isActive) {
+        return res.status(403).json({
+          success: false,
+          message: 'This email is not registered on our roadmap. Please sign up first to submit feedback.',
+          code: 'USER_NOT_REGISTERED',
+        });
+      }
     }
 
     // Build a URL-safe slug. Append short random suffix to avoid collisions.
