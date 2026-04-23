@@ -141,6 +141,7 @@ export default function CodeBlock({ code }: Props) {
 
   return (
     <div
+      className="prw-codeblock"
       style={{
         background: TOKEN.bg,
         color: TOKEN.plain,
@@ -154,6 +155,14 @@ export default function CodeBlock({ code }: Props) {
         paddingBottom: 14,
       }}
     >
+      <style>{`
+        .prw-codeblock::-webkit-scrollbar { width: 12px; height: 12px; }
+        .prw-codeblock::-webkit-scrollbar-track { background: #1e1e1e; }
+        .prw-codeblock::-webkit-scrollbar-thumb { background: #424242; border: 3px solid #1e1e1e; border-radius: 6px; }
+        .prw-codeblock::-webkit-scrollbar-thumb:hover { background: #4f4f4f; }
+        .prw-codeblock::-webkit-scrollbar-corner { background: #1e1e1e; }
+        .prw-codeblock { scrollbar-color: #424242 #1e1e1e; scrollbar-width: thin; }
+      `}</style>
       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
         <tbody>
           {lines.map((line, idx) => (
