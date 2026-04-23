@@ -39,9 +39,16 @@
       '.prw-post-content h3 { font-size:15px; }\n' +
       '.prw-post-content strong, .prw-post-content b { font-weight:700; }\n' +
       '.prw-post-content em, .prw-post-content i { font-style:italic; }\n' +
-      '.prw-post-content ul, .prw-post-content ol { padding-left:22px; margin:10px 0 14px; }\n' +
-      '.prw-post-content li { margin-bottom:6px; }\n' +
+      // Explicit list-style defeats Tailwind preflight (`ul { list-style:none }`)
+      // which otherwise wipes out the bullet/number markers on host pages.
+      '.prw-post-content ul { list-style:disc outside; padding-left:22px; margin:10px 0 14px; }\n' +
+      '.prw-post-content ol { list-style:decimal outside; padding-left:22px; margin:10px 0 14px; }\n' +
+      '.prw-post-content ul ul { list-style:circle outside; margin:4px 0; }\n' +
+      '.prw-post-content ul ul ul { list-style:square outside; }\n' +
+      '.prw-post-content li { margin-bottom:6px; display:list-item; }\n' +
+      '.prw-post-content li::marker { color:inherit; }\n' +
       '.prw-post-content li > p { margin:0; }\n' +
+      '.prw-post-content li > p + p { margin-top:6px; }\n' +
       '.prw-post-content a { color:#059669; text-decoration:underline; word-break:break-word; }\n' +
       '.prw-post-content code { background:rgba(148,163,184,0.16); padding:1px 6px; border-radius:4px; font-family:"JetBrains Mono",Menlo,Monaco,Consolas,monospace; font-size:12.5px; }\n' +
       '.prw-post-content pre { background:rgba(148,163,184,0.16); padding:10px 12px; border-radius:8px; overflow-x:auto; font-size:12.5px; margin:10px 0; }\n' +
