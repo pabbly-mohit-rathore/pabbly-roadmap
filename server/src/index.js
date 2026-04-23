@@ -109,10 +109,14 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
 
 // Public static files (embed widget runtime). Served with permissive CORS
 // so third-party origins can load widget.js without issue.
+// no-cache so browsers always revalidate — iteration is fast during dev
+// and the widget.js file is ~20KB, negligible.
 app.use('/', express.static(path.join(__dirname, '../public'), {
-  maxAge: '1h',
+  etag: true,
+  lastModified: true,
   setHeaders: function (res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
   },
 }));
 

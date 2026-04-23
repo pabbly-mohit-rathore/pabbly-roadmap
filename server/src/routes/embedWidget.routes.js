@@ -25,6 +25,8 @@ const {
   toggleWidget,
   getPublicConfig,
   getPublicPosts,
+  getPublicPost,
+  togglePublicVote,
   submitPublicPost,
 } = require('../controllers/embedWidget.controller');
 
@@ -33,6 +35,8 @@ const {
 // third-party sites and can't be restricted).
 router.get('/public/:token', getPublicConfig);
 router.get('/public/:token/posts', getPublicPosts);
+router.get('/public/:token/posts/:postId', getPublicPost);
+router.post('/public/:token/vote', togglePublicVote);
 router.post('/public/:token/submit', submitPublicPost);
 
 // Admin

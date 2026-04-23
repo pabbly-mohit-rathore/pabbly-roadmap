@@ -216,10 +216,12 @@ const getPublicConfig = async (req, res, next) => {
 
 // PUBLIC — widget script fetches its posts list, respecting the widget's
 // configured filters (statuses, boardIds) and default sort order.
+// Supports ?q= for search (title/description + tag name match).
 const getPublicPosts = async (req, res, next) => {
   try {
     const { token } = req.params;
-    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
+    const q = (req.query.q || '').trim();
 
     const widget = await prisma.embedWidget.findUnique({
       where: { token },
@@ -231,19 +233,131 @@ const getPublicPosts = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Widget not found or inactive.' });
     }
 
+    const where = buildWidgetPostWhere(widget);
+    if (q) {
+      where.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+        { tags: { some: { tag: { name: { contains: q, mode: 'insensitive' } } } } },
+      ];
+    }
+
     const posts = await prisma.post.findMany({
-      where: buildWidgetPostWhere(widget),
+      where,
       orderBy: buildWidgetOrderBy(widget.defaultSort),
       take: limit,
       select: {
         id: true, title: true, slug: true, description: true, status: true,
         voteCount: true, createdAt: true,
         board: { select: { id: true, name: true } },
+        tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
         _count: { select: { comments: true } },
       },
     });
 
     res.json({ success: true, data: { posts } });
+  } catch (err) { next(err); }
+};
+
+// PUBLIC — single post detail for the drawer detail view
+const getPublicPost = async (req, res, next) => {
+  try {
+    const { token, postId } = req.params;
+    const widget = await prisma.embedWidget.findUnique({
+      where: { token },
+      select: { isActive: true, boardIds: true, postStatuses: true },
+    });
+    if (!widget || !widget.isActive) {
+      return res.status(404).json({ success: false, message: 'Widget not found or inactive.' });
+    }
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: {
+        id: true, title: true, slug: true, description: true, content: true,
+        status: true, voteCount: true, commentCount: true, createdAt: true, boardId: true,
+        author: { select: { id: true, name: true, avatar: true } },
+        board: { select: { id: true, name: true } },
+        tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
+        _count: { select: { comments: true } },
+      },
+    });
+    if (!post || post.isDraft) {
+      return res.status(404).json({ success: false, message: 'Post not found.' });
+    }
+    // Enforce widget's board + status scope
+    if (Array.isArray(widget.boardIds) && widget.boardIds.length > 0 && !widget.boardIds.includes(post.boardId)) {
+      return res.status(404).json({ success: false, message: 'Post not found in this widget.' });
+    }
+    if (Array.isArray(widget.postStatuses) && widget.postStatuses.length > 0 && !widget.postStatuses.includes(post.status)) {
+      return res.status(404).json({ success: false, message: 'Post not found in this widget.' });
+    }
+
+    res.json({ success: true, data: { post } });
+  } catch (err) { next(err); }
+};
+
+// PUBLIC — toggle upvote. Visitor is identified by the provided email
+// (stored in browser after first interaction). Anonymous user is
+// created on first vote if needed.
+const togglePublicVote = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const { postId, email } = req.body || {};
+
+    const widget = await prisma.embedWidget.findUnique({
+      where: { token },
+      select: { isActive: true, boardIds: true, postStatuses: true },
+    });
+    if (!widget || !widget.isActive) {
+      return res.status(404).json({ success: false, message: 'Widget not found or inactive.' });
+    }
+    if (!postId) return res.status(400).json({ success: false, message: 'postId is required.' });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+      return res.status(400).json({ success: false, message: 'A valid email is required to vote.' });
+    }
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId }, select: { id: true, boardId: true, status: true, isDraft: true },
+    });
+    if (!post || post.isDraft) return res.status(404).json({ success: false, message: 'Post not found.' });
+    if (Array.isArray(widget.boardIds) && widget.boardIds.length > 0 && !widget.boardIds.includes(post.boardId)) {
+      return res.status(404).json({ success: false, message: 'Post not available through this widget.' });
+    }
+    if (Array.isArray(widget.postStatuses) && widget.postStatuses.length > 0 && !widget.postStatuses.includes(post.status)) {
+      return res.status(404).json({ success: false, message: 'Post not available through this widget.' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    let user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: cleanEmail,
+          name: cleanEmail.split('@')[0],
+          role: 'user',
+          isActive: true,
+          emailVerified: false,
+        },
+      });
+    }
+
+    const existing = await prisma.vote.findUnique({
+      where: { userId_postId: { userId: user.id, postId } },
+    }).catch(() => null);
+
+    let voted;
+    if (existing) {
+      await prisma.vote.delete({ where: { userId_postId: { userId: user.id, postId } } });
+      voted = false;
+    } else {
+      await prisma.vote.create({ data: { userId: user.id, postId } });
+      voted = true;
+    }
+    const count = await prisma.vote.count({ where: { postId } });
+    await prisma.post.update({ where: { id: postId }, data: { voteCount: count } });
+
+    res.json({ success: true, data: { voted, voteCount: count } });
   } catch (err) { next(err); }
 };
 
@@ -330,5 +444,7 @@ module.exports = {
   toggleWidget,
   getPublicConfig,
   getPublicPosts,
+  getPublicPost,
+  togglePublicVote,
   submitPublicPost,
 };
