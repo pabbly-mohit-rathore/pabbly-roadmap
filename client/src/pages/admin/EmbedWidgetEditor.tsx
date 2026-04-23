@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Sparkles, Settings as SettingsIcon, ChevronDown, Info } from 'lucide-react';
+import { ArrowLeft, Copy, Sparkles, Settings as SettingsIcon, ChevronDown, Info, Filter } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -8,8 +8,24 @@ import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import Tooltip from '../../components/ui/Tooltip';
 import CustomDropdown from '../../components/ui/CustomDropdown';
+import MultiSelectField from '../../components/ui/MultiSelectField';
 import WidgetPreview from '../../components/admin/WidgetPreview';
 import type { WidgetConfig } from '../../components/admin/WidgetPreview';
+
+const STATUS_OPTIONS = [
+  { value: 'under_review', label: 'Under Review' },
+  { value: 'planned', label: 'Planned' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'live', label: 'Live' },
+  { value: 'hold', label: 'On Hold' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Newest First' },
+  { value: 'oldest', label: 'Oldest First' },
+  { value: 'most_voted', label: 'Most Voted' },
+  { value: 'most_commented', label: 'Most Commented' },
+];
 
 interface Widget extends WidgetConfig {
   id: string;
@@ -18,6 +34,8 @@ interface Widget extends WidgetConfig {
   customTriggerSelector: string | null;
   boardIds: string[];
   submissionBoardId: string | null;
+  postStatuses: string[];
+  defaultSort: string;
   isActive: boolean;
 }
 
@@ -38,6 +56,7 @@ export default function EmbedWidgetEditor() {
   const [showPreview, setShowPreview] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(true);
   const [configOpen, setConfigOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(true);
 
   useEffect(() => { fetchData(); }, [id]);
 
@@ -83,7 +102,10 @@ export default function EmbedWidgetEditor() {
       accent: widget.accentColor,
       token: widget.token,
       modules: widget.modules,
+      sort: widget.defaultSort,
     };
+    if (widget.postStatuses.length > 0) cfg.statuses = widget.postStatuses;
+    if (widget.boardIds.length > 0) cfg.boards = widget.boardIds;
     if (widget.customTrigger && widget.customTriggerSelector) cfg.selector = widget.customTriggerSelector;
     const lines = [
       widget.customTrigger && widget.customTriggerSelector
@@ -302,6 +324,54 @@ export default function EmbedWidgetEditor() {
 
                 <ToggleRow label="Active" help="Inactive widgets stop rendering on customer sites."
                   checked={widget.isActive} onChange={(v) => update({ isActive: v })} d={d} />
+              </div>
+            )}
+          </div>
+
+          {/* Post Filters section */}
+          <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <button onClick={() => setFiltersOpen(!filtersOpen)}
+              className={`w-full flex items-center justify-between px-5 py-4 ${d ? 'text-white' : 'text-gray-900'}`}>
+              <div className="flex items-center gap-2 font-semibold">
+                <Filter className="w-4 h-4 text-[#059669]" />
+                Post Filters
+              </div>
+              <ChevronDown className={`w-4 h-4 transition-transform ${filtersOpen ? 'rotate-180' : ''} text-gray-400`} />
+            </button>
+            {filtersOpen && (
+              <div className="px-5 pb-5 space-y-5 border-t border-dashed"
+                style={{ borderColor: d ? '#374151' : '#e5e7eb' }}>
+                <div style={{ paddingTop: 20 }}>
+                  <MultiSelectField
+                    label="Show posts in statuses"
+                    placeholder="Select status"
+                    options={STATUS_OPTIONS}
+                    value={widget.postStatuses}
+                    onChange={(v) => update({ postStatuses: v })}
+                  />
+                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>
+                    Only posts in selected statuses will appear. Leave empty to show all.
+                  </p>
+                </div>
+
+                <div>
+                  <MultiSelectField
+                    label="Show posts from the boards"
+                    placeholder="Select boards"
+                    options={boards.map((b) => ({ value: b.id, label: b.name }))}
+                    value={widget.boardIds}
+                    onChange={(v) => update({ boardIds: v })}
+                  />
+                  <p className={`text-xs ${d ? 'text-gray-500' : 'text-gray-400'}`} style={{ margin: '8px 14px 0' }}>
+                    Limit the widget to specific boards. Leave empty to show posts from all boards.
+                  </p>
+                </div>
+
+                <FieldGroup label="Default sort" help="Order posts use when the widget first loads." d={d}>
+                  <CustomDropdown label="Default sort" value={widget.defaultSort}
+                    options={SORT_OPTIONS}
+                    onChange={(v) => update({ defaultSort: v })} />
+                </FieldGroup>
               </div>
             )}
           </div>
