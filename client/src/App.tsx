@@ -28,6 +28,7 @@ const ChangelogView = lazy(() => import('./pages/admin/ChangelogView'));
 const BoardManagement = lazy(() => import('./pages/admin/BoardManagement'));
 const AdminBoardMembers = lazy(() => import('./pages/admin/BoardMembers'));
 const AdminSettings = lazy(() => import('./pages/admin/Settings'));
+const EmbedWidgetEditor = lazy(() => import('./pages/admin/EmbedWidgetEditor'));
 const ProfileSettingsPage = lazy(() => import('./pages/admin/ProfileSettingsPage'));
 const AdminUsers = lazy(() => import('./pages/admin/Users'));
 const UserFeatureRequests = lazy(() => import('./pages/user/FeatureRequests'));
@@ -138,6 +139,7 @@ function App() {
                     <Route path="users" element={<AdminUsers />} />
                     <Route path="changelog/:id/view" element={<ChangelogView />} />
                     <Route path="settings" element={isTeamAccess && !isAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminSettings />} />
+                    <Route path="settings/embed-widgets/:id/edit" element={isTeamAccess && !isAdmin ? <Navigate to="/admin/dashboard" replace /> : <EmbedWidgetEditor />} />
                     <Route path="profile-settings" element={<ProfileSettingsPage />} />
                   </Routes>
                 </AdminLayout>
