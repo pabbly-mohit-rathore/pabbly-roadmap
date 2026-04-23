@@ -41,8 +41,8 @@ function sanitize(body) {
   if (data.type && !['modal', 'popover'].includes(data.type)) {
     throw new Error('Invalid type — must be "modal" or "popover".');
   }
-  if (data.openFrom && !['left', 'right', 'top', 'bottom'].includes(data.openFrom)) {
-    throw new Error('Invalid openFrom — must be left, right, top, or bottom.');
+  if (data.openFrom && !['auto', 'left', 'right', 'top', 'bottom', 'center'].includes(data.openFrom)) {
+    throw new Error('Invalid openFrom — must be auto, left, right, top, bottom, or center.');
   }
   if (data.theme && !['light', 'dark'].includes(data.theme)) {
     throw new Error('Invalid theme — must be "light" or "dark".');

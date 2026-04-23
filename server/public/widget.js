@@ -98,7 +98,7 @@
   }
   // SVG icon strings (stroke=currentColor so parent color applies)
   var ICON = {
-    chat: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/></svg>',
+    chat: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/></svg>',
     close: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
     back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
     search: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
@@ -226,28 +226,34 @@
 
     // Panel position per type/openFrom
     //   modal   → full-height edge drawer (matches app's right-side user info drawer)
-    //   popover → centered dialog box (traditional modal — screen center)
+    //     - auto (default) = right | right | left | top | bottom
+    //   popover → dialog box
+    //     - center (default) = screen center | left = left-side | right = right-side
     var panelStyle = [];
-    var from = cfg.openFrom || 'right';
+    var from = cfg.openFrom || (cfg.type === 'popover' ? 'center' : 'right');
     if (cfg.type === 'popover') {
-      // Centered dialog box
-      panelStyle.push(
-        'top:50%', 'left:50%', 'transform:translate(-50%,-50%)',
-        'width:' + Math.min(560, width) + 'px', 'max-height:88vh',
-        'border-radius:14px'
-      );
-    } else {
-      // modal → edge drawer — no border-radius, single border-left/right/top/bottom
-      // matches admin user info drawer styling from the main app
-      panelStyle.push('width:' + width + 'px', 'height:100vh', 'top:0');
+      var popWidth = Math.min(560, width);
+      panelStyle.push('width:' + popWidth + 'px', 'max-height:88vh', 'border-radius:14px');
       if (from === 'left') {
+        panelStyle.push('top:50%', 'left:48px', 'transform:translateY(-50%)');
+      } else if (from === 'right') {
+        panelStyle.push('top:50%', 'right:48px', 'transform:translateY(-50%)');
+      } else {
+        // center (default)
+        panelStyle.push('top:50%', 'left:50%', 'transform:translate(-50%,-50%)');
+      }
+    } else {
+      // modal → edge drawer. "auto" falls back to "right".
+      var modalFrom = from === 'auto' ? 'right' : from;
+      panelStyle.push('width:' + width + 'px', 'height:100vh', 'top:0');
+      if (modalFrom === 'left') {
         panelStyle.push('left:0', 'border-right:1px solid ' + border);
-      } else if (from === 'top') {
+      } else if (modalFrom === 'top') {
         panelStyle.push('left:0', 'right:0', 'width:auto', 'height:auto', 'max-height:88vh', 'top:0', 'border-bottom:1px solid ' + border);
-      } else if (from === 'bottom') {
+      } else if (modalFrom === 'bottom') {
         panelStyle.push('left:0', 'right:0', 'width:auto', 'height:auto', 'max-height:88vh', 'bottom:0', 'top:auto', 'border-top:1px solid ' + border);
       } else {
-        // right (default)
+        // right (default, also for auto)
         panelStyle.push('right:0', 'border-left:1px solid ' + border);
       }
     }
@@ -269,7 +275,7 @@
     var searchBar = el('div', { id: 'prw-search-bar' });
     var content = el('div', {
       id: 'prw-content',
-      style: 'flex:1;overflow-y:auto;background:' + softBg + ';',
+      style: 'flex:1;overflow-y:auto;background:' + bg + ';',
     });
 
     panel.appendChild(header);
@@ -306,8 +312,8 @@
     var leftWrap = el('div', { style: 'display:flex;align-items:center;gap:10px;min-width:0;flex:1;' });
     if (view === 'list') {
       leftWrap.innerHTML =
-        '<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;">' + ICON.chat + '</span>' +
-        '<span style="font-size:16px;font-weight:700;">' + escapeHtml(this.config.name || 'Feedback') + '</span>';
+        '<span style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">' + ICON.chat + '</span>' +
+        '<span style="font-size:16px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(this.config.name || 'Pabbly Boards') + '</span>';
     } else {
       var backBtn = el('button', {
         'aria-label': 'Back',
@@ -366,7 +372,7 @@
     // Search sub-bar
     e.searchBar.innerHTML = '';
     if (view === 'search') {
-      var sbg = e.dark ? '#1e293b' : '#ffffff';
+      var sbg = e.dark ? '#1f2937' : '#ffffff';
       e.searchBar.style.cssText = 'padding:12px 16px;background:' + sbg + ';border-bottom:1px solid ' + e.border + ';flex-shrink:0;';
       var input = el('input', {
         type: 'text',
@@ -450,7 +456,7 @@
 
     var card = el('div', {
       style: [
-        'background:' + (e.dark ? '#1e293b' : '#ffffff'),
+        'background:' + (e.dark ? '#1f2937' : '#ffffff'),
         'border:1px solid ' + e.border,
         'border-radius:12px', 'padding:14px', 'margin-bottom:10px',
         'cursor:pointer', 'transition:border-color 0.15s ease, box-shadow 0.15s ease',
