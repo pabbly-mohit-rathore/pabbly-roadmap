@@ -711,6 +711,10 @@ model EmbedWidget {
   suggestSimilarPosts   Boolean  @default(true)
   hideBoardSelection    Boolean  @default(false)
 
+  // Post filters — which posts the widget displays + their sort order
+  postStatuses          String[] @default([])                      // Statuses to include (empty = all)
+  defaultSort           String   @default("newest")                // newest | oldest | most_voted | most_commented
+
   isActive    Boolean  @default(true)
   createdById String?
   createdAt   DateTime @default(now())

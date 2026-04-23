@@ -22,6 +22,9 @@ function generateToken() {
   return crypto.randomBytes(18).toString('base64url');
 }
 
+const VALID_POST_STATUSES = ['under_review', 'planned', 'in_progress', 'live', 'hold'];
+const VALID_SORTS = ['newest', 'oldest', 'most_voted', 'most_commented'];
+
 function sanitize(body) {
   // Whitelist the fields clients can set — never trust the raw body
   const fields = [
@@ -29,6 +32,7 @@ function sanitize(body) {
     'hideDefaultTrigger', 'disableExpansion', 'customTrigger', 'customTriggerSelector',
     'modules', 'boardIds', 'submissionBoardId',
     'showSubmissionFormOnly', 'suggestSimilarPosts', 'hideBoardSelection',
+    'postStatuses', 'defaultSort',
     'isActive',
   ];
   const data = {};
@@ -50,6 +54,14 @@ function sanitize(body) {
     const n = parseInt(data.widgetWidth, 10);
     if (Number.isNaN(n) || n < 200 || n > 1200) throw new Error('Widget width must be between 200 and 1200 px.');
     data.widgetWidth = n;
+  }
+  if (data.postStatuses) {
+    if (!Array.isArray(data.postStatuses)) throw new Error('postStatuses must be an array.');
+    const bad = data.postStatuses.filter((s) => !VALID_POST_STATUSES.includes(s));
+    if (bad.length > 0) throw new Error(`Invalid post status(es): ${bad.join(', ')}`);
+  }
+  if (data.defaultSort && !VALID_SORTS.includes(data.defaultSort)) {
+    throw new Error(`Invalid defaultSort — must be one of: ${VALID_SORTS.join(', ')}`);
   }
   return data;
 }
@@ -165,7 +177,8 @@ const getPublicConfig = async (req, res, next) => {
         accentColor: true, widgetWidth: true, hideDefaultTrigger: true,
         disableExpansion: true, modules: true, boardIds: true,
         submissionBoardId: true, showSubmissionFormOnly: true,
-        suggestSimilarPosts: true, hideBoardSelection: true, isActive: true,
+        suggestSimilarPosts: true, hideBoardSelection: true,
+        postStatuses: true, defaultSort: true, isActive: true,
       },
     });
 
