@@ -704,7 +704,7 @@ model EmbedWidget {
   customTriggerSelector String?                          // CSS selector (e.g., "#my-feedback-btn")
 
   // Configuration
-  modules               String[] @default(["changelog", "posts"])  // Enabled modules
+  modules               String[] @default(["posts"])               // Enabled modules
   boardIds              String[] @default([])                      // Boards shown in widget (empty = all)
   submissionBoardId     String?                                     // Default board for form submissions
   showSubmissionFormOnly Boolean @default(false)
