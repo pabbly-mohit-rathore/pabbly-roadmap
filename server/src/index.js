@@ -80,7 +80,15 @@ app.use(helmet({
 // Gzip compression — reduces response size by ~70% for JSON
 app.use(compression());
 
-// CORS
+// Permissive CORS specifically for the embed widget's public endpoints —
+// third-party sites load widget.js and call these paths, so we can't lock
+// down to a specific origin. Must run BEFORE the global origin-restricted
+// cors() so preflight OPTIONS requests get the right headers.
+const embedCors = cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'] });
+app.use('/api/embed-widgets/public', embedCors);
+app.options('/api/embed-widgets/public/*', embedCors);
+
+// CORS — rest of the API, origin-restricted
 app.use(cors({
   origin: ["http://localhost:5173", process.env.CLIENT_URL].filter(Boolean),
   credentials: true,

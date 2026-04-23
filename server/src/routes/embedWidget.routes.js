@@ -14,7 +14,6 @@
 // ============================================================
 
 const express = require('express');
-const cors = require('cors');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const {
@@ -29,15 +28,12 @@ const {
   submitPublicPost,
 } = require('../controllers/embedWidget.controller');
 
-// Permissive CORS just for the widget's public endpoints — the embed
-// script runs on third-party origins, so we can't lock this down.
-const publicCors = cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'] });
-
-// Public — no auth, any origin
-router.get('/public/:token', publicCors, getPublicConfig);
-router.get('/public/:token/posts', publicCors, getPublicPosts);
-router.options('/public/:token/submit', publicCors);
-router.post('/public/:token/submit', publicCors, submitPublicPost);
+// Public — no auth. CORS is mounted globally in index.js on
+// /api/embed-widgets/public to allow any origin (embed script runs on
+// third-party sites and can't be restricted).
+router.get('/public/:token', getPublicConfig);
+router.get('/public/:token/posts', getPublicPosts);
+router.post('/public/:token/submit', submitPublicPost);
 
 // Admin
 router.get('/', authenticate, getWidgets);

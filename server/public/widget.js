@@ -132,14 +132,34 @@
     this.isOpen = true;
     this.activeTab = this.config.showSubmissionFormOnly ? 'submit' : 'posts';
     this._render();
-    this._loadPosts();
+    if (this.activeTab === 'posts') this._loadPosts();
   };
 
   Widget.prototype.close = function () {
+    document.body.style.overflow = '';
     this.isOpen = false;
     if (this.backdropEl && this.backdropEl.parentNode) this.backdropEl.parentNode.removeChild(this.backdropEl);
     this.backdropEl = null;
     this.panelEl = null;
+  };
+
+  // Update only the active tab styling + body content — does NOT re-render
+  // the full shell (which would stack another backdrop on top each click).
+  Widget.prototype._setTab = function (tab) {
+    this.activeTab = tab;
+    if (this.panelEl) {
+      var dark = this.config.theme === 'dark';
+      var accent = this.config.accentColor || '#059669';
+      var muted = dark ? '#94a3b8' : '#6b7280';
+      var btns = this.panelEl.querySelectorAll('[data-prw-tab]');
+      for (var i = 0; i < btns.length; i++) {
+        var active = btns[i].getAttribute('data-prw-tab') === tab;
+        btns[i].style.color = active ? accent : muted;
+        btns[i].style.borderBottom = '2px solid ' + (active ? accent : 'transparent');
+      }
+    }
+    this._renderBody();
+    if (tab === 'posts') this._loadPosts();
   };
 
   // Render the widget shell
@@ -223,13 +243,16 @@
       tabs.forEach(function (t) {
         var isActive = self.activeTab === t.k;
         var btn = el('button', {
+          'data-prw-tab': t.k,
           style: [
             'flex:1', 'padding:10px 12px', 'font-size:12px', 'font-weight:600',
             'background:transparent', 'border:none', 'cursor:pointer',
             'color:' + (isActive ? accent : muted),
             'border-bottom:2px solid ' + (isActive ? accent : 'transparent'),
           ].join(';'),
-          onclick: function () { self.activeTab = t.k; self._render(); if (t.k === 'posts') self._loadPosts(); },
+          onclick: (function (tabKey) {
+            return function () { self._setTab(tabKey); };
+          })(t.k),
         });
         btn.textContent = t.label;
         tabsEl.appendChild(btn);
@@ -258,9 +281,6 @@
 
     // Render body content
     this._renderBody();
-    // Restore body scroll when closing
-    var origClose = this.close.bind(this);
-    this.close = function () { document.body.style.overflow = ''; origClose(); };
   };
 
   Widget.prototype._renderBody = function () {
