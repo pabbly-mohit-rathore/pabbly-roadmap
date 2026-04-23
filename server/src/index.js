@@ -84,9 +84,10 @@ app.use(compression());
 // third-party sites load widget.js and call these paths, so we can't lock
 // down to a specific origin. Must run BEFORE the global origin-restricted
 // cors() so preflight OPTIONS requests get the right headers.
+// (cors() middleware handles preflight OPTIONS automatically — no need
+// for a separate app.options() route, which breaks in path-to-regexp v8.)
 const embedCors = cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'] });
 app.use('/api/embed-widgets/public', embedCors);
-app.options('/api/embed-widgets/public/*', embedCors);
 
 // CORS — rest of the API, origin-restricted
 app.use(cors({
