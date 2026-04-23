@@ -20,6 +20,20 @@ const STATUS_OPTIONS = [
   { value: 'hold', label: 'On Hold' },
 ];
 
+// Per-type options for the "Open From" field.
+const MODAL_OPEN_FROM = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'top', label: 'Top' },
+  { value: 'right', label: 'Right' },
+  { value: 'bottom', label: 'Bottom' },
+  { value: 'left', label: 'Left' },
+];
+const POPOVER_OPEN_FROM = [
+  { value: 'center', label: 'Center' },
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
+];
+
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
   { value: 'oldest', label: 'Oldest First' },
@@ -181,7 +195,17 @@ export default function EmbedWidgetEditor() {
                 <FieldGroup label="Type" help="Choose how the widget opens." d={d}>
                   <div className={`flex rounded-lg p-1 ${d ? 'bg-gray-900' : 'bg-gray-100'}`} style={{ width: 'fit-content' }}>
                     {['modal', 'popover'].map((t) => (
-                      <button key={t} onClick={() => update({ type: t })}
+                      <button key={t} onClick={() => {
+                        // Reset openFrom when switching types if the current
+                        // value isn't valid in the new type's option set.
+                        const validForNew = t === 'modal'
+                          ? MODAL_OPEN_FROM.some((o) => o.value === widget.openFrom)
+                          : POPOVER_OPEN_FROM.some((o) => o.value === widget.openFrom);
+                        const newOpenFrom = validForNew
+                          ? widget.openFrom
+                          : (t === 'modal' ? 'right' : 'center');
+                        update({ type: t, openFrom: newOpenFrom });
+                      }}
                         className={`px-5 py-1.5 text-sm font-medium rounded-md transition-colors capitalize ${
                           widget.type === t
                             ? (d ? 'bg-gray-700 text-white' : 'bg-white text-gray-900 shadow-sm')
@@ -191,21 +215,19 @@ export default function EmbedWidgetEditor() {
                   </div>
                 </FieldGroup>
 
-                {/* Open From — only for Modal (drawer direction). Popover is always centered. */}
-                {widget.type === 'modal' && (
-                  <FieldGroup label="Open From" help="Which edge the drawer slides in from." d={d}>
-                    <div className={`flex gap-2 flex-wrap`}>
-                      {['left', 'right', 'top', 'bottom'].map((p) => (
-                        <button key={p} onClick={() => update({ openFrom: p })}
-                          className={`px-4 py-1.5 text-sm font-medium rounded-lg border transition-colors capitalize ${
-                            widget.openFrom === p
-                              ? 'border-[#059669] text-[#059669]'
-                              : (d ? 'border-gray-700 text-gray-400 hover:border-gray-500' : 'border-gray-300 text-gray-600 hover:border-gray-400')
-                          }`}>{p}</button>
-                      ))}
-                    </div>
-                  </FieldGroup>
-                )}
+                {/* Open From — different options depending on type */}
+                <FieldGroup
+                  label="Open From"
+                  help={widget.type === 'modal' ? 'Which edge the drawer slides in from.' : 'Alignment of the popover dialog.'}
+                  d={d}
+                >
+                  <CustomDropdown
+                    label="Open From"
+                    value={widget.openFrom}
+                    options={widget.type === 'modal' ? MODAL_OPEN_FROM : POPOVER_OPEN_FROM}
+                    onChange={(v) => update({ openFrom: v })}
+                  />
+                </FieldGroup>
 
                 {/* Theme */}
                 <FieldGroup label="Theme" d={d}>

@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { X, MessageSquareText, Sparkles, Send, Search, ThumbsUp } from 'lucide-react';
+import { X, MessageSquareText, Plus, ExternalLink, Search, ArrowUp, MessageSquare } from 'lucide-react';
 
 export interface WidgetConfig {
   name: string;
@@ -16,210 +15,204 @@ export interface WidgetConfig {
   hideBoardSelection: boolean;
 }
 
+// Sample posts rendered in the preview so the admin can see what the
+// actual embed will look like. The real widget.js pulls real posts from
+// the backend at runtime — this is cosmetic only.
+const SAMPLE_POSTS = [
+  {
+    id: '1', date: 'Apr 22, 2026',
+    title: 'Route condition "else" if no other route conditions match.',
+    desc: 'Hello, it would be useful to have an "ELSE" route when the other "IF" / "ELSE IF" routes are not met, similar to how it works in…',
+    status: 'under_review', statusLabel: 'Under Review',
+    board: 'Connect: Core Request', votes: 1, comments: 1,
+  },
+  {
+    id: '2', date: 'Apr 22, 2026',
+    title: 'CRONBERRY CRM',
+    desc: 'CRONBERRY IS A CRM WHERE USERS CAN CONNECT LEAD SOURCE AND MANAGE THEIR LEADS BUT STILL FOR MOR...',
+    status: 'planned', statusLabel: 'Planned',
+    board: 'Connect: New Integration', votes: 1, comments: 2,
+  },
+  {
+    id: '3', date: 'Apr 22, 2026',
+    title: 'Custom "API Endpoint URL" for WooCommerce App',
+    desc: 'Please add an option to set a "Custom API Endpoint URL" to the WooCommerce App within Pabbly connect. Where you ar...',
+    status: 'in_progress', statusLabel: 'In Progress',
+    board: 'Connect: New Integration', votes: 1, comments: 1,
+  },
+  {
+    id: '4', date: 'Apr 21, 2026',
+    title: 'For multiple chat flow accounts, switch the account without logging out',
+    desc: 'If I purchase multiple chat flow account, how to manage them in one mobile ? Any way out ? Like Facebook multiple...',
+    status: 'live', statusLabel: 'Live',
+    board: 'Chatflow: New Feature', votes: 1, comments: 1,
+  },
+];
+
+function statusBadgeBg(s: string, dark: boolean) {
+  const light: Record<string, string> = {
+    under_review: '#fefce8', planned: '#faf5ff', in_progress: '#fff7ed',
+    live: '#f0fdf4', hold: '#fef2f2',
+  };
+  const darkBg: Record<string, string> = {
+    under_review: '#422006', planned: '#2e1065', in_progress: '#431407',
+    live: '#052e16', hold: '#450a0a',
+  };
+  return (dark ? darkBg : light)[s] || (dark ? '#1e293b' : '#f3f4f6');
+}
+function statusBadgeColor(s: string, dark: boolean) {
+  const light: Record<string, string> = {
+    under_review: '#a16207', planned: '#6b21a8', in_progress: '#9a3412',
+    live: '#15803d', hold: '#b91c1c',
+  };
+  const darkCol: Record<string, string> = {
+    under_review: '#fde047', planned: '#d8b4fe', in_progress: '#fdba74',
+    live: '#86efac', hold: '#fca5a5',
+  };
+  return (dark ? darkCol : light)[s] || (dark ? '#cbd5e1' : '#374151');
+}
+
 /**
- * Renders a live, visual representation of what the embed widget will look
- * like on a customer's site, based on the current config. Used inside the
- * EmbedWidgetEditor when the admin clicks "Test Widget".
+ * Visual preview that mirrors widget.js runtime design 1:1.
+ * Shown when admin clicks "Test Widget" in the editor.
  */
 export default function WidgetPreview({ config, onClose }: { config: WidgetConfig; onClose: () => void }) {
   const dark = config.theme === 'dark';
   const accent = config.accentColor || '#059669';
-  const width = config.widgetWidth || 400;
+  const width = config.widgetWidth || 380;
 
-  const [activeTab, setActiveTab] = useState<'posts' | 'submit'>(
-    config.showSubmissionFormOnly ? 'submit' : 'posts'
-  );
+  const bg = dark ? '#111827' : '#ffffff';
+  const border = dark ? '#374151' : '#e5e7eb';
+  const text = dark ? '#ffffff' : '#111827';
+  const muted = dark ? '#9ca3af' : '#6b7280';
 
-  // Positioning based on openFrom (for popover only)
-  let positionStyle: React.CSSProperties = {};
-  if (config.type === 'modal') {
-    positionStyle = { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+  // Panel positioning — modal = drawer, popover = dialog (centered/left/right)
+  let panelStyle: React.CSSProperties = {};
+  const from = config.openFrom || (config.type === 'popover' ? 'center' : 'right');
+  if (config.type === 'popover') {
+    const popWidth = Math.min(560, width);
+    const common = { width: popWidth, maxHeight: '88vh', borderRadius: 14 };
+    if (from === 'left') panelStyle = { ...common, top: '50%', left: 48, transform: 'translateY(-50%)' };
+    else if (from === 'right') panelStyle = { ...common, top: '50%', right: 48, transform: 'translateY(-50%)' };
+    else panelStyle = { ...common, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
   } else {
-    const from = config.openFrom;
-    if (from === 'right') positionStyle = { right: 20, top: 20, bottom: 20 };
-    else if (from === 'left') positionStyle = { left: 20, top: 20, bottom: 20 };
-    else if (from === 'top') positionStyle = { top: 20, left: '50%', transform: 'translateX(-50%)' };
-    else positionStyle = { bottom: 20, left: '50%', transform: 'translateX(-50%)' };
+    // Modal = drawer — "auto" falls back to right
+    const modalFrom = from === 'auto' ? 'right' : from;
+    const baseStyle: React.CSSProperties = { width, height: '100vh', top: 0 };
+    if (modalFrom === 'left') panelStyle = { ...baseStyle, left: 0, borderRight: `1px solid ${border}` };
+    else if (modalFrom === 'top') panelStyle = { left: 0, right: 0, width: 'auto', height: 'auto', maxHeight: '88vh', top: 0, borderBottom: `1px solid ${border}` };
+    else if (modalFrom === 'bottom') panelStyle = { left: 0, right: 0, width: 'auto', height: 'auto', maxHeight: '88vh', bottom: 0, borderTop: `1px solid ${border}` };
+    else panelStyle = { ...baseStyle, right: 0, borderLeft: `1px solid ${border}` };
   }
-
-  const bg = dark ? '#0f172a' : '#ffffff';
-  const border = dark ? '#334155' : '#e5e7eb';
-  const text = dark ? '#e2e8f0' : '#111827';
-  const muted = dark ? '#94a3b8' : '#6b7280';
-  const softBg = dark ? '#1e293b' : '#f9fafb';
 
   return (
     <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.35)',
-        zIndex: 9999,
-        backdropFilter: 'blur(2px)',
-      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 9999 }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          position: 'absolute',
-          ...positionStyle,
-          width: config.type === 'modal' ? Math.min(520, width) : width,
-          maxHeight: config.type === 'modal' ? '85vh' : undefined,
-          background: bg,
-          color: text,
-          border: `1px solid ${border}`,
-          borderRadius: 14,
-          boxShadow: '0 24px 48px rgba(0,0,0,0.25)',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
+          position: 'absolute', ...panelStyle,
+          background: bg, color: text,
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
           fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
           fontSize: 14,
         }}
       >
-        {/* Header */}
+        {/* Header — title left, New Post / Open / Search / Close on right */}
         <div style={{
-          padding: '16px 18px',
-          borderBottom: `1px solid ${border}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: accent,
-          color: '#ffffff',
+          padding: '14px 16px', background: accent, color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          flexShrink: 0,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <MessageSquareText style={{ width: 16, height: 16 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+            <MessageSquareText style={{ width: 20, height: 20, flexShrink: 0 }} />
+            <span style={{ fontSize: 16, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {config.name || 'Pabbly Boards'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <button style={{
+              background: '#fff', color: accent, border: 'none',
+              padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+              <Plus style={{ width: 14, height: 14 }} />
+              <span>New Post</span>
+            </button>
+            <IconBtn><ExternalLink style={{ width: 16, height: 16 }} /></IconBtn>
+            <IconBtn><Search style={{ width: 16, height: 16 }} /></IconBtn>
+            <IconBtn onClick={onClose}><X style={{ width: 18, height: 18 }} /></IconBtn>
+          </div>
+        </div>
+
+        {/* Body — post cards */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: bg }}>
+          {SAMPLE_POSTS.map((p) => (
+            <div key={p.id} style={{
+              background: dark ? '#1f2937' : '#ffffff',
+              border: `1px solid ${border}`, borderRadius: 12,
+              padding: 14, marginBottom: 10,
+              display: 'flex', gap: 12, alignItems: 'flex-start',
+              transition: 'border-color 0.15s, box-shadow 0.15s',
+            }}>
+              {/* Vote button */}
+              <button style={{
+                display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: 2,
+                minWidth: 48, padding: '8px 4px',
+                border: `1px solid ${border}`, background: dark ? '#0f172a' : '#fff',
+                color: text, borderRadius: 8,
+                fontSize: 13, fontWeight: 600, flexShrink: 0, cursor: 'pointer',
+              }}>
+                <ArrowUp style={{ width: 14, height: 14 }} />
+                <span>{p.votes}</span>
+              </button>
+
+              {/* Content */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 15, fontWeight: 600, color: text, lineHeight: 1.35, marginBottom: 4,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{p.title}</div>
+                <div style={{
+                  fontSize: 13, color: muted, lineHeight: 1.5, marginBottom: 10,
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden',
+                }}>{p.desc}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{
+                    display: 'inline-block', padding: '3px 10px', borderRadius: 12,
+                    fontSize: 12, fontWeight: 600,
+                    background: statusBadgeBg(p.status, dark),
+                    color: statusBadgeColor(p.status, dark),
+                  }}>{p.statusLabel}</span>
+                  <span style={{ fontSize: 12, color: muted, fontWeight: 500 }}>{p.board}</span>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 3,
+                    fontSize: 12, color: muted, marginLeft: 'auto',
+                  }}>
+                    <MessageSquare style={{ width: 12, height: 12 }} />
+                    <span>{p.comments}</span>
+                  </span>
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{config.name || 'Feedback'}</div>
-          </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: 6, borderRadius: 6, cursor: 'pointer', display: 'flex' }}>
-            <X style={{ width: 16, height: 16 }} />
-          </button>
-        </div>
-
-        {/* Tabs — only if not submission-only mode */}
-        {!config.showSubmissionFormOnly && (
-          <div style={{ display: 'flex', borderBottom: `1px solid ${border}`, background: softBg }}>
-            <TabBtn active={activeTab === 'posts'} onClick={() => setActiveTab('posts')} accent={accent} muted={muted}>
-              <Sparkles style={{ width: 14, height: 14 }} /> Feature Requests
-            </TabBtn>
-            <TabBtn active={activeTab === 'submit'} onClick={() => setActiveTab('submit')} accent={accent} muted={muted}>
-              <Send style={{ width: 14, height: 14 }} /> Submit
-            </TabBtn>
-          </div>
-        )}
-
-        {/* Body */}
-        <div style={{ padding: 18, overflowY: 'auto', flex: 1, minHeight: 240, maxHeight: 520 }}>
-          {activeTab === 'posts' && <PostsPreview accent={accent} text={text} muted={muted} border={border} softBg={softBg} />}
-          {activeTab === 'submit' && <SubmitPreview accent={accent} text={text} muted={muted} border={border} softBg={softBg} hideBoardSelection={config.hideBoardSelection} suggestSimilar={config.suggestSimilarPosts} />}
-        </div>
-
-        {/* Footer */}
-        <div style={{ padding: '10px 18px', borderTop: `1px solid ${border}`, fontSize: 11, color: muted, textAlign: 'center' }}>
-          Powered by <span style={{ color: accent, fontWeight: 600 }}>Pabbly Roadmap</span>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function TabBtn({ children, active, onClick, accent, muted }: { children: React.ReactNode; active: boolean; onClick: () => void; accent: string; muted: string }) {
+function IconBtn({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
-    <button onClick={onClick}
-      style={{
-        flex: 1,
-        padding: '10px 12px',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        fontSize: 12,
-        fontWeight: 600,
-        background: 'transparent',
-        color: active ? accent : muted,
-        borderBottom: `2px solid ${active ? accent : 'transparent'}`,
-        border: 'none',
-        borderBottomStyle: 'solid',
-        borderBottomWidth: 2,
-        borderBottomColor: active ? accent : 'transparent',
-        cursor: 'pointer',
-      }}>
+    <button onClick={onClick} style={{
+      background: 'rgba(255,255,255,0.18)', border: 'none', color: '#fff',
+      padding: 7, borderRadius: 8, cursor: 'pointer', display: 'flex',
+    }}>
       {children}
     </button>
-  );
-}
-
-function PostsPreview({ accent, text, muted, border, softBg }: any) {
-  const samples = [
-    { title: 'Add dark mode to dashboard', votes: 24, status: 'Under Review' },
-    { title: 'Export data as CSV', votes: 18, status: 'Planned' },
-    { title: 'Slack integration for notifications', votes: 12, status: 'Open' },
-  ];
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: `1px solid ${border}`, borderRadius: 8, marginBottom: 14, background: softBg }}>
-        <Search style={{ width: 14, height: 14, color: muted }} />
-        <span style={{ fontSize: 13, color: muted }}>Search feature requests…</span>
-      </div>
-      {samples.map((s, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'start', gap: 12, padding: 12, border: `1px solid ${border}`, borderRadius: 10, marginBottom: 8 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 36, padding: '4px 6px', border: `1px solid ${border}`, borderRadius: 6, background: softBg }}>
-            <ThumbsUp style={{ width: 12, height: 12, color: accent }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: text, marginTop: 2 }}>{s.votes}</span>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: text, marginBottom: 4 }}>{s.title}</div>
-            <span style={{ fontSize: 11, color: muted }}>{s.status}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function SubmitPreview({ accent, text, muted, border, softBg, hideBoardSelection, suggestSimilar }: any) {
-  return (
-    <div>
-      {!hideBoardSelection && (
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 11, color: muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Board</label>
-          <div style={{ padding: '10px 12px', border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: softBg, color: text }}>
-            Feature Requests ▾
-          </div>
-        </div>
-      )}
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, color: muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Title</label>
-        <div style={{ padding: '10px 12px', border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: softBg, color: muted }}>
-          What would you like to request?
-        </div>
-      </div>
-      {suggestSimilar && (
-        <div style={{ padding: 10, border: `1px dashed ${border}`, borderRadius: 8, marginBottom: 12, fontSize: 12, color: muted }}>
-          💡 We’ll show similar existing posts as you type
-        </div>
-      )}
-      <div style={{ marginBottom: 14 }}>
-        <label style={{ fontSize: 11, color: muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
-        <div style={{ padding: '12px', border: `1px solid ${border}`, borderRadius: 8, fontSize: 13, background: softBg, color: muted, minHeight: 70 }}>
-          Tell us more about what you need…
-        </div>
-      </div>
-      <button style={{
-        width: '100%',
-        padding: '10px 14px',
-        background: accent,
-        color: '#ffffff',
-        border: 'none',
-        borderRadius: 8,
-        fontSize: 13,
-        fontWeight: 600,
-        cursor: 'pointer',
-      }}>
-        Submit Feedback
-      </button>
-    </div>
   );
 }
