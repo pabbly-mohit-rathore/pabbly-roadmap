@@ -22,6 +22,39 @@
   var scriptSrc = (scriptEl && scriptEl.src) || '';
   var API_BASE = scriptSrc.replace(/\/widget\.js.*$/, '') || window.location.origin;
 
+  // Inject global style rules once — used for rich post content rendering.
+  // Keeps the drawer's post body readable no matter what HTML comes back.
+  var _stylesInjected = false;
+  function ensureStyles() {
+    if (_stylesInjected) return;
+    _stylesInjected = true;
+    var css =
+      '.prw-post-content { font-size:14px; line-height:1.75; }\n' +
+      '.prw-post-content > *:first-child { margin-top:0; }\n' +
+      '.prw-post-content > *:last-child { margin-bottom:0; }\n' +
+      '.prw-post-content p { margin:0 0 14px 0; }\n' +
+      '.prw-post-content h1, .prw-post-content h2, .prw-post-content h3, .prw-post-content h4 { font-weight:700; margin:20px 0 10px; line-height:1.35; }\n' +
+      '.prw-post-content h1 { font-size:20px; }\n' +
+      '.prw-post-content h2 { font-size:17px; }\n' +
+      '.prw-post-content h3 { font-size:15px; }\n' +
+      '.prw-post-content strong, .prw-post-content b { font-weight:700; }\n' +
+      '.prw-post-content em, .prw-post-content i { font-style:italic; }\n' +
+      '.prw-post-content ul, .prw-post-content ol { padding-left:22px; margin:10px 0 14px; }\n' +
+      '.prw-post-content li { margin-bottom:6px; }\n' +
+      '.prw-post-content li > p { margin:0; }\n' +
+      '.prw-post-content a { color:#059669; text-decoration:underline; word-break:break-word; }\n' +
+      '.prw-post-content code { background:rgba(148,163,184,0.16); padding:1px 6px; border-radius:4px; font-family:"JetBrains Mono",Menlo,Monaco,Consolas,monospace; font-size:12.5px; }\n' +
+      '.prw-post-content pre { background:rgba(148,163,184,0.16); padding:10px 12px; border-radius:8px; overflow-x:auto; font-size:12.5px; margin:10px 0; }\n' +
+      '.prw-post-content pre code { background:transparent; padding:0; }\n' +
+      '.prw-post-content blockquote { border-left:3px solid rgba(148,163,184,0.35); padding:4px 12px; margin:12px 0; color:inherit; opacity:0.85; }\n' +
+      '.prw-post-content img { max-width:100%; border-radius:8px; margin:10px 0; display:block; }\n' +
+      '.prw-post-content hr { border:0; border-top:1px dashed rgba(148,163,184,0.35); margin:16px 0; }\n';
+    var s = document.createElement('style');
+    s.setAttribute('data-prw', '1');
+    s.textContent = css;
+    document.head.appendChild(s);
+  }
+
   // ---------- auth helper ----------
   // If the widget runs on the same origin as the main app (e.g. admin's
   // Test Widget, or pabbly-roadmap.vercel.app users embedding on their
@@ -199,6 +232,7 @@
 
   Widget.prototype.open = function () {
     if (this.isOpen) return;
+    ensureStyles();
     this.isOpen = true;
     this.state.view = this.config.showSubmissionFormOnly ? 'new' : 'list';
     this._renderShell();
@@ -233,12 +267,13 @@
     var muted = dark ? '#9ca3af' : '#6b7280';
     var softBg = dark ? '#1f2937' : '#ffffff';
 
-    // Backdrop — transparent so page behind stays clearly visible (no dim/blur).
-    // Still captures outside clicks so user can dismiss by clicking off the panel.
+    // Backdrop — semi-transparent dim (matches the main app's dialog style).
+    // Captures outside clicks so user can dismiss by clicking off the panel.
     var backdrop = el('div', {
       style: [
         'position:fixed', 'inset:0', 'z-index:2147483600',
-        'background:transparent',
+        'background:rgba(0,0,0,0.5)',
+        'transition:opacity 0.15s ease',
       ].join(';'),
       onclick: function (e) { if (e.target === backdrop) self.close(); },
     });
@@ -427,6 +462,7 @@
   // VIEW SWITCH
   // ============================================================
   Widget.prototype._setView = function (view, post) {
+    this._hideHoverPopup();
     this.state.view = view;
     if (post) this.state.currentPost = post;
     this._renderHeader();
@@ -502,6 +538,11 @@
     card.addEventListener('mouseleave', function () {
       card.style.borderColor = e.border;
       card.style.boxShadow = 'none';
+      if (hoverTimer) clearTimeout(hoverTimer);
+      self._hideHoverPopup();
+    });
+    // Click also dismisses the hover popup immediately (before navigating)
+    card.addEventListener('click', function () {
       if (hoverTimer) clearTimeout(hoverTimer);
       self._hideHoverPopup();
     });
@@ -582,12 +623,12 @@
     return card;
   };
 
-  // Detail view — mirrors the main app's Post Detail page layout.
-  // Title + vote button top-right. Content flows inline (no nested card).
-  // Metadata (author/board/type/status/tags) listed below content.
+  // Detail view — clean, readable layout. Title + vote button at top,
+  // then rich post content, then comments section. No metadata sidebar
+  // (board/status/etc. already shown on the list card).
   Widget.prototype._detailView = function () {
     var self = this, e = this.els;
-    var wrap = el('div', { style: 'padding:22px 20px;' });
+    var wrap = el('div', { style: 'padding:26px 22px 16px;' });
     var post = this.state.currentPost;
 
     if (!post) {
@@ -598,9 +639,9 @@
     var hasVoted = !!this.state.votedIds[post.id];
 
     // Title row: title on left, vote button on right
-    var titleRow = el('div', { style: 'display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px;' });
+    var titleRow = el('div', { style: 'display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px;' });
     var titleEl = el('h2', {
-      style: 'font-size:22px;font-weight:700;color:' + e.text + ';margin:0;line-height:1.3;flex:1;min-width:0;',
+      style: 'font-size:20px;font-weight:700;color:' + e.text + ';margin:0;line-height:1.4;flex:1;min-width:0;',
     });
     titleEl.textContent = post.title;
     titleRow.appendChild(titleEl);
@@ -622,16 +663,19 @@
     titleRow.appendChild(voteBtn);
     wrap.appendChild(titleRow);
 
-    // Description / rich content — inline, no wrapping card
+    // Description / rich content — scoped class applies readable styles
+    // (spacing, headings, lists, links, code blocks, images, etc.)
     var contentHtml = post.content || post.description || '';
     if (contentHtml) {
       var contentEl = el('div', {
-        style: 'font-size:14px;color:' + e.text + ';line-height:1.7;margin-bottom:22px;',
+        class: 'prw-post-content',
+        style: 'color:' + e.text + ';margin-bottom:8px;',
       });
       if (post.content && /<[a-z][^>]*>/i.test(post.content)) {
         contentEl.innerHTML = post.content;
       } else {
-        contentEl.textContent = stripHtml(contentHtml);
+        // Plain text — preserve line breaks
+        contentEl.innerHTML = escapeHtml(stripHtml(contentHtml)).replace(/\n/g, '<br/>');
       }
       wrap.appendChild(contentEl);
     }
