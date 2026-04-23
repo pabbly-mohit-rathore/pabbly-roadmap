@@ -55,6 +55,7 @@ model User {
   sentInvitations      TeamInvitation[] @relation("SentInvitations")
   pushSubscriptions    PushSubscription[]
   createdWebhooks      Webhook[]         @relation("CreatedWebhooks")
+  createdEmbedWidgets  EmbedWidget[]     @relation("CreatedEmbedWidgets")
 
   @@map("users")  // Database mein table ka naam "users" hoga
 }
@@ -678,4 +679,45 @@ model WebhookDelivery {
 
   @@index([webhookId, createdAt])
   @@map("webhook_deliveries")
+}
+
+// ============================================================
+// MODEL: EmbedWidget
+// Admin-configured feedback widgets that can be embedded on
+// external websites. Public-facing JS reads config via a short
+// `token` to know how to render the widget on the customer's site.
+// ============================================================
+model EmbedWidget {
+  id          String   @id @default(uuid())
+  token       String   @unique                           // Short public id used in embed script
+  name        String
+
+  // Appearance
+  type                  String   @default("popover")     // "modal" | "popover"
+  openFrom              String   @default("right")       // "left" | "right" | "top" | "bottom"
+  theme                 String   @default("light")       // "light" | "dark"
+  accentColor           String   @default("#059669")
+  widgetWidth           Int?                              // Optional custom width in px (popover mode)
+  hideDefaultTrigger    Boolean  @default(false)
+  disableExpansion      Boolean  @default(false)
+  customTrigger         Boolean  @default(false)         // If true — user embeds own trigger via selector
+  customTriggerSelector String?                          // CSS selector (e.g., "#my-feedback-btn")
+
+  // Configuration
+  modules               String[] @default(["changelog", "posts"])  // Enabled modules
+  boardIds              String[] @default([])                      // Boards shown in widget (empty = all)
+  submissionBoardId     String?                                     // Default board for form submissions
+  showSubmissionFormOnly Boolean @default(false)
+  suggestSimilarPosts   Boolean  @default(true)
+  hideBoardSelection    Boolean  @default(false)
+
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User? @relation("CreatedEmbedWidgets", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
+  @@map("embed_widgets")
 }
