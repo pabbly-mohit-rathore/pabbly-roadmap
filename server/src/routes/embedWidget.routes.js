@@ -28,15 +28,19 @@ const {
   getPublicPost,
   togglePublicVote,
   submitPublicPost,
+  getPublicComments,
+  addPublicComment,
 } = require('../controllers/embedWidget.controller');
 
-// Public — CORS mounted globally in index.js. Vote + submit use
+// Public — CORS mounted globally in index.js. Vote/submit/comment use
 // optionalAuth: if the caller has a valid accessToken (e.g. embedded
 // on the same origin where user is already logged in), we use the
 // authenticated user and skip the email prompt.
 router.get('/public/:token', getPublicConfig);
 router.get('/public/:token/posts', getPublicPosts);
 router.get('/public/:token/posts/:postId', getPublicPost);
+router.get('/public/:token/posts/:postId/comments', getPublicComments);
+router.post('/public/:token/posts/:postId/comments', optionalAuth, addPublicComment);
 router.post('/public/:token/vote', optionalAuth, togglePublicVote);
 router.post('/public/:token/submit', optionalAuth, submitPublicPost);
 

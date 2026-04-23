@@ -636,94 +636,135 @@
       wrap.appendChild(contentEl);
     }
 
-    // Metadata rows (label / value) — styled like the app's sidebar meta cards
-    var meta = el('div', { style: 'display:flex;flex-direction:column;gap:8px;padding-top:18px;border-top:1px solid ' + e.border + ';' });
-
-    function metaRow(label, valueNode) {
-      var row = el('div', {
-        style: [
-          'display:flex', 'align-items:center', 'justify-content:space-between', 'gap:12px',
-          'padding:10px 12px', 'border-radius:10px',
-          'background:' + (e.dark ? 'rgba(30,41,59,0.5)' : 'rgba(249,250,251,0.8)'),
-          'border:1px solid ' + (e.dark ? '#334155' : '#f3f4f6'),
-        ].join(';'),
-      });
-      var l = el('div', { style: 'font-size:11px;font-weight:600;color:' + e.muted + ';letter-spacing:0.5px;text-transform:uppercase;' });
-      l.textContent = label;
-      row.appendChild(l);
-      row.appendChild(valueNode);
-      return row;
-    }
-
-    // Created date
-    var dateVal = el('div', { style: 'font-size:13px;color:' + e.text + ';font-weight:500;' });
-    dateVal.textContent = fmtDate(post.createdAt);
-    meta.appendChild(metaRow('POST CREATED', dateVal));
-
-    // Author
-    if (post.author) {
-      var authorVal = el('div', { style: 'display:flex;align-items:center;gap:8px;' });
-      var initial = (post.author.name || '?').charAt(0).toUpperCase();
-      authorVal.innerHTML =
-        '<span style="width:26px;height:26px;border-radius:50%;background:' + e.accent + ';color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">' + escapeHtml(initial) + '</span>' +
-        '<span style="font-size:13px;color:' + e.text + ';font-weight:500;">' + escapeHtml(post.author.name) + '</span>';
-      meta.appendChild(metaRow('AUTHOR', authorVal));
-    }
-
-    // Board
-    if (post.board) {
-      var boardVal = el('div', { style: 'font-size:13px;color:' + e.text + ';font-weight:500;' });
-      boardVal.textContent = post.board.name;
-      meta.appendChild(metaRow('BOARD', boardVal));
-    }
-
-    // Status
-    if (post.status) {
-      var sChip = el('span', {
-        style: 'display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:' + statusBadgeBg(post.status, e.dark) + ';color:' + statusBadgeColor(post.status, e.dark) + ';',
-      });
-      sChip.textContent = prettyStatus(post.status);
-      meta.appendChild(metaRow('STATUS', sChip));
-    }
-
-    // Tags
-    if (post.tags && post.tags.length > 0) {
-      var tagsWrap = el('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:240px;' });
-      post.tags.forEach(function (t) {
-        var tag = t.tag || t;
-        if (!tag) return;
-        var c = tag.color || '#6366f1';
-        var chip = el('span', {
-          style: 'padding:2px 8px;border-radius:4px;background:' + c + '1a;color:' + c + ';font-size:11px;font-weight:600;',
-        });
-        chip.textContent = tag.name;
-        tagsWrap.appendChild(chip);
-      });
-      meta.appendChild(metaRow('TAGS', tagsWrap));
-    }
-
-    wrap.appendChild(meta);
-
-    // Comments count + external link
-    var footer = el('div', { style: 'display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid ' + e.border + ';' });
-    var cc = (post._count && post._count.comments) || post.commentCount || 0;
-    var commentBadge = el('div', {
-      style: 'display:inline-flex;align-items:center;gap:6px;font-size:12px;color:' + e.muted + ';',
-    });
-    commentBadge.innerHTML = ICON.comment + '<span>' + cc + (cc === 1 ? ' comment' : ' comments') + '</span>';
-    footer.appendChild(commentBadge);
-
-    var openLink = el('a', {
-      href: APP_URL + '/user/posts/' + (post.slug || post.id),
-      target: '_blank',
-      rel: 'noopener',
-      style: 'margin-left:auto;color:' + e.accent + ';font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px;',
-    });
-    openLink.innerHTML = 'View in Roadmap ' + ICON.ext;
-    footer.appendChild(openLink);
-    wrap.appendChild(footer);
+    // Comments section — directly below post content
+    var commentsHost = el('div', { id: 'prw-comments-host' });
+    wrap.appendChild(commentsHost);
+    this._renderComments(commentsHost, post);
 
     return wrap;
+  };
+
+  // Render the comments section inside the given host element.
+  // Loads comments asynchronously and includes a compose box.
+  Widget.prototype._renderComments = function (host, post) {
+    var self = this, e = this.els;
+
+    var header = el('div', {
+      style: 'display:flex;align-items:center;gap:8px;padding-top:20px;margin-top:6px;border-top:1px solid ' + e.border + ';margin-bottom:12px;',
+    });
+    header.innerHTML =
+      '<span style="font-size:15px;font-weight:700;color:' + e.text + ';">Comments</span>' +
+      '<span id="prw-cc-badge" style="font-size:12px;color:' + e.muted + ';">…</span>';
+    host.appendChild(header);
+
+    // Comments list (filled after fetch)
+    var listEl = el('div', { id: 'prw-comments-list', style: 'display:flex;flex-direction:column;gap:10px;margin-bottom:14px;' });
+    listEl.innerHTML = '<div style="font-size:12px;color:' + e.muted + ';padding:8px 0;">Loading comments…</div>';
+    host.appendChild(listEl);
+
+    // Compose box
+    var compose = el('div', {
+      style: 'border:1px solid ' + e.border + ';border-radius:10px;padding:10px;background:' + (e.dark ? '#0f172a' : '#fafafa') + ';',
+    });
+    var authed = isAuthed();
+    var emailInput = null;
+    if (!authed) {
+      emailInput = el('input', {
+        type: 'email', placeholder: 'Your registered email',
+        value: self.state.voterEmail || '',
+        style: 'width:100%;padding:8px 10px;border:1px solid ' + e.border + ';border-radius:8px;font-size:13px;outline:none;background:' + (e.dark ? '#0f172a' : '#fff') + ';color:' + e.text + ';margin-bottom:8px;box-sizing:border-box;font-family:inherit;',
+      });
+      compose.appendChild(emailInput);
+    }
+    var textarea = el('textarea', {
+      placeholder: 'Write a comment…',
+      style: 'width:100%;padding:8px 10px;border:1px solid ' + e.border + ';border-radius:8px;font-size:13px;outline:none;background:' + (e.dark ? '#0f172a' : '#fff') + ';color:' + e.text + ';min-height:60px;resize:vertical;box-sizing:border-box;font-family:inherit;',
+    });
+    compose.appendChild(textarea);
+    var msg = el('div', { style: 'font-size:12px;margin-top:6px;min-height:16px;color:' + e.muted + ';' });
+    compose.appendChild(msg);
+    var btn = el('button', {
+      style: 'margin-top:8px;padding:8px 14px;background:' + e.accent + ';color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;',
+    });
+    btn.textContent = 'Post Comment';
+    compose.appendChild(btn);
+    host.appendChild(compose);
+
+    btn.onclick = function () {
+      var content = textarea.value.trim();
+      if (!content) { msg.style.color = '#ef4444'; msg.textContent = 'Please write something before posting.'; return; }
+      btn.disabled = true;
+      msg.style.color = e.muted; msg.textContent = 'Posting…';
+      var headers = { 'Content-Type': 'application/json' };
+      if (authed) Object.assign(headers, authHeaders());
+      var body = { content: content };
+      if (!authed && emailInput) body.email = emailInput.value.trim();
+      fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/posts/' + encodeURIComponent(post.id) + '/comments', {
+        method: 'POST', headers: headers, body: JSON.stringify(body),
+      })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          btn.disabled = false;
+          if (res.ok && res.d && res.d.success) {
+            msg.style.color = e.accent; msg.textContent = 'Posted';
+            textarea.value = '';
+            self._loadComments(post, listEl);
+          } else if (res.d && res.d.code === 'USER_NOT_REGISTERED') {
+            msg.style.color = '#ef4444';
+            msg.innerHTML = (res.d.message || 'Not registered.') + ' <a href="' + APP_URL + '/register" target="_blank" rel="noopener" style="color:' + e.accent + ';font-weight:600;">Sign up here</a>.';
+          } else {
+            msg.style.color = '#ef4444';
+            msg.textContent = (res.d && res.d.message) || 'Could not post comment.';
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          msg.style.color = '#ef4444';
+          msg.textContent = 'Network error. Please try again.';
+        });
+    };
+
+    this._loadComments(post, listEl);
+  };
+
+  // Fetch + render the comment list (replaces contents of listEl).
+  Widget.prototype._loadComments = function (post, listEl) {
+    var self = this, e = this.els;
+    fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(this.opts.token) + '/posts/' + encodeURIComponent(post.id) + '/comments')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var comments = (data && data.data && data.data.comments) || [];
+        // Update count badge
+        var badge = self.els && self.els.panel && self.els.panel.querySelector('#prw-cc-badge');
+        if (badge) badge.textContent = comments.length ? ('(' + comments.length + ')') : '(0)';
+        listEl.innerHTML = '';
+        if (!comments.length) {
+          var empty = el('div', { style: 'font-size:13px;color:' + e.muted + ';padding:8px 0;' });
+          empty.textContent = 'No comments yet. Be the first to share your thoughts.';
+          listEl.appendChild(empty);
+          return;
+        }
+        comments.forEach(function (c) {
+          var row = el('div', {
+            style: 'padding:10px 12px;border:1px solid ' + e.border + ';border-radius:10px;background:' + (e.dark ? '#1f2937' : '#ffffff') + ';',
+          });
+          var initial = ((c.author && c.author.name) || '?').charAt(0).toUpperCase();
+          var officialBadge = c.isOfficial
+            ? '<span style="margin-left:6px;padding:1px 6px;border-radius:4px;background:' + e.accent + ';color:#fff;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Official</span>'
+            : '';
+          row.innerHTML =
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+              '<span style="width:24px;height:24px;border-radius:50%;background:' + e.accent + ';color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">' + escapeHtml(initial) + '</span>' +
+              '<span style="font-size:13px;font-weight:600;color:' + e.text + ';">' + escapeHtml((c.author && c.author.name) || 'User') + '</span>' + officialBadge +
+              '<span style="margin-left:auto;font-size:11px;color:' + e.muted + ';">' + fmtDate(c.createdAt) + '</span>' +
+            '</div>' +
+            '<div style="font-size:13px;color:' + e.text + ';line-height:1.55;white-space:pre-wrap;word-break:break-word;">' + escapeHtml(stripHtml(c.content)) + '</div>';
+          listEl.appendChild(row);
+        });
+      })
+      .catch(function () {
+        listEl.innerHTML = '<div style="font-size:12px;color:#ef4444;padding:8px 0;">Could not load comments.</div>';
+      });
   };
 
   // New post form — only users already registered on the roadmap can submit.

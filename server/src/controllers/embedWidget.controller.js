@@ -447,6 +447,101 @@ const submitPublicPost = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// Helper — verify that the post is accessible through this widget's scope
+async function assertPostInWidget(token, postId) {
+  const widget = await prisma.embedWidget.findUnique({
+    where: { token },
+    select: { isActive: true, boardIds: true, postStatuses: true },
+  });
+  if (!widget || !widget.isActive) return { error: { status: 404, message: 'Widget not found or inactive.' } };
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { id: true, boardId: true, status: true, isDraft: true },
+  });
+  if (!post || post.isDraft) return { error: { status: 404, message: 'Post not found.' } };
+  if (Array.isArray(widget.boardIds) && widget.boardIds.length > 0 && !widget.boardIds.includes(post.boardId)) {
+    return { error: { status: 404, message: 'Post not available through this widget.' } };
+  }
+  if (Array.isArray(widget.postStatuses) && widget.postStatuses.length > 0 && !widget.postStatuses.includes(post.status)) {
+    return { error: { status: 404, message: 'Post not available through this widget.' } };
+  }
+  return { widget, post };
+}
+
+// PUBLIC — list top-level comments on a post (hides internal + spam)
+const getPublicComments = async (req, res, next) => {
+  try {
+    const { token, postId } = req.params;
+    const check = await assertPostInWidget(token, postId);
+    if (check.error) return res.status(check.error.status).json({ success: false, message: check.error.message });
+
+    const comments = await prisma.comment.findMany({
+      where: { postId, parentId: null, isInternal: false, isSpam: false },
+      orderBy: [{ isPinned: 'desc' }, { createdAt: 'asc' }],
+      select: {
+        id: true, content: true, isOfficial: true, isPinned: true, createdAt: true,
+        author: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+
+    res.json({ success: true, data: { comments } });
+  } catch (err) { next(err); }
+};
+
+// PUBLIC — add a new comment. Auth preferred (optionalAuth), otherwise
+// email is required and must match an existing roadmap user.
+const addPublicComment = async (req, res, next) => {
+  try {
+    const { token, postId } = req.params;
+    const { content, email } = req.body || {};
+
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ success: false, message: 'Comment content is required.' });
+    }
+
+    const check = await assertPostInWidget(token, postId);
+    if (check.error) return res.status(check.error.status).json({ success: false, message: check.error.message });
+
+    let user;
+    if (req.user && req.user.isActive) {
+      user = req.user;
+    } else {
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+        return res.status(401).json({ success: false, message: 'Please sign in to comment.', code: 'AUTH_REQUIRED' });
+      }
+      const cleanEmail = String(email).trim().toLowerCase();
+      user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      if (!user || !user.isActive) {
+        return res.status(403).json({
+          success: false,
+          message: 'This email is not registered on our roadmap. Please sign up first to comment.',
+          code: 'USER_NOT_REGISTERED',
+        });
+      }
+    }
+
+    const comment = await prisma.comment.create({
+      data: {
+        postId,
+        authorId: user.id,
+        content: String(content).trim(),
+      },
+      select: {
+        id: true, content: true, isOfficial: true, isPinned: true, createdAt: true,
+        author: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+
+    // Bump cached commentCount on the post
+    prisma.post.update({
+      where: { id: postId },
+      data: { commentCount: { increment: 1 } },
+    }).catch(() => {});
+
+    res.status(201).json({ success: true, data: { comment } });
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   getWidgets,
   getWidget,
@@ -459,4 +554,6 @@ module.exports = {
   getPublicPost,
   togglePublicVote,
   submitPublicPost,
+  getPublicComments,
+  addPublicComment,
 };
