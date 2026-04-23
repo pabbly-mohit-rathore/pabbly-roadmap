@@ -137,7 +137,7 @@
     this.state.voterEmail = localStorage.getItem(this._lsKey('email'));
     try { this.state.votedIds = JSON.parse(localStorage.getItem(this._lsKey('votes')) || '{}'); } catch (e) { this.state.votedIds = {}; }
 
-    fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(token))
+    return fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(token))
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data || !data.success || !data.data || !data.data.widget) {
@@ -149,6 +149,9 @@
           var custom = document.querySelector(self.opts.selector);
           if (custom) custom.addEventListener('click', function () { self.open(); });
         }
+        // autoOpen (used by admin editor's Test Widget) — open the drawer
+        // immediately after config loads, no trigger click needed.
+        if (self.opts.autoOpen) self.open();
       })
       .catch(function (err) {
         console.error('[PabblyRoadmapWidget] failed to load config:', err);
@@ -156,6 +159,7 @@
   };
 
   Widget.prototype._mountTrigger = function () {
+    if (this.opts.hideDefaultTrigger) return;
     if (this.config.hideDefaultTrigger) return;
     if (this.opts.selector) return;
     var self = this;
@@ -225,36 +229,41 @@
     });
 
     // Panel position per type/openFrom
-    //   modal   → full-height edge drawer (matches app's right-side user info drawer)
-    //     - auto (default) = right | right | left | top | bottom
-    //   popover → dialog box
-    //     - center (default) = screen center | left = left-side | right = right-side
+    //   modal   → right/left drawer or centered modal dialog
+    //   popover → anchored dialog (auto/top/right/bottom/left)
     var panelStyle = [];
-    var from = cfg.openFrom || (cfg.type === 'popover' ? 'center' : 'right');
+    var from = cfg.openFrom || (cfg.type === 'modal' ? 'right' : 'auto');
     if (cfg.type === 'popover') {
       var popWidth = Math.min(560, width);
       panelStyle.push('width:' + popWidth + 'px', 'max-height:88vh', 'border-radius:14px');
-      if (from === 'left') {
-        panelStyle.push('top:50%', 'left:48px', 'transform:translateY(-50%)');
+      if (from === 'top') {
+        panelStyle.push('top:32px', 'left:50%', 'transform:translateX(-50%)');
+      } else if (from === 'bottom') {
+        panelStyle.push('bottom:32px', 'left:50%', 'transform:translateX(-50%)');
+      } else if (from === 'left') {
+        panelStyle.push('top:50%', 'left:32px', 'transform:translateY(-50%)');
       } else if (from === 'right') {
-        panelStyle.push('top:50%', 'right:48px', 'transform:translateY(-50%)');
+        panelStyle.push('top:50%', 'right:32px', 'transform:translateY(-50%)');
       } else {
-        // center (default)
+        // auto (default) = centered
         panelStyle.push('top:50%', 'left:50%', 'transform:translate(-50%,-50%)');
       }
     } else {
-      // modal → edge drawer. "auto" falls back to "right".
-      var modalFrom = from === 'auto' ? 'right' : from;
-      panelStyle.push('width:' + width + 'px', 'height:100vh', 'top:0');
-      if (modalFrom === 'left') {
-        panelStyle.push('left:0', 'border-right:1px solid ' + border);
-      } else if (modalFrom === 'top') {
-        panelStyle.push('left:0', 'right:0', 'width:auto', 'height:auto', 'max-height:88vh', 'top:0', 'border-bottom:1px solid ' + border);
-      } else if (modalFrom === 'bottom') {
-        panelStyle.push('left:0', 'right:0', 'width:auto', 'height:auto', 'max-height:88vh', 'bottom:0', 'top:auto', 'border-top:1px solid ' + border);
+      // modal supports right | left | center
+      if (from === 'center') {
+        // Centered modal dialog — not a drawer
+        panelStyle.push(
+          'top:50%', 'left:50%', 'transform:translate(-50%,-50%)',
+          'width:' + Math.min(560, width) + 'px', 'max-height:88vh',
+          'border-radius:14px'
+        );
+      } else if (from === 'left') {
+        panelStyle.push('width:' + width + 'px', 'height:100vh', 'top:0',
+          'left:0', 'border-right:1px solid ' + border);
       } else {
-        // right (default, also for auto)
-        panelStyle.push('right:0', 'border-left:1px solid ' + border);
+        // right (default)
+        panelStyle.push('width:' + width + 'px', 'height:100vh', 'top:0',
+          'right:0', 'border-left:1px solid ' + border);
       }
     }
 
