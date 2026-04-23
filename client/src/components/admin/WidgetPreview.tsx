@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MessageSquareText, Sparkles, FileText, Send, Search, ThumbsUp } from 'lucide-react';
+import { X, MessageSquareText, Sparkles, Send, Search, ThumbsUp } from 'lucide-react';
 
 export interface WidgetConfig {
   name: string;
@@ -26,13 +26,8 @@ export default function WidgetPreview({ config, onClose }: { config: WidgetConfi
   const accent = config.accentColor || '#059669';
   const width = config.widgetWidth || 400;
 
-  // Module normalization — accept several aliases
-  const has = (m: string) => config.modules.some((x) => x.toLowerCase().includes(m));
-  const hasChangelog = has('changelog') || has('change');
-  const hasPosts = has('post') || has('feature') || has('board');
-
-  const [activeTab, setActiveTab] = useState<'posts' | 'changelog' | 'submit'>(
-    config.showSubmissionFormOnly ? 'submit' : hasPosts ? 'posts' : hasChangelog ? 'changelog' : 'submit'
+  const [activeTab, setActiveTab] = useState<'posts' | 'submit'>(
+    config.showSubmissionFormOnly ? 'submit' : 'posts'
   );
 
   // Positioning based on openFrom (for popover only)
@@ -104,30 +99,20 @@ export default function WidgetPreview({ config, onClose }: { config: WidgetConfi
         </div>
 
         {/* Tabs — only if not submission-only mode */}
-        {!config.showSubmissionFormOnly && (hasPosts || hasChangelog) && (
+        {!config.showSubmissionFormOnly && (
           <div style={{ display: 'flex', borderBottom: `1px solid ${border}`, background: softBg }}>
-            {hasPosts && (
-              <TabBtn active={activeTab === 'posts'} onClick={() => setActiveTab('posts')} accent={accent} muted={muted}>
-                <Sparkles style={{ width: 14, height: 14 }} /> Feature Requests
-              </TabBtn>
-            )}
-            {hasChangelog && (
-              <TabBtn active={activeTab === 'changelog'} onClick={() => setActiveTab('changelog')} accent={accent} muted={muted}>
-                <FileText style={{ width: 14, height: 14 }} /> Changelog
-              </TabBtn>
-            )}
-            {hasPosts && (
-              <TabBtn active={activeTab === 'submit'} onClick={() => setActiveTab('submit')} accent={accent} muted={muted}>
-                <Send style={{ width: 14, height: 14 }} /> Submit
-              </TabBtn>
-            )}
+            <TabBtn active={activeTab === 'posts'} onClick={() => setActiveTab('posts')} accent={accent} muted={muted}>
+              <Sparkles style={{ width: 14, height: 14 }} /> Feature Requests
+            </TabBtn>
+            <TabBtn active={activeTab === 'submit'} onClick={() => setActiveTab('submit')} accent={accent} muted={muted}>
+              <Send style={{ width: 14, height: 14 }} /> Submit
+            </TabBtn>
           </div>
         )}
 
         {/* Body */}
         <div style={{ padding: 18, overflowY: 'auto', flex: 1, minHeight: 240, maxHeight: 520 }}>
           {activeTab === 'posts' && <PostsPreview accent={accent} text={text} muted={muted} border={border} softBg={softBg} />}
-          {activeTab === 'changelog' && <ChangelogPreview accent={accent} text={text} muted={muted} border={border} />}
           {activeTab === 'submit' && <SubmitPreview accent={accent} text={text} muted={muted} border={border} softBg={softBg} hideBoardSelection={config.hideBoardSelection} suggestSimilar={config.suggestSimilarPosts} />}
         </div>
 
@@ -188,24 +173,6 @@ function PostsPreview({ accent, text, muted, border, softBg }: any) {
             <div style={{ fontSize: 13, fontWeight: 600, color: text, marginBottom: 4 }}>{s.title}</div>
             <span style={{ fontSize: 11, color: muted }}>{s.status}</span>
           </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ChangelogPreview({ accent, text, muted, border }: any) {
-  const entries = [
-    { date: 'Apr 22, 2026', title: 'Email notifications launched', desc: 'All notification events now also send email alerts.' },
-    { date: 'Apr 20, 2026', title: 'Magic-link auth', desc: 'Secure one-click sign-in from email.' },
-  ];
-  return (
-    <div>
-      {entries.map((e, i) => (
-        <div key={i} style={{ paddingBottom: 14, marginBottom: 14, borderBottom: `1px dashed ${border}` }}>
-          <div style={{ fontSize: 11, color: muted, marginBottom: 4 }}>{e.date}</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: accent, marginBottom: 6 }}>{e.title}</div>
-          <div style={{ fontSize: 13, color: text, lineHeight: 1.5 }}>{e.desc}</div>
         </div>
       ))}
     </div>

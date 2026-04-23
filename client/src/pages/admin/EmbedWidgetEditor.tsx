@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import LoadingBar from '../../components/ui/LoadingBar';
 import LoadingButton from '../../components/ui/LoadingButton';
 import Tooltip from '../../components/ui/Tooltip';
+import CustomDropdown from '../../components/ui/CustomDropdown';
 import WidgetPreview from '../../components/admin/WidgetPreview';
 import type { WidgetConfig } from '../../components/admin/WidgetPreview';
 
@@ -282,39 +283,14 @@ export default function EmbedWidgetEditor() {
                   </div>
                 </FieldGroup>
 
-                {/* Modules */}
-                <FieldGroup label="Modules" help="Which sections are visible inside the widget." d={d}>
-                  <div className="space-y-2">
-                    {[
-                      { k: 'changelog', l: 'Change Log' },
-                      { k: 'posts', l: 'Feature Requests / Boards' },
-                    ].map((m) => {
-                      const on = widget.modules.includes(m.k);
-                      return (
-                        <label key={m.k} className="flex items-center gap-3 cursor-pointer">
-                          <button type="button" onClick={() => {
-                            update({
-                              modules: on ? widget.modules.filter((x) => x !== m.k) : [...widget.modules, m.k],
-                            });
-                          }}
-                            className={`relative w-10 h-5 rounded-full transition-colors ${on ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
-                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
-                          </button>
-                          <span className={`text-sm ${d ? 'text-gray-200' : 'text-gray-800'}`}>{m.l}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </FieldGroup>
-
                 {/* Submission board */}
                 <FieldGroup label="Submission Board" help="Default board that new submissions go into." d={d}>
-                  <select value={widget.submissionBoardId || ''}
-                    onChange={(e) => update({ submissionBoardId: e.target.value || null })}
-                    className={`text-sm px-3 py-2 rounded-lg border w-full ${d ? 'bg-gray-900 border-gray-700 text-gray-200' : 'bg-white border-gray-300 text-gray-700'}`}>
-                    <option value="">— Select a board —</option>
-                    {boards.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
+                  <CustomDropdown label="Submission Board" value={widget.submissionBoardId || ''}
+                    options={[
+                      { value: '', label: 'Select a board' },
+                      ...boards.map((b) => ({ value: b.id, label: b.name })),
+                    ]}
+                    onChange={(v) => update({ submissionBoardId: v || null })} />
                 </FieldGroup>
 
                 <ToggleRow label="Show submission form only" help="Hide browse/list views — only the submit form is shown."
@@ -331,21 +307,8 @@ export default function EmbedWidgetEditor() {
           </div>
         </div>
 
-        {/* RIGHT — Test button + embed code */}
+        {/* RIGHT — Embed code + helper */}
         <div className="space-y-4">
-          {/* Test Widget large card */}
-          <button onClick={() => setShowPreview(true)}
-            className="w-full rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-transform hover:scale-[1.01]"
-            style={{
-              background: `linear-gradient(135deg, ${widget.accentColor}, ${widget.accentColor}dd)`,
-              padding: '26px 20px',
-              fontSize: '16px',
-              boxShadow: `0 8px 24px ${widget.accentColor}33`,
-            }}>
-            <Sparkles className="w-5 h-5" />
-            Test Widget
-          </button>
-
           {/* Embed code */}
           <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             <div className={`flex items-center justify-between px-5 py-4 border-b ${d ? 'border-gray-700' : 'border-gray-200'}`}>
