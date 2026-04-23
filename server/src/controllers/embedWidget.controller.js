@@ -247,8 +247,8 @@ const getPublicPosts = async (req, res, next) => {
       orderBy: buildWidgetOrderBy(widget.defaultSort),
       take: limit,
       select: {
-        id: true, title: true, slug: true, description: true, status: true,
-        voteCount: true, createdAt: true,
+        id: true, title: true, slug: true, description: true, content: true,
+        status: true, type: true, voteCount: true, createdAt: true,
         board: { select: { id: true, name: true } },
         tags: { select: { tag: { select: { id: true, name: true, color: true } } } },
         _count: { select: { comments: true } },

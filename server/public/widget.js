@@ -208,6 +208,7 @@
   Widget.prototype.close = function () {
     document.body.style.overflow = '';
     this.isOpen = false;
+    if (this._hideHoverPopup) this._hideHoverPopup();
     if (this.els.backdrop && this.els.backdrop.parentNode) {
       this.els.backdrop.parentNode.removeChild(this.els.backdrop);
     }
@@ -473,16 +474,16 @@
 
   // Post card — mirrors the "All Posts" table row layout from the main app:
   // left-side compact horizontal vote button, then single-line title and
-  // description (both truncated; full text on hover via native title attr).
-  // Meta row: Board · Status · Comments.
+  // description (both truncated). Hover shows a custom floating card with
+  // the full title + description + chips (like the main app's hover popup).
   Widget.prototype._postCard = function (p) {
     var self = this, e = this.els;
     var hasVoted = !!this.state.votedIds[p.id];
+    // Fallback: if plain description is empty, strip content (rich HTML)
     var descClean = p.description ? stripHtml(p.description) : '';
+    if (!descClean && p.content) descClean = stripHtml(p.content);
 
     var card = el('div', {
-      // Native browser tooltip shows full title + description on hover
-      title: descClean ? (p.title + '\n\n' + descClean) : p.title,
       style: [
         'background:' + (e.dark ? '#1f2937' : '#ffffff'),
         'border:1px solid ' + e.border,
@@ -492,8 +493,18 @@
       ].join(';'),
       onclick: function () { self._setView('detail', p); },
     });
-    card.addEventListener('mouseenter', function () { card.style.borderColor = e.accent; card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; });
-    card.addEventListener('mouseleave', function () { card.style.borderColor = e.border; card.style.boxShadow = 'none'; });
+    var hoverTimer = null;
+    card.addEventListener('mouseenter', function () {
+      card.style.borderColor = e.accent;
+      card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+      hoverTimer = setTimeout(function () { self._showHoverPopup(card, p, descClean); }, 400);
+    });
+    card.addEventListener('mouseleave', function () {
+      card.style.borderColor = e.border;
+      card.style.boxShadow = 'none';
+      if (hoverTimer) clearTimeout(hoverTimer);
+      self._hideHoverPopup();
+    });
 
     // Compact horizontal vote button — matches app's upvote chip size
     var voteBtn = el('button', {
@@ -867,6 +878,80 @@
         }
       })
       .catch(function () { /* keep stub post */ });
+  };
+
+  // ============================================================
+  // HOVER POPUP — mimics the main app's All Posts hover card.
+  // Renders chips (board, type, status) + full title + full description.
+  // ============================================================
+  Widget.prototype._showHoverPopup = function (cardEl, post, descClean) {
+    var e = this.els;
+    if (!e) return;
+    this._hideHoverPopup();
+
+    var pop = document.createElement('div');
+    pop.id = 'prw-hover-popup';
+    pop.style.cssText = [
+      'position:fixed', 'z-index:2147483700',
+      'background:' + (e.dark ? '#1f2937' : '#ffffff'),
+      'border:1px solid ' + e.border,
+      'border-radius:12px',
+      'padding:14px',
+      'width:' + (cardEl.getBoundingClientRect().width) + 'px',
+      'max-width:400px',
+      'box-shadow:0 20px 40px rgba(0,0,0,0.15)',
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+      'pointer-events:none',
+      'opacity:0',
+      'transform:translateY(-4px)',
+      'transition:opacity 0.15s ease, transform 0.15s ease',
+    ].join(';');
+
+    // Chips row
+    var chips = '';
+    if (post.board) {
+      chips += '<span style="display:inline-block;padding:3px 10px;border-radius:6px;background:' + (e.dark ? 'rgba(5,150,105,0.15)' : 'rgba(5,150,105,0.1)') + ';color:' + e.accent + ';font-size:11px;font-weight:600;margin-right:6px;">' + escapeHtml(post.board.name) + '</span>';
+    }
+    if (post.type) {
+      var typeColors = { feature: '#3b82f6', bug: '#ef4444', improvement: '#f97316', integration: '#a855f7' };
+      var tc = typeColors[post.type] || '#6b7280';
+      chips += '<span style="display:inline-block;padding:3px 10px;border-radius:6px;background:' + tc + '1a;color:' + tc + ';font-size:11px;font-weight:600;margin-right:6px;text-transform:capitalize;">' + escapeHtml(post.type) + '</span>';
+    }
+    if (post.status) {
+      chips += '<span style="display:inline-block;padding:3px 10px;border-radius:6px;background:' + statusBadgeBg(post.status, e.dark) + ';color:' + statusBadgeColor(post.status, e.dark) + ';font-size:11px;font-weight:600;">' + escapeHtml(prettyStatus(post.status)) + '</span>';
+    }
+
+    pop.innerHTML =
+      (chips ? '<div style="margin-bottom:10px;">' + chips + '</div>' : '') +
+      '<div style="font-size:14px;font-weight:700;color:' + e.text + ';line-height:1.4;margin-bottom:6px;">' + escapeHtml(post.title) + '</div>' +
+      (descClean ? '<div style="font-size:13px;color:' + e.muted + ';line-height:1.5;">' + escapeHtml(descClean) + '</div>' : '');
+
+    document.body.appendChild(pop);
+
+    // Position — prefer above card; flip below if no space
+    var r = cardEl.getBoundingClientRect();
+    var popH = pop.getBoundingClientRect().height;
+    var spaceAbove = r.top;
+    var spaceBelow = window.innerHeight - r.bottom;
+    var top;
+    if (spaceAbove >= popH + 12 || spaceAbove > spaceBelow) {
+      top = r.top - popH - 8;
+    } else {
+      top = r.bottom + 8;
+    }
+    pop.style.left = r.left + 'px';
+    pop.style.top = Math.max(8, top) + 'px';
+
+    requestAnimationFrame(function () {
+      pop.style.opacity = '1';
+      pop.style.transform = 'translateY(0)';
+    });
+    this._hoverPopupEl = pop;
+  };
+  Widget.prototype._hideHoverPopup = function () {
+    var pop = this._hoverPopupEl;
+    if (pop && pop.parentNode) pop.parentNode.removeChild(pop);
+    this._hoverPopupEl = null;
   };
 
   // ============================================================
