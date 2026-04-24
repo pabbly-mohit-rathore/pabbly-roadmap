@@ -28,11 +28,12 @@ interface Post {
 
 interface Board { id: string; name: string; }
 
-const STATUS_ORDER = ['under_review', 'planned', 'in_progress', 'live', 'hold'];
+// User-facing roadmap columns — "open" and "planned" are hidden. "open"
+// is an admin-only triage column; "planned" was removed from the product.
+const STATUS_ORDER = ['under_review', 'in_progress', 'live', 'hold'];
 
 const STATUS_CONFIG: Record<string, { label: string; dotColor: string; borderColor: string; textColor: string }> = {
   under_review: { label: 'Under Review', dotColor: 'bg-yellow-500', borderColor: 'border-t-yellow-500', textColor: 'text-yellow-600' },
-  planned: { label: 'Planned', dotColor: 'bg-purple-500', borderColor: 'border-t-purple-500', textColor: 'text-purple-600' },
   in_progress: { label: 'In Progress', dotColor: 'bg-orange-500', borderColor: 'border-t-orange-500', textColor: 'text-orange-500' },
   live: { label: 'Live', dotColor: 'bg-green-500', borderColor: 'border-t-green-500', textColor: 'text-green-600' },
   hold: { label: 'On Hold', dotColor: 'bg-red-500', borderColor: 'border-t-red-500', textColor: 'text-red-500' },

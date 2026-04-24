@@ -38,11 +38,13 @@ interface Board {
   name: string;
 }
 
-const STATUS_ORDER = ['under_review', 'planned', 'in_progress', 'live', 'hold'];
+// Admin sees an extra "Open" triage column at the start — users don't see
+// it. "Planned" was removed from the product.
+const STATUS_ORDER = ['open', 'under_review', 'in_progress', 'live', 'hold'];
 
 const STATUS_CONFIG: Record<string, { label: string; dotColor: string; borderColor: string; textColor: string }> = {
+  open: { label: 'Open', dotColor: 'bg-blue-500', borderColor: 'border-t-blue-500', textColor: 'text-blue-600' },
   under_review: { label: 'Under Review', dotColor: 'bg-yellow-500', borderColor: 'border-t-yellow-500', textColor: 'text-yellow-600' },
-  planned: { label: 'Planned', dotColor: 'bg-purple-500', borderColor: 'border-t-purple-500', textColor: 'text-purple-600' },
   in_progress: { label: 'In Progress', dotColor: 'bg-orange-500', borderColor: 'border-t-orange-500', textColor: 'text-orange-500' },
   live: { label: 'Live', dotColor: 'bg-green-500', borderColor: 'border-t-green-500', textColor: 'text-green-600' },
   hold: { label: 'On Hold', dotColor: 'bg-red-500', borderColor: 'border-t-red-500', textColor: 'text-red-500' },
@@ -125,36 +127,46 @@ export default function AdminRoadmap() {
     e.preventDefault();
   };
 
-  const applyStatusChange = async (post: Post, oldStatus: string, newStatus: string, reason?: string) => {
+  const applyStatusChange = (post: Post, oldStatus: string, newStatus: string, reason?: string) => {
     const postId = post.id;
-    try {
-      await api.put(`/posts/${postId}/status`, { status: newStatus });
-      setRoadmap(prev => {
-        const updated = { ...prev };
-        updated[oldStatus] = (updated[oldStatus] || []).filter((p: Post) => p.id !== postId);
-        updated[newStatus] = [...(updated[newStatus] || []), { ...post, status: newStatus }];
-        return updated;
-      });
-      if (reason) {
-        const label = newStatus === 'hold' ? 'Status changed to On Hold' : 'Status changed to Live';
-        const content = `<p><strong>${label}</strong></p>${reason}`;
-        try {
-          await api.post(`/comments/post/${postId}`, { content });
-        } catch (err) {
-          console.error('[status-reason-comment] failed', err);
-          const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-          toast.error(msg || 'Failed to post reason as comment');
+
+    // Optimistic UI — move the card instantly. Roll back if the API fails.
+    setRoadmap(prev => {
+      const updated = { ...prev };
+      updated[oldStatus] = (updated[oldStatus] || []).filter((p: Post) => p.id !== postId);
+      updated[newStatus] = [...(updated[newStatus] || []), { ...post, status: newStatus }];
+      return updated;
+    });
+
+    api.put(`/posts/${postId}/status`, { status: newStatus })
+      .then(() => {
+        toast.success(reason
+          ? `Status updated to ${newStatus === 'hold' ? 'On Hold' : 'Live'}`
+          : 'Status updated');
+        // Reason comment is fire-and-forget — never blocks the drop.
+        if (reason) {
+          const label = newStatus === 'hold' ? 'Status changed to On Hold' : 'Status changed to Live';
+          const content = `<p><strong>${label}</strong></p>${reason}`;
+          api.post(`/comments/post/${postId}`, { content }).catch((err) => {
+            console.error('[status-reason-comment] failed', err);
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+            toast.error(msg || 'Failed to post reason as comment');
+          });
         }
-      }
-      toast.success(reason
-        ? `Status updated to ${newStatus === 'hold' ? 'On Hold' : 'Live'}`
-        : 'Status updated');
-    } catch {
-      toast.error('Failed to change status');
-    }
+      })
+      .catch(() => {
+        // Roll back: move the card back to its original column.
+        setRoadmap(prev => {
+          const updated = { ...prev };
+          updated[newStatus] = (updated[newStatus] || []).filter((p: Post) => p.id !== postId);
+          updated[oldStatus] = [...(updated[oldStatus] || []), { ...post, status: oldStatus }];
+          return updated;
+        });
+        toast.error('Failed to change status');
+      });
   };
 
-  const handleDrop = async (newStatus: string) => {
+  const handleDrop = (newStatus: string) => {
     if (!draggedPost || draggedPost.status === newStatus) {
       setDraggedPost(null);
       return;
@@ -170,7 +182,7 @@ export default function AdminRoadmap() {
     const post = draggedPost;
     const oldStatus = draggedPost.status;
     setDraggedPost(null);
-    await applyStatusChange(post, oldStatus, newStatus);
+    applyStatusChange(post, oldStatus, newStatus);
   };
 
   const clearFilters = () => {

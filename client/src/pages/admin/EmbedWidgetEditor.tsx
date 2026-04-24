@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Sparkles, Settings as SettingsIcon, ChevronDown, Info, Filter } from 'lucide-react';
+import { Copy, Sparkles, Settings as SettingsIcon, ChevronDown, Info, Filter } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -30,8 +30,8 @@ interface WidgetConfig {
 }
 
 const STATUS_OPTIONS = [
+  { value: 'open', label: 'Open' },
   { value: 'under_review', label: 'Under Review' },
-  { value: 'planned', label: 'Planned' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'live', label: 'Live' },
   { value: 'hold', label: 'On Hold' },
@@ -217,19 +217,11 @@ export default function EmbedWidgetEditor() {
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Tooltip title="Back to widgets">
-            <button onClick={() => navigate('/admin/settings?tab=embed-widgets')}
-              className={`p-2 rounded-lg transition ${d ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}>
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          </Tooltip>
-          <div>
-            <input type="text" value={widget.name} onChange={(e) => update({ name: e.target.value })}
-              className={`text-2xl font-bold mb-2 bg-transparent border-none outline-none p-0 ${d ? 'text-white' : 'text-gray-900'}`}
-              style={{ width: `${Math.max(240, widget.name.length * 14)}px` }} />
-            <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>Customize this widget and grab the embed code.</p>
-          </div>
+        <div>
+          <input type="text" value={widget.name} onChange={(e) => update({ name: e.target.value })}
+            className={`text-2xl font-bold mb-2 bg-transparent border-none outline-none p-0 ${d ? 'text-white' : 'text-gray-900'}`}
+            style={{ width: `${Math.max(240, widget.name.length * 14)}px` }} />
+          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>Customize this widget and grab the embed code.</p>
         </div>
         <div className="flex items-center gap-3">
           <LoadingButton onClick={handleTest} loading={testing}
@@ -316,13 +308,17 @@ export default function EmbedWidgetEditor() {
                   </div>
                 </FieldGroup>
 
-                {/* Accent color */}
+                {/* Accent color — same style as the Board dialog color picker */}
                 <FieldGroup label="Accent Color" d={d}>
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-4 flex-wrap">
                     {COLOR_PRESETS.map((c) => (
                       <button key={c} onClick={() => update({ accentColor: c })}
-                        className={`w-8 h-8 rounded-full transition ${widget.accentColor === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-105'}`}
-                        style={{ backgroundColor: c, outline: widget.accentColor === c ? `2px solid ${c}` : 'none' }} />
+                        className={`w-8 h-8 rounded-full border-2 transition-all ${
+                          widget.accentColor === c
+                            ? 'border-gray-900 scale-110 ring-2 ring-offset-2 ring-gray-400'
+                            : 'border-transparent hover:scale-110'
+                        }`}
+                        style={{ backgroundColor: c }} title={c} />
                     ))}
                     <input type="text" value={widget.accentColor}
                       onChange={(e) => update({ accentColor: e.target.value })}

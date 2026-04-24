@@ -152,7 +152,7 @@ export default function AdminEmbedWidgets({ triggerCreate, showFilters = false }
                     style={{
                       fontSize: '14px', color: d ? undefined : '#1C252E',
                       textAlign: i === 5 ? 'right' as const : 'left' as const,
-                      width: i === 0 ? '80px' : i === 1 ? '220px' : i === 3 ? '100px' : i === 4 ? '120px' : i === 5 ? '70px' : undefined,
+                      width: i === 0 ? '80px' : i === 1 ? '180px' : i === 3 ? '200px' : i === 4 ? '200px' : i === 5 ? '70px' : undefined,
                     }}>
                     <div style={{ paddingLeft: i === 0 ? '24px' : '16px', paddingRight: i === 5 ? '24px' : '16px' }}>
                       <Tooltip title={h.tip}><span>{h.label}</span></Tooltip>
