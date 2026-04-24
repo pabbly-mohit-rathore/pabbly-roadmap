@@ -593,7 +593,7 @@ const addPublicComment = async (req, res, next) => {
 
   try {
     const { token, postId } = req.params;
-    const { content, email } = req.body || {};
+    const { content, email, parentId: rawParentId } = req.body || {};
 
     const trimmedContent = content ? String(content).trim() : '';
     if (!trimmedContent && !uploadedFile) {
@@ -605,6 +605,22 @@ const addPublicComment = async (req, res, next) => {
     if (check.error) {
       unlinkSafe(uploadedPath);
       return res.status(check.error.status).json({ success: false, message: check.error.message });
+    }
+
+    // Validate parentId: must be a non-internal/non-spam comment on the same post.
+    // Only one level of nesting — a reply's parent must itself be top-level.
+    let parentId = null;
+    if (rawParentId) {
+      const parent = await prisma.comment.findUnique({
+        where: { id: String(rawParentId) },
+        select: { id: true, postId: true, parentId: true, isInternal: true, isSpam: true },
+      });
+      if (!parent || parent.postId !== postId || parent.isInternal || parent.isSpam) {
+        unlinkSafe(uploadedPath);
+        return res.status(400).json({ success: false, message: 'Invalid parent comment.' });
+      }
+      // Flatten nested replies — attach to the top-level ancestor so we stay one level deep
+      parentId = parent.parentId || parent.id;
     }
 
     let user;
@@ -641,10 +657,12 @@ const addPublicComment = async (req, res, next) => {
         postId,
         authorId: user.id,
         content: trimmedContent,
+        parentId,
         ...attachmentData,
       },
       select: {
         id: true, content: true, isOfficial: true, isPinned: true, createdAt: true,
+        parentId: true, likeCount: true,
         attachmentUrl: true, attachmentName: true, attachmentMime: true, attachmentSize: true,
         author: { select: { id: true, name: true, avatar: true } },
       },
