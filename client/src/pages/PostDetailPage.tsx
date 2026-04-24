@@ -4,6 +4,7 @@ import { ThumbsUp } from 'lucide-react';
 import useThemeStore from '../store/themeStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import CommentAttachment from '../components/ui/CommentAttachment';
 
 interface Post {
   id: string;
@@ -25,6 +26,10 @@ interface Comment {
   content: string;
   author: { name: string };
   createdAt: string;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentMime?: string | null;
+  attachmentSize?: number | null;
 }
 
 export default function PostDetailPage() {
@@ -294,6 +299,7 @@ export default function PostDetailPage() {
                   }`}>
                     {comment.content}
                   </p>
+                  <CommentAttachment url={comment.attachmentUrl} name={comment.attachmentName} mime={comment.attachmentMime} size={comment.attachmentSize} dark={theme === 'dark'} />
                 </div>
               ))
             ) : (

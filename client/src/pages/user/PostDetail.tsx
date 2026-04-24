@@ -11,6 +11,7 @@ import CommentEditor from '../../components/CommentEditor';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Tooltip from '../../components/ui/Tooltip';
 import LoadingBar from '../../components/ui/LoadingBar';
+import CommentAttachment from '../../components/ui/CommentAttachment';
 import useSocket from '../../hooks/useSocket';
 import useTeamAccessStore from '../../store/teamAccessStore';
 
@@ -50,6 +51,10 @@ interface Comment {
   likes: { userId: string }[];
   parentId: string | null;
   replies?: Comment[];
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentMime?: string | null;
+  attachmentSize?: number | null;
 }
 
 const getTimeAgo = (dateStr: string): string => {
@@ -546,6 +551,7 @@ export default function UserPostDetail() {
                                   ) : (
                                     <div className={`mt-1 text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                                       <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: comment.content }} />
+                                      <CommentAttachment url={comment.attachmentUrl} name={comment.attachmentName} mime={comment.attachmentMime} size={comment.attachmentSize} dark={theme === 'dark'} />
                                     </div>
                                   )}
                                   {(
@@ -657,6 +663,7 @@ export default function UserPostDetail() {
                                               ) : (
                                                 <div className={`mt-1 text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                                                   <div className="tiptap-preview" dangerouslySetInnerHTML={{ __html: reply.content }} />
+                                                  <CommentAttachment url={reply.attachmentUrl} name={reply.attachmentName} mime={reply.attachmentMime} size={reply.attachmentSize} dark={theme === 'dark'} />
                                                 </div>
                                               )}
                                               {(
