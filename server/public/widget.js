@@ -65,6 +65,37 @@
       // Input / textarea — border darkens on hover and focus (matches .border-gray-200 → .border-gray-400 pattern)
       '.prw-input { transition: border-color 0.15s ease; }\n' +
       '.prw-input:hover, .prw-input:focus { border-color: var(--prw-border-hover, #9ca3af) !important; }\n' +
+      // Floating-label inputs (matches the main app\'s Create Post dialog — MUI notch style)
+      '.prw-float { position: relative; margin-bottom: 14px; }\n' +
+      '.prw-float > input.prw-float-input, .prw-float > textarea.prw-float-input {\n' +
+      '  width:100%; padding:16.5px 14px; border-radius:8px; border:1px solid var(--prw-border, #e5e7eb);\n' +
+      '  background: var(--prw-field-bg, #ffffff); color: var(--prw-text, #111827);\n' +
+      '  outline:none; font-size:14px; font-family: inherit; box-sizing: border-box;\n' +
+      '  transition: border-color 0.15s ease;\n' +
+      '}\n' +
+      '.prw-float > textarea.prw-float-input { min-height: 120px; resize: vertical; line-height: 1.5; }\n' +
+      '.prw-float > input.prw-float-input:hover, .prw-float > input.prw-float-input:focus,\n' +
+      '.prw-float > textarea.prw-float-input:hover, .prw-float > textarea.prw-float-input:focus {\n' +
+      '  border-color: var(--prw-border-hover, #9ca3af);\n' +
+      '}\n' +
+      '.prw-float > .prw-float-label {\n' +
+      '  position:absolute; left:10px; top:50%; transform:translateY(-50%);\n' +
+      '  padding:0 4px; background: var(--prw-field-bg, #ffffff); color: var(--prw-muted, #6b7280);\n' +
+      '  pointer-events:none; font-size:14px; font-weight: 400;\n' +
+      '  transition: top 0.15s ease, font-size 0.15s ease, font-weight 0.15s ease, color 0.15s ease;\n' +
+      '}\n' +
+      // Textarea label sits near the top of the box rather than vertically centered
+      '.prw-float > textarea.prw-float-input + .prw-float-label { top: 22px; transform: none; }\n' +
+      // When input/textarea has content or is focused — float the label to the border notch
+      '.prw-float > input.prw-float-input:focus + .prw-float-label,\n' +
+      '.prw-float > input.prw-float-input:not(:placeholder-shown) + .prw-float-label,\n' +
+      '.prw-float > textarea.prw-float-input:focus + .prw-float-label,\n' +
+      '.prw-float > textarea.prw-float-input:not(:placeholder-shown) + .prw-float-label {\n' +
+      '  top: 0 !important; transform: translateY(-50%) !important;\n' +
+      '  font-size: 11px; font-weight: 500;\n' +
+      '}\n' +
+      // Helper text below the field
+      '.prw-float-help { font-size: 11.5px; color: var(--prw-muted, #6b7280); margin: 6px 14px 0; }\n' +
       // Attachment row (below comment textarea) + file chip inside comments
       '.prw-attach-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:6px 2px; font-size:13px; cursor:pointer; font-family:inherit; transition: opacity 0.15s ease; }\n' +
       '.prw-attach-btn:hover { opacity:0.75; }\n' +
@@ -405,8 +436,12 @@
     document.body.appendChild(backdrop);
     document.body.style.overflow = 'hidden';
 
-    // Expose hover border as a CSS custom property so `.prw-input:hover` can pick it up
+    // Expose theme tokens as CSS custom properties so scoped selectors (inputs / floating labels) can pick them up
+    panel.style.setProperty('--prw-border', border);
     panel.style.setProperty('--prw-border-hover', borderHover);
+    panel.style.setProperty('--prw-field-bg', dark ? '#111827' : '#ffffff');
+    panel.style.setProperty('--prw-text', text);
+    panel.style.setProperty('--prw-muted', muted);
 
     this.els = {
       backdrop: backdrop, panel: panel, header: header, searchBar: searchBar, content: content,
@@ -991,23 +1026,26 @@
     var self = this, e = this.els;
     var wrap = el('div', { style: 'padding:20px;' });
 
-    var inputBase = [
-      'width:100%', 'padding:10px 12px',
-      'border:1px solid ' + e.border, 'border-radius:8px',
-      'font-size:13px', 'outline:none', 'box-sizing:border-box',
-      'background:' + (e.dark ? '#0f172a' : '#fff'), 'color:' + e.text,
-      'font-family:inherit',
-    ].join(';');
-    var labelStyle = 'font-size:11px;color:' + e.muted + ';font-weight:600;display:block;margin-bottom:4px;';
-    var fieldWrap = 'margin-bottom:14px;';
-
-    function field(label, inputNode) {
-      var w = el('div', { style: fieldWrap });
-      var l = el('label', { style: labelStyle });
-      l.textContent = label;
-      w.appendChild(l);
-      w.appendChild(inputNode);
-      return w;
+    // Floating-label field helper — matches the main app's Create Post dialog.
+    // Placeholder is a single space (" ") so :placeholder-shown stays true until
+    // the user types, keeping the label in the centered position.
+    function floatField(opts) {
+      var w = el('div', { class: 'prw-float' });
+      var node = opts.textarea
+        ? el('textarea', { id: opts.id, placeholder: ' ', class: 'prw-float-input' })
+        : el('input', { id: opts.id, type: opts.type || 'text', placeholder: ' ', class: 'prw-float-input', value: opts.value || '' });
+      if (opts.textarea && opts.minHeight) node.style.minHeight = opts.minHeight;
+      var lbl = el('label', { class: 'prw-float-label' });
+      lbl.setAttribute('for', opts.id);
+      lbl.textContent = opts.label;
+      w.appendChild(node);
+      w.appendChild(lbl);
+      if (opts.help) {
+        var help = el('p', { class: 'prw-float-help' });
+        help.textContent = opts.help;
+        w.appendChild(help);
+      }
+      return { wrap: w, input: node };
     }
 
     var authed = isAuthed();
@@ -1029,14 +1067,18 @@
 
     var emailInput = null;
     if (!authed) {
-      emailInput = el('input', { type: 'email', placeholder: 'Your registered email', value: self.state.voterEmail || '', class: 'prw-input', style: inputBase });
-      wrap.appendChild(field('Registered Email', emailInput));
+      var emF = floatField({ id: 'prw-f-email', type: 'email', label: 'Registered Email', value: self.state.voterEmail || '', help: 'Use the email you signed up with.' });
+      emailInput = emF.input;
+      wrap.appendChild(emF.wrap);
     }
-    var titleInput = el('input', { type: 'text', placeholder: 'What would you like to request?', class: 'prw-input', style: inputBase });
-    var descInput  = el('textarea', { placeholder: 'Tell us more about what you need…', class: 'prw-input', style: inputBase + ';min-height:120px;resize:vertical;' });
 
-    wrap.appendChild(field('Title', titleInput));
-    wrap.appendChild(field('Description (optional)', descInput));
+    var tF = floatField({ id: 'prw-f-title', label: 'Title *', help: 'Enter the title for your post.' });
+    var titleInput = tF.input;
+    wrap.appendChild(tF.wrap);
+
+    var dF = floatField({ id: 'prw-f-desc', label: 'Description (optional)', textarea: true, help: 'Tell us more about what you need.' });
+    var descInput = dF.input;
+    wrap.appendChild(dF.wrap);
 
     var msg = el('div', { style: 'font-size:12px;margin:8px 0;min-height:16px;' });
 
