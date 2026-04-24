@@ -65,8 +65,12 @@
       // Input / textarea — border darkens on hover and focus (matches .border-gray-200 → .border-gray-400 pattern)
       '.prw-input { transition: border-color 0.15s ease; }\n' +
       '.prw-input:hover, .prw-input:focus { border-color: var(--prw-border-hover, #9ca3af) !important; }\n' +
-      // Floating-label inputs (matches the main app\'s Create Post dialog — MUI notch style)
-      '.prw-float { position: relative; margin-bottom: 14px; }\n' +
+      // Floating-label inputs (matches the main app\'s Create Post dialog — MUI notch style).
+      // Outer "field" holds input-wrap + help text. Inner ".prw-float" is the positioning
+      // context so the label's top:50% is computed against the INPUT height only
+      // (not the input + help text).
+      '.prw-float-field { margin-bottom: 14px; }\n' +
+      '.prw-float { position: relative; }\n' +
       '.prw-float > input.prw-float-input, .prw-float > textarea.prw-float-input {\n' +
       '  width:100%; padding:16.5px 14px; border-radius:8px; border:1px solid var(--prw-border, #e5e7eb);\n' +
       '  background: var(--prw-field-bg, #ffffff); color: var(--prw-text, #111827);\n' +
@@ -1597,41 +1601,60 @@
     var wrap = el('div', { style: 'padding:20px;' });
 
     // Floating-label field helper — matches the main app's Create Post dialog.
-    // Uses JS-applied `is-focused` / `is-filled` classes so label position is
-    // deterministic (doesn't depend on :placeholder-shown cross-browser quirks).
+    // DOM:
+    //   .prw-float-field           (outer — margin-bottom)
+    //     .prw-float               (positioning context — JUST input + label)
+    //       <input> / <textarea>
+    //       <label>
+    //     .prw-float-help          (help text — sibling, outside positioning context)
     function floatField(opts) {
-      var w = el('div', { class: 'prw-float' + (opts.textarea ? ' is-textarea' : '') });
+      var outer = el('div', { class: 'prw-float-field' });
+      var ctrl  = el('div', { class: 'prw-float' + (opts.textarea ? ' is-textarea' : '') });
+
       var initialValue = opts.value || '';
       var node = opts.textarea
         ? el('textarea', { id: opts.id, class: 'prw-float-input' })
         : el('input', { id: opts.id, type: opts.type || 'text', class: 'prw-float-input' });
-      // Set initial value via DOM property to also pre-fill the field
       if (initialValue) {
         node.value = initialValue;
-        w.classList.add('is-filled');
+        ctrl.classList.add('is-filled');
       }
       if (opts.textarea && opts.minHeight) node.style.minHeight = opts.minHeight;
 
       var lbl = el('label', { class: 'prw-float-label' });
       lbl.setAttribute('for', opts.id);
       lbl.textContent = opts.label;
-      w.appendChild(node);
-      w.appendChild(lbl);
+
+      ctrl.appendChild(node);
+      ctrl.appendChild(lbl);
+      outer.appendChild(ctrl);
+
       if (opts.help) {
         var help = el('p', { class: 'prw-float-help' });
         help.textContent = opts.help;
-        w.appendChild(help);
+        outer.appendChild(help);
       }
 
-      // Toggle .is-focused / .is-filled so the label knows when to float
-      node.addEventListener('focus', function () { w.classList.add('is-focused'); });
-      node.addEventListener('blur', function () { w.classList.remove('is-focused'); });
+      // Auto-grow for textarea — resize to fit content up to max-height (CSS caps it,
+      // overflow-y:auto handles beyond). Keeps the feel of the main app's dialog editor.
+      function autoGrow() {
+        if (!opts.textarea) return;
+        node.style.height = 'auto';
+        node.style.height = node.scrollHeight + 'px';
+      }
+
+      node.addEventListener('focus', function () { ctrl.classList.add('is-focused'); });
+      node.addEventListener('blur', function () { ctrl.classList.remove('is-focused'); });
       node.addEventListener('input', function () {
-        if (node.value && node.value.length > 0) w.classList.add('is-filled');
-        else w.classList.remove('is-filled');
+        if (node.value && node.value.length > 0) ctrl.classList.add('is-filled');
+        else ctrl.classList.remove('is-filled');
+        autoGrow();
       });
 
-      return { wrap: w, input: node };
+      // Initial sizing — run after the node is inserted in the DOM
+      if (opts.textarea) requestAnimationFrame(autoGrow);
+
+      return { wrap: outer, input: node };
     }
 
     // Info banner — confirms whose identity is used to submit
