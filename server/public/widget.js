@@ -1637,14 +1637,17 @@
 
     var pop = document.createElement('div');
     pop.id = 'prw-hover-popup';
+    // Matches the main app's All Posts hover card — 380px wide, capped at 320px
+    // tall, overflow hidden, description clamped to 10 lines.
     pop.style.cssText = [
       'position:fixed', 'z-index:2147483700',
       'background:' + (e.dark ? '#1f2937' : '#ffffff'),
       'border:1px solid ' + e.border,
       'border-radius:12px',
-      'padding:14px',
-      'width:' + (cardEl.getBoundingClientRect().width) + 'px',
-      'max-width:400px',
+      'padding:16px 20px',
+      'width:380px', 'max-width:calc(100vw - 32px)',
+      'max-height:320px', 'overflow:hidden',
+      'box-sizing:border-box',
       'box-shadow:0 20px 40px rgba(0,0,0,0.15)',
       'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
       'pointer-events:none',
@@ -1667,10 +1670,16 @@
       chips += '<span style="display:inline-block;padding:3px 10px;border-radius:6px;background:' + statusBadgeBg(post.status, e.dark) + ';color:' + statusBadgeColor(post.status, e.dark) + ';font-size:11px;font-weight:600;">' + escapeHtml(prettyStatus(post.status)) + '</span>';
     }
 
+    // Description text — 10-line clamp via -webkit-box keeps the card bounded
+    var descStyle =
+      'font-size:13px;color:' + e.muted + ';line-height:1.5;' +
+      'display:-webkit-box;-webkit-line-clamp:10;-webkit-box-orient:vertical;' +
+      'overflow:hidden;';
+
     pop.innerHTML =
       (chips ? '<div style="margin-bottom:10px;">' + chips + '</div>' : '') +
       '<div style="font-size:14px;font-weight:700;color:' + e.text + ';line-height:1.4;margin-bottom:6px;">' + escapeHtml(post.title) + '</div>' +
-      (descClean ? '<div style="font-size:13px;color:' + e.muted + ';line-height:1.5;">' + escapeHtml(descClean) + '</div>' : '');
+      (descClean ? '<div style="' + descStyle + '">' + escapeHtml(descClean) + '</div>' : '');
 
     document.body.appendChild(pop);
 
