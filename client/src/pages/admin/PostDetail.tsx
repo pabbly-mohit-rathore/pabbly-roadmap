@@ -344,19 +344,21 @@ export default function AdminPostDetail() {
     applyStatusChange(newStatus);
   };
 
-  const handleAddComment = async (htmlContent?: string, isInternal?: boolean) => {
+  const handleAddComment = async (htmlContent?: string, isInternal?: boolean, attachment?: File | null) => {
     const content = htmlContent || commentText;
-    if (!content.trim() || content === '<p></p>') {
-      toast.error('Comment cannot be empty');
+    const hasContent = content.trim() && content !== '<p></p>';
+    if (!hasContent && !attachment) {
+      toast.error('Comment or attachment is required');
       return;
     }
 
     try {
       setSubmittingComment(true);
-      const response = await api.post(`/comments/post/${post?.id}`, {
-        content,
-        isInternal: !!isInternal,
-      });
+      const fd = new FormData();
+      if (hasContent) fd.append('content', content);
+      fd.append('isInternal', String(!!isInternal));
+      if (attachment) fd.append('attachment', attachment);
+      const response = await api.post(`/comments/post/${post?.id}`, fd);
 
       if (response.data.success) {
         setCommentText('');
@@ -459,19 +461,21 @@ export default function AdminPostDetail() {
     }
   };
 
-  const handleReply = async (parentId: string, htmlContent?: string) => {
+  const handleReply = async (parentId: string, htmlContent?: string, _isInternal?: boolean, attachment?: File | null) => {
     let content = htmlContent || replyText;
-    if (!content.trim() || content === '<p></p>') {
-      toast.error('Reply cannot be empty');
+    const hasContent = content.trim() && content !== '<p></p>';
+    if (!hasContent && !attachment) {
+      toast.error('Reply or attachment is required');
       return;
     }
 
     try {
       setSubmittingReply(true);
-      const response = await api.post(`/comments/post/${post?.id}`, {
-        content,
-        parentId,
-      });
+      const fd = new FormData();
+      if (hasContent) fd.append('content', content);
+      fd.append('parentId', parentId);
+      if (attachment) fd.append('attachment', attachment);
+      const response = await api.post(`/comments/post/${post?.id}`, fd);
 
       if (response.data.success) {
         setReplyText('');
@@ -657,7 +661,7 @@ export default function AdminPostDetail() {
                   <div className="mb-6">
                     <CommentEditor
                       showInternalOption={isMainAdmin || isTeamAccess || !!post?.canPostInternal}
-                      onSubmit={(html, isInternal) => handleAddComment(html, isInternal)}
+                      onSubmit={(html, isInternal, attachment) => handleAddComment(html, isInternal, attachment)}
                       submitting={submittingComment}
                     />
                   </div>
@@ -718,7 +722,7 @@ export default function AdminPostDetail() {
                               </div>
                               {editingCommentId === comment.id ? (
                                 <div className="mt-2">
-                                  <CommentEditor onSubmit={(html) => handleEditComment(comment.id, html)} placeholder="Edit comment..." buttonLabel="Save" submitting={editingComment} initialContent={comment.content} />
+                                  <CommentEditor onSubmit={(html) => handleEditComment(comment.id, html)} placeholder="Edit comment..." buttonLabel="Save" submitting={editingComment} initialContent={comment.content} hideAttachment />
                                   <div className="relative group/mi2">
                                 <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>Cancel</button>
                                 <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi2:flex items-center z-[60] pointer-events-none">
@@ -767,7 +771,7 @@ export default function AdminPostDetail() {
                               {replyingToId === comment.id && (
                                 <div className="mt-3">
                                   <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Replying to <span className="text-[#059669] font-semibold">@{comment.author.name}</span></p>
-                                  <CommentEditor onSubmit={(html) => handleReply(comment.id, html)} placeholder={`Reply to @${comment.author.name}...`} buttonLabel="Reply" submitting={submittingReply} compact />
+                                  <CommentEditor onSubmit={(html, _internal, attachment) => handleReply(comment.id, html, false, attachment)} placeholder={`Reply to @${comment.author.name}...`} buttonLabel="Reply" submitting={submittingReply} compact />
                                 </div>
                               )}
 
@@ -828,7 +832,7 @@ export default function AdminPostDetail() {
                                           </div>
                                           {editingCommentId === reply.id ? (
                                             <div className="mt-2">
-                                              <CommentEditor onSubmit={(html) => handleEditComment(reply.id, html)} placeholder="Edit reply..." buttonLabel="Save" submitting={editingComment} initialContent={reply.content} compact />
+                                              <CommentEditor onSubmit={(html) => handleEditComment(reply.id, html)} placeholder="Edit reply..." buttonLabel="Save" submitting={editingComment} initialContent={reply.content} compact hideAttachment />
                                               <div className="relative group/mi4">
                                 <button onClick={() => setEditingCommentId(null)} className={`mt-2 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Cancel</button>
                                 <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover/mi4:flex items-center z-[60] pointer-events-none">
@@ -859,7 +863,7 @@ export default function AdminPostDetail() {
                                           {replyingToId === reply.id && (
                                             <div className="mt-3">
                                               <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Replying to <span className="text-[#059669] font-semibold">@{reply.author.name}</span></p>
-                                              <CommentEditor onSubmit={(html) => handleReply(comment.id, html)} placeholder={`Reply to @${reply.author.name}...`} buttonLabel="Reply" submitting={submittingReply} compact />
+                                              <CommentEditor onSubmit={(html, _internal, attachment) => handleReply(comment.id, html, false, attachment)} placeholder={`Reply to @${reply.author.name}...`} buttonLabel="Reply" submitting={submittingReply} compact />
                                             </div>
                                           )}
                                         </div>

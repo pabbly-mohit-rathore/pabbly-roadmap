@@ -14,6 +14,7 @@ import {
   List, ListOrdered, Code, Link as LinkIcon,
   Image as ImageIcon, Video, MousePointerClick,
   AlignLeft, AlignCenter, AlignRight, ChevronDown, Check,
+  Paperclip, FileText, File as FileIconLucide, X as XIcon,
 } from 'lucide-react';
 // @ts-expect-error -- JSX module without type declarations
 import { ResizableImage } from './rich-text-editor/Components/editor/components/img-resize';
@@ -37,7 +38,7 @@ function TB({ icon: Icon, action, active, dark }: { icon: React.ComponentType<{ 
 }
 
 interface CommentEditorProps {
-  onSubmit: (html: string, isInternal?: boolean) => void;
+  onSubmit: (html: string, isInternal?: boolean, attachment?: File | null) => void;
   placeholder?: string;
   buttonLabel?: string;
   submitting?: boolean;
@@ -48,6 +49,8 @@ interface CommentEditorProps {
   onContentChange?: (html: string) => void;
   /** When true, show a split-button to toggle between Public and Internal comment */
   showInternalOption?: boolean;
+  /** Hide the Attach button (e.g., editor is being used for edits where file changes aren't wired) */
+  hideAttachment?: boolean;
 }
 
 export default function CommentEditor({
@@ -61,9 +64,13 @@ export default function CommentEditor({
   maxEditorHeight,
   onContentChange,
   showInternalOption = false,
+  hideAttachment = false,
 }: CommentEditorProps) {
   const theme = useThemeStore((state) => state.theme);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [showButtonModal, setShowButtonModal] = useState(false);
   const [editingButtonAttrs, setEditingButtonAttrs] = useState<Partial<ButtonAttributes> | undefined>(undefined);
   const editingButtonPos = useRef<number | null>(null);
@@ -140,9 +147,38 @@ export default function CommentEditor({
   const handleSubmit = () => {
     if (!editor) return;
     const html = editor.getHTML();
-    if (html === '<p></p>' || !html.trim()) return;
-    onSubmit(html, showInternalOption && commentMode === 'internal');
+    const hasContent = html && html !== '<p></p>' && html.trim();
+    if (!hasContent && !attachment) return;
+    onSubmit(html, showInternalOption && commentMode === 'internal', attachment);
     editor.commands.clearContent();
+    setAttachment(null);
+    setAttachmentError(null);
+    if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+  };
+
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) { setAttachment(null); return; }
+    if (f.size > 10 * 1024 * 1024) {
+      setAttachmentError('File must be under 10 MB.');
+      toast.error('File must be under 10 MB.');
+      e.target.value = '';
+      return;
+    }
+    setAttachmentError(null);
+    setAttachment(f);
+  };
+
+  const clearAttachment = () => {
+    setAttachment(null);
+    setAttachmentError(null);
+    if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+  };
+
+  const fmtBytes = (n: number) => {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(1)} MB`;
   };
 
   const [showLinkDialog, setShowLinkDialog] = useState(false);
@@ -300,6 +336,9 @@ export default function CommentEditor({
           <TB dark={d} icon={ImageIcon} title="Image" action={addImage} />
           <TB dark={d} icon={Video} title="Video" action={addVideo} />
           <TB dark={d} icon={MousePointerClick} title="Button" action={() => { setEditingButtonAttrs(undefined); editingButtonPos.current = null; setShowButtonModal(true); }} />
+          {!hideAttachment && (
+            <TB dark={d} icon={Paperclip} title="Attach file" action={() => attachmentInputRef.current?.click()} active={!!attachment} />
+          )}
           <div className={`w-px h-4 mx-1 ${d ? 'bg-gray-600' : 'bg-gray-200'}`} />
           <TB dark={d} icon={AlignLeft} title="Align Left" action={() => {
             if (editor.isActive('image')) { editor.chain().focus().updateAttributes('image', { align: 'left' }).run(); }
@@ -392,6 +431,30 @@ export default function CommentEditor({
       </div>
 
       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,video/*" className="hidden" />
+      <input
+        type="file"
+        ref={attachmentInputRef}
+        onChange={handleAttachmentChange}
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.md,.zip,.rar,.7z,.jpg,.jpeg,.png,.gif,.webp,.svg"
+        className="hidden"
+      />
+
+      {attachment && (
+        <div className={`flex items-center gap-2 px-3 py-2 mx-3 mb-2 rounded-lg border text-xs ${d ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+          {attachment.type.startsWith('image/') ? <ImageIcon className="w-3.5 h-3.5 flex-shrink-0" /> :
+           attachment.type.includes('pdf') || attachment.type.startsWith('text/') ? <FileText className="w-3.5 h-3.5 flex-shrink-0" /> :
+           <FileIconLucide className="w-3.5 h-3.5 flex-shrink-0" />}
+          <span className="font-medium truncate max-w-[240px]">{attachment.name}</span>
+          <span className={`${d ? 'text-gray-400' : 'text-gray-500'}`}>· {fmtBytes(attachment.size)}</span>
+          <button type="button" onClick={clearAttachment} aria-label="Remove attachment"
+            className={`ml-auto p-1 rounded transition ${d ? 'hover:bg-gray-600 text-gray-300' : 'hover:bg-gray-200 text-gray-500'}`}>
+            <XIcon className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+      {attachmentError && (
+        <div className="px-3 pb-2 text-xs text-red-500">{attachmentError}</div>
+      )}
 
       <ButtonConfigModal
         isOpen={showButtonModal}
