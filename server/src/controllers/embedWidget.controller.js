@@ -22,7 +22,7 @@ function generateToken() {
   return crypto.randomBytes(18).toString('base64url');
 }
 
-const VALID_POST_STATUSES = ['under_review', 'planned', 'in_progress', 'live', 'hold'];
+const VALID_POST_STATUSES = ['open', 'under_review', 'in_progress', 'live', 'hold'];
 const VALID_SORTS = ['newest', 'oldest', 'most_voted', 'most_commented'];
 
 function sanitize(body) {
