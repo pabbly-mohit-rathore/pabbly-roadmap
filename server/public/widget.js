@@ -59,6 +59,12 @@
       // Upvote button hover — border flips to accent color (matches main app)
       // Accent color is applied inline per instance since it's dynamic per widget.
       '.prw-vote-btn { transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease; }\n' +
+      // Header icon buttons — transparent bg, soft background on hover (matches app's header icon buttons)
+      '.prw-hdr-btn { background: transparent !important; transition: background 0.15s ease; }\n' +
+      '.prw-hdr-btn:hover { background: rgba(255,255,255,0.22) !important; }\n' +
+      // Input / textarea — border darkens on hover and focus (matches .border-gray-200 → .border-gray-400 pattern)
+      '.prw-input { transition: border-color 0.15s ease; }\n' +
+      '.prw-input:hover, .prw-input:focus { border-color: var(--prw-border-hover, #9ca3af) !important; }\n' +
       // Attachment row (below comment textarea) + file chip inside comments
       '.prw-attach-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:6px 2px; font-size:13px; cursor:pointer; font-family:inherit; transition: opacity 0.15s ease; }\n' +
       '.prw-attach-btn:hover { opacity:0.75; }\n' +
@@ -316,6 +322,8 @@
     var width = cfg.widgetWidth || 380;
     var bg = dark ? '#111827' : '#ffffff';
     var border = dark ? '#374151' : '#e5e7eb';
+    // Darker border shown on hover/focus (matches app's gray-400 → gray-500 pattern)
+    var borderHover = dark ? '#6b7280' : '#9ca3af';
     var text = dark ? '#ffffff' : '#111827';
     var muted = dark ? '#9ca3af' : '#6b7280';
     var softBg = dark ? '#1f2937' : '#ffffff';
@@ -397,9 +405,13 @@
     document.body.appendChild(backdrop);
     document.body.style.overflow = 'hidden';
 
+    // Expose hover border as a CSS custom property so `.prw-input:hover` can pick it up
+    panel.style.setProperty('--prw-border-hover', borderHover);
+
     this.els = {
       backdrop: backdrop, panel: panel, header: header, searchBar: searchBar, content: content,
-      accent: accent, bg: bg, border: border, text: text, muted: muted, softBg: softBg, dark: dark,
+      accent: accent, bg: bg, border: border, borderHover: borderHover,
+      text: text, muted: muted, softBg: softBg, dark: dark,
     };
 
     this._renderHeader();
@@ -414,11 +426,14 @@
     var accent = e.accent;
 
     e.header.style.cssText = [
-      'padding:14px 16px', 'background:' + accent, 'color:#fff',
-      'display:flex', 'align-items:center', 'justify-content:space-between', 'gap:10px',
+      'padding:14px 18px', 'background:' + accent, 'color:#fff',
+      'display:flex', 'align-items:center', 'justify-content:space-between', 'gap:16px',
       'flex-shrink:0',
     ].join(';');
     e.header.innerHTML = '';
+
+    // Header icon button — transparent bg by default, darkens on hover (via .prw-hdr-btn)
+    var hdrIconStyle = 'border:none;color:#fff;padding:7px;border-radius:8px;cursor:pointer;display:flex;';
 
     // Left side
     var leftWrap = el('div', { style: 'display:flex;align-items:center;gap:10px;min-width:0;flex:1;' });
@@ -429,7 +444,8 @@
     } else {
       var backBtn = el('button', {
         'aria-label': 'Back',
-        style: 'background:rgba(255,255,255,0.18);border:none;color:#fff;padding:7px;border-radius:8px;cursor:pointer;display:flex;',
+        class: 'prw-hdr-btn',
+        style: hdrIconStyle,
         html: ICON.back,
         onclick: function () { self._setView('list'); },
       });
@@ -443,10 +459,10 @@
     }
     e.header.appendChild(leftWrap);
 
-    // Right side
-    var right = el('div', { style: 'display:flex;align-items:center;gap:6px;flex-shrink:0;' });
+    // Right side — more breathing room between buttons
+    var right = el('div', { style: 'display:flex;align-items:center;gap:10px;flex-shrink:0;' });
     if (view === 'list') {
-      // New Post button
+      // New Post button (solid white, stays as-is — primary button)
       var newBtn = el('button', {
         style: 'background:#fff;color:' + accent + ';border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;',
         onclick: function () { self._setView('new'); },
@@ -457,7 +473,8 @@
       // Open in new tab
       var extBtn = el('button', {
         'aria-label': 'Open roadmap',
-        style: 'background:rgba(255,255,255,0.18);border:none;color:#fff;padding:7px;border-radius:8px;cursor:pointer;display:flex;',
+        class: 'prw-hdr-btn',
+        style: hdrIconStyle,
         html: ICON.ext,
         onclick: function () { window.open(APP_URL + '/user/all-posts', '_blank', 'noopener'); },
       });
@@ -466,7 +483,8 @@
       // Search
       var searchBtn = el('button', {
         'aria-label': 'Search',
-        style: 'background:rgba(255,255,255,0.18);border:none;color:#fff;padding:7px;border-radius:8px;cursor:pointer;display:flex;',
+        class: 'prw-hdr-btn',
+        style: hdrIconStyle,
         html: ICON.search,
         onclick: function () { self._setView('search'); },
       });
@@ -474,7 +492,8 @@
     }
     var closeBtn = el('button', {
       'aria-label': 'Close',
-      style: 'background:rgba(255,255,255,0.18);border:none;color:#fff;padding:7px;border-radius:8px;cursor:pointer;display:flex;',
+      class: 'prw-hdr-btn',
+      style: hdrIconStyle,
       html: ICON.close,
       onclick: function () { self.close(); },
     });
@@ -490,6 +509,7 @@
         type: 'text',
         placeholder: 'Search posts by title, description, or tag…',
         value: self.state.searchQuery,
+        class: 'prw-input',
         style: [
           'width:100%', 'padding:10px 14px',
           'border:1px solid ' + e.border, 'border-radius:8px', 'outline:none',
@@ -706,17 +726,19 @@
     titleEl.textContent = post.title;
     titleRow.appendChild(titleEl);
 
+    // Horizontal chip matching main app's upvote button (32px tall)
     var voteBtn = el('button', {
+      'aria-label': 'Upvote',
       class: 'prw-vote-btn',
       style: [
-        'display:inline-flex', 'flex-direction:column', 'align-items:center',
-        'justify-content:center', 'gap:2px',
-        'min-width:52px', 'padding:8px 4px',
+        'display:inline-flex', 'align-items:center', 'gap:6px',
+        'padding:6px 12px', 'height:32px',
         'border:1px solid ' + (hasVoted ? e.accent : e.border),
         'background:' + (e.dark ? '#0f172a' : '#fff'),
         'color:' + (hasVoted ? e.accent : e.text),
         'border-radius:8px', 'cursor:pointer',
-        'font-size:13px', 'font-weight:600', 'flex-shrink:0',
+        'font-size:13px', 'font-weight:600',
+        'flex-shrink:0', 'line-height:1',
       ].join(';'),
       onclick: function () { self._toggleVote(post); },
       onmouseenter: function () {
@@ -783,12 +805,14 @@
       emailInput = el('input', {
         type: 'email', placeholder: 'Your registered email',
         value: self.state.voterEmail || '',
+        class: 'prw-input',
         style: 'width:100%;padding:8px 10px;border:1px solid ' + e.border + ';border-radius:8px;font-size:13px;outline:none;background:' + (e.dark ? '#0f172a' : '#fff') + ';color:' + e.text + ';margin-bottom:8px;box-sizing:border-box;font-family:inherit;',
       });
       compose.appendChild(emailInput);
     }
     var textarea = el('textarea', {
       placeholder: 'Write a comment…',
+      class: 'prw-input',
       style: 'width:100%;padding:8px 10px;border:1px solid ' + e.border + ';border-radius:8px;font-size:13px;outline:none;background:' + (e.dark ? '#0f172a' : '#fff') + ';color:' + e.text + ';min-height:60px;resize:vertical;box-sizing:border-box;font-family:inherit;',
     });
     compose.appendChild(textarea);
@@ -1005,11 +1029,11 @@
 
     var emailInput = null;
     if (!authed) {
-      emailInput = el('input', { type: 'email', placeholder: 'Your registered email', value: self.state.voterEmail || '', style: inputBase });
+      emailInput = el('input', { type: 'email', placeholder: 'Your registered email', value: self.state.voterEmail || '', class: 'prw-input', style: inputBase });
       wrap.appendChild(field('Registered Email', emailInput));
     }
-    var titleInput = el('input', { type: 'text', placeholder: 'What would you like to request?', style: inputBase });
-    var descInput  = el('textarea', { placeholder: 'Tell us more about what you need…', style: inputBase + ';min-height:120px;resize:vertical;' });
+    var titleInput = el('input', { type: 'text', placeholder: 'What would you like to request?', class: 'prw-input', style: inputBase });
+    var descInput  = el('textarea', { placeholder: 'Tell us more about what you need…', class: 'prw-input', style: inputBase + ';min-height:120px;resize:vertical;' });
 
     wrap.appendChild(field('Title', titleInput));
     wrap.appendChild(field('Description (optional)', descInput));
