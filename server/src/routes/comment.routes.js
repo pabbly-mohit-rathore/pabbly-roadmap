@@ -15,6 +15,14 @@ const router = express.Router();
 const { body, param } = require('express-validator');
 const validate = require('../middleware/validate');
 const { authenticate } = require('../middleware/auth');
+const { uploadCommentAttachment } = require('../middleware/upload');
+
+// Multer errors (size too large / invalid mime) must return JSON
+function handleUploadError(err, req, res, next) {
+  if (!err) return next();
+  const msg = err && err.message ? err.message : 'Upload failed.';
+  return res.status(400).json({ success: false, message: msg });
+}
 
 const {
   getComments,
@@ -31,21 +39,22 @@ const {
 // Validation Rules
 // ──────────────────────────────────────
 
+// Content may be empty when an attachment is the only payload — the
+// controller enforces "content OR attachment" so validation here just
+// caps size and validates parent UUID.
 const addCommentRules = [
   body('content')
-    .trim()
-    .notEmpty().withMessage('Comment content is required.')
-    .isLength({ min: 1, max: 500000 }).withMessage('Comment content is too large.'),
+    .optional({ checkFalsy: true })
+    .isLength({ max: 500000 }).withMessage('Comment content is too large.'),
   body('parentId')
-    .optional()
+    .optional({ checkFalsy: true })
     .isUUID().withMessage('Parent comment ID must be a valid UUID.'),
 ];
 
 const updateCommentRules = [
   body('content')
-    .trim()
-    .notEmpty().withMessage('Comment content is required.')
-    .isLength({ min: 1, max: 500000 }).withMessage('Comment content is too large.'),
+    .optional({ checkFalsy: true })
+    .isLength({ max: 500000 }).withMessage('Comment content is too large.'),
 ];
 
 const postIdParamRules = [
@@ -66,9 +75,13 @@ const commentIdParamRules = [
 router.get('/post/:postId', authenticate, postIdParamRules, validate, getComments);
 
 // POST /post/:postId — Add comment to post (authenticated)
+// Multer must run BEFORE validators so multipart body text fields are parsed.
 router.post(
   '/post/:postId',
   authenticate,
+  (req, res, next) => {
+    uploadCommentAttachment.single('attachment')(req, res, (err) => handleUploadError(err, req, res, next));
+  },
   postIdParamRules,
   addCommentRules,
   validate,
@@ -79,6 +92,9 @@ router.post(
 router.put(
   '/:id',
   authenticate,
+  (req, res, next) => {
+    uploadCommentAttachment.single('attachment')(req, res, (err) => handleUploadError(err, req, res, next));
+  },
   commentIdParamRules,
   updateCommentRules,
   validate,

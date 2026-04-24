@@ -64,9 +64,10 @@
       '.prw-attach-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:6px 2px; font-size:13px; cursor:pointer; font-family:inherit; transition: opacity 0.15s ease; }\n' +
       '.prw-attach-btn:hover { opacity:0.75; }\n' +
       '.prw-attach-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid rgba(148,163,184,0.4); font-size:12px; margin-top:6px; max-width:100%; }\n' +
-      '.prw-attach-link { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.35); font-size:12.5px; margin-top:8px; text-decoration:none; transition: background 0.15s ease; max-width:100%; overflow:hidden; }\n' +
-      '.prw-attach-link:hover { background:rgba(148,163,184,0.12); }\n' +
-      '.prw-attach-link .prw-attach-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; }\n';
+      '.prw-attach-link { display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:8px; border:1.5px solid; font-size:13px; font-weight:600; margin-top:8px; text-decoration:none; transition: opacity 0.15s ease; max-width:100%; overflow:hidden; }\n' +
+      '.prw-attach-link:hover { opacity:0.85; }\n' +
+      '.prw-attach-link .prw-attach-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; }\n' +
+      '.prw-attach-link .prw-attach-size { font-size:11.5px; font-weight:500; opacity:0.7; }\n';
     var s = document.createElement('style');
     s.setAttribute('data-prw', '1');
     s.textContent = css;
@@ -131,6 +132,31 @@
     if (n < 1024) return n + ' B';
     if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
     return (n / 1024 / 1024).toFixed(1) + ' MB';
+  }
+  // Color palette per file type — matches the main app's CommentAttachment styling
+  // so widget attachments feel identical to in-app ones.
+  function attachmentPalette(mime, name, dark) {
+    var m = (mime || '').toLowerCase();
+    var ext = (name || '').toLowerCase().split('.').pop() || '';
+    var p;
+    if (m.indexOf('image/') === 0 || ['jpg','jpeg','png','gif','webp','svg'].indexOf(ext) !== -1) {
+      p = { t: '#059669', b: '#a7f3d0', bg: '#ecfdf5', bD: 'rgba(5,150,105,0.4)', bgD: 'rgba(5,150,105,0.12)' };
+    } else if (m.indexOf('pdf') !== -1 || ext === 'pdf') {
+      p = { t: '#dc2626', b: '#fecaca', bg: '#fef2f2', bD: 'rgba(220,38,38,0.4)', bgD: 'rgba(220,38,38,0.12)' };
+    } else if (m.indexOf('word') !== -1 || ['doc','docx'].indexOf(ext) !== -1) {
+      p = { t: '#2563eb', b: '#bfdbfe', bg: '#eff6ff', bD: 'rgba(37,99,235,0.4)', bgD: 'rgba(37,99,235,0.12)' };
+    } else if (m.indexOf('sheet') !== -1 || m.indexOf('excel') !== -1 || ['xls','xlsx','csv'].indexOf(ext) !== -1) {
+      p = { t: '#16a34a', b: '#bbf7d0', bg: '#f0fdf4', bD: 'rgba(22,163,74,0.4)', bgD: 'rgba(22,163,74,0.12)' };
+    } else if (m.indexOf('presentation') !== -1 || ['ppt','pptx'].indexOf(ext) !== -1) {
+      p = { t: '#ea580c', b: '#fed7aa', bg: '#fff7ed', bD: 'rgba(234,88,12,0.4)', bgD: 'rgba(234,88,12,0.12)' };
+    } else if (m.indexOf('zip') !== -1 || m.indexOf('rar') !== -1 || m.indexOf('7z') !== -1 || ['zip','rar','7z'].indexOf(ext) !== -1) {
+      p = { t: '#9333ea', b: '#e9d5ff', bg: '#faf5ff', bD: 'rgba(147,51,234,0.4)', bgD: 'rgba(147,51,234,0.12)' };
+    } else {
+      p = { t: '#4b5563', b: '#e5e7eb', bg: '#f9fafb', bD: 'rgba(156,163,175,0.4)', bgD: 'rgba(156,163,175,0.12)' };
+    }
+    return dark
+      ? { color: p.t, border: p.bD, background: p.bgD }
+      : { color: p.t, border: p.b, background: p.bg };
   }
   function prettyStatus(s) {
     return ({
@@ -889,15 +915,17 @@
           var officialBadge = c.isOfficial
             ? '<span style="margin-left:6px;padding:1px 6px;border-radius:4px;background:' + e.accent + ';color:#fff;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Official</span>'
             : '';
-          // Build attachment block — download link with original filename
+          // Build attachment block — download link with original filename,
+          // colored per file type to match the main app's CommentAttachment pill.
           var attachHtml = '';
           if (c.attachmentUrl) {
             var sizeStr = fmtBytes(c.attachmentSize);
+            var pal = attachmentPalette(c.attachmentMime, c.attachmentName, e.dark);
             attachHtml =
-              '<a class="prw-attach-link" href="' + escapeHtml(c.attachmentUrl) + '" target="_blank" rel="noopener" download="' + escapeHtml(c.attachmentName || '') + '" style="color:' + e.text + ';background:' + (e.dark ? '#0f172a' : '#f8fafc') + ';">' +
+              '<a class="prw-attach-link" href="' + escapeHtml(c.attachmentUrl) + '" target="_blank" rel="noopener" download="' + escapeHtml(c.attachmentName || '') + '" style="color:' + pal.color + ';border-color:' + pal.border + ';background:' + pal.background + ';">' +
                 ICON.download +
-                '<span class="prw-attach-name" style="font-weight:600;">' + escapeHtml(c.attachmentName || 'attachment') + '</span>' +
-                (sizeStr ? '<span style="opacity:0.65;font-size:11.5px;">· ' + sizeStr + '</span>' : '') +
+                '<span class="prw-attach-name">' + escapeHtml(c.attachmentName || 'attachment') + '</span>' +
+                (sizeStr ? '<span class="prw-attach-size">· ' + sizeStr + '</span>' : '') +
               '</a>';
           }
 

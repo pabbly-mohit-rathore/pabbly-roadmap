@@ -10,9 +10,26 @@
 //   - Add internal note (admin/manager)
 // ============================================================
 
+const fs = require('fs');
 const prisma = require('../config/database');
 const notifySubscribers = require('../utils/notifySubscribers');
 const { notifyMentions } = require('../utils/notifyMentions');
+
+// Build absolute URL for an uploaded comment attachment
+function resolvePublicBase(req) {
+  const envBase = process.env.PUBLIC_API_URL || process.env.API_URL;
+  if (envBase) return envBase.replace(/\/+$/, '');
+  const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  return `${proto}://${host}`;
+}
+function attachmentUrlFor(req, storedFilename) {
+  return `${resolvePublicBase(req)}/uploads/comments/${storedFilename}`;
+}
+function unlinkSafe(absPath) {
+  if (!absPath) return;
+  fs.unlink(absPath, () => {});
+}
 
 // ============================================================
 // 1. GET ALL COMMENTS FOR A POST
@@ -121,10 +138,25 @@ const getComments = async (req, res, next) => {
 // Frontend se: { content, parentId (optional for replies) }
 // ============================================================
 const addComment = async (req, res, next) => {
+  // Multer has already saved the file by the time we run; any early return
+  // must unlink the orphan so /uploads doesn't accumulate junk.
+  const uploadedFile = req.file || null;
+  const uploadedPath = uploadedFile ? uploadedFile.path : null;
+
   try {
     const { postId } = req.params;
     const { content, parentId, isInternal: requestedInternal } = req.body;
     const { userId } = req.user;
+    // Multipart form fields arrive as strings — coerce the boolean flag.
+    const requestedInternalBool = requestedInternal === true || requestedInternal === 'true';
+
+    const trimmedContent = typeof content === 'string' ? content.trim() : '';
+    const hasContent = trimmedContent && trimmedContent !== '<p></p>';
+
+    if (!hasContent && !uploadedFile) {
+      unlinkSafe(uploadedPath);
+      return res.status(400).json({ success: false, message: 'Comment content or attachment is required.' });
+    }
 
     // Post dhundho
     const post = await prisma.post.findUnique({
@@ -133,6 +165,7 @@ const addComment = async (req, res, next) => {
     });
 
     if (!post) {
+      unlinkSafe(uploadedPath);
       return res.status(404).json({
         success: false,
         message: 'Post not found.',
@@ -148,6 +181,7 @@ const addComment = async (req, res, next) => {
       if (!hasAccess) {
         const board = await prisma.board.findUnique({ where: { id: post.boardId }, select: { isPublic: true } });
         if (!board?.isPublic) {
+          unlinkSafe(uploadedPath);
           return res.status(403).json({ success: false, message: 'You do not have access to this board.' });
         }
       }
@@ -159,6 +193,7 @@ const addComment = async (req, res, next) => {
         where: { id: parentId },
       });
       if (!parentComment || parentComment.postId !== postId) {
+        unlinkSafe(uploadedPath);
         return res.status(400).json({
           success: false,
           message: 'Invalid parent comment.',
@@ -168,23 +203,33 @@ const addComment = async (req, res, next) => {
 
     // Only admins, team access sessions, or board managers can post internal comments
     let canPostInternal = req.user.role === 'admin' || !!req.user.teamAccess;
-    if (!canPostInternal && requestedInternal === true) {
+    if (!canPostInternal && requestedInternalBool) {
       const membership = await prisma.boardMember.findUnique({
         where: { userId_boardId: { userId, boardId: post.boardId } },
         select: { id: true },
       });
       canPostInternal = !!membership;
     }
-    const isInternal = canPostInternal && requestedInternal === true;
+    const isInternal = canPostInternal && requestedInternalBool;
+
+    const attachmentData = uploadedFile
+      ? {
+          attachmentUrl: attachmentUrlFor(req, uploadedFile.filename),
+          attachmentName: uploadedFile.originalname,
+          attachmentMime: uploadedFile.mimetype,
+          attachmentSize: uploadedFile.size,
+        }
+      : {};
 
     // Comment banao (all comments public by default — no spam gating)
     const comment = await prisma.comment.create({
       data: {
-        content,
+        content: hasContent ? trimmedContent : '',
         authorId: userId,
         postId,
         parentId: parentId || null,
         isInternal,
+        ...attachmentData,
       },
       include: {
         author: {
@@ -324,6 +369,7 @@ const addComment = async (req, res, next) => {
       data: { comment },
     });
   } catch (error) {
+    unlinkSafe(uploadedPath);
     next(error);
   }
 };
@@ -334,10 +380,15 @@ const addComment = async (req, res, next) => {
 // Author apna comment edit kar sakta hai
 // ============================================================
 const updateComment = async (req, res, next) => {
+  const uploadedFile = req.file || null;
+  const uploadedPath = uploadedFile ? uploadedFile.path : null;
+
   try {
     const { id } = req.params;
     const { content } = req.body;
     const { userId, role } = req.user;
+    // Multipart: client may send removeAttachment=true to clear the file
+    const removeAttachment = req.body.removeAttachment === 'true' || req.body.removeAttachment === true;
 
     // Comment dhundho
     const comment = await prisma.comment.findUnique({
@@ -346,6 +397,7 @@ const updateComment = async (req, res, next) => {
     });
 
     if (!comment) {
+      unlinkSafe(uploadedPath);
       return res.status(404).json({
         success: false,
         message: 'Comment not found.',
@@ -363,6 +415,7 @@ const updateComment = async (req, res, next) => {
         },
       });
       if (!isBoardManager) {
+        unlinkSafe(uploadedPath);
         return res.status(403).json({
           success: false,
           message: 'You do not have permission to edit this comment.',
@@ -370,10 +423,31 @@ const updateComment = async (req, res, next) => {
       }
     }
 
+    // Attachment handling: new file replaces old, removeAttachment clears it, otherwise leave as-is
+    let attachmentPatch = {};
+    if (uploadedFile) {
+      attachmentPatch = {
+        attachmentUrl: attachmentUrlFor(req, uploadedFile.filename),
+        attachmentName: uploadedFile.originalname,
+        attachmentMime: uploadedFile.mimetype,
+        attachmentSize: uploadedFile.size,
+      };
+    } else if (removeAttachment) {
+      attachmentPatch = {
+        attachmentUrl: null,
+        attachmentName: null,
+        attachmentMime: null,
+        attachmentSize: null,
+      };
+    }
+
     // Comment update karo
     const updatedComment = await prisma.comment.update({
       where: { id },
-      data: { content },
+      data: {
+        ...(typeof content === 'string' ? { content } : {}),
+        ...attachmentPatch,
+      },
       include: {
         author: {
           select: {
@@ -409,6 +483,7 @@ const updateComment = async (req, res, next) => {
       data: { comment: updatedComment },
     });
   } catch (error) {
+    unlinkSafe(uploadedPath);
     next(error);
   }
 };
