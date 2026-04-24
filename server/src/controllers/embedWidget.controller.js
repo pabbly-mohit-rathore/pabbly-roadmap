@@ -488,24 +488,97 @@ async function assertPostInWidget(token, postId) {
   return { widget, post };
 }
 
-// PUBLIC — list top-level comments on a post (hides internal + spam)
+// PUBLIC — list top-level comments on a post (hides internal + spam).
+// Returns nested replies + likeCount. If the caller is authenticated,
+// `likedCommentIds` lists which comments they've liked (for UI toggle state).
 const getPublicComments = async (req, res, next) => {
   try {
     const { token, postId } = req.params;
     const check = await assertPostInWidget(token, postId);
     if (check.error) return res.status(check.error.status).json({ success: false, message: check.error.message });
 
+    const baseSelect = {
+      id: true, content: true, isOfficial: true, isPinned: true, createdAt: true, likeCount: true,
+      attachmentUrl: true, attachmentName: true, attachmentMime: true, attachmentSize: true,
+      author: { select: { id: true, name: true, avatar: true } },
+    };
+
     const comments = await prisma.comment.findMany({
       where: { postId, parentId: null, isInternal: false, isSpam: false },
       orderBy: [{ isPinned: 'desc' }, { createdAt: 'asc' }],
       select: {
-        id: true, content: true, isOfficial: true, isPinned: true, createdAt: true,
-        attachmentUrl: true, attachmentName: true, attachmentMime: true, attachmentSize: true,
-        author: { select: { id: true, name: true, avatar: true } },
+        ...baseSelect,
+        replies: {
+          where: { isInternal: false, isSpam: false },
+          orderBy: { createdAt: 'asc' },
+          select: baseSelect,
+        },
       },
     });
 
-    res.json({ success: true, data: { comments } });
+    // Which comments has the caller liked? Only available for authed users.
+    let likedCommentIds = [];
+    if (req.user && req.user.isActive) {
+      const all = [];
+      comments.forEach((c) => {
+        all.push(c.id);
+        (c.replies || []).forEach((r) => all.push(r.id));
+      });
+      if (all.length) {
+        const rows = await prisma.commentLike.findMany({
+          where: { userId: req.user.id, commentId: { in: all } },
+          select: { commentId: true },
+        });
+        likedCommentIds = rows.map((r) => r.commentId);
+      }
+    }
+
+    res.json({ success: true, data: { comments, likedCommentIds } });
+  } catch (err) { next(err); }
+};
+
+// PUBLIC — toggle like on a comment. Requires auth (anonymous like spam is trivial).
+const togglePublicCommentLike = async (req, res, next) => {
+  try {
+    const { token, commentId } = req.params;
+    if (!req.user || !req.user.isActive) {
+      return res.status(401).json({ success: false, message: 'Please sign in to like comments.', code: 'AUTH_REQUIRED' });
+    }
+
+    const widget = await prisma.embedWidget.findUnique({ where: { token } });
+    if (!widget || !widget.isActive) {
+      return res.status(404).json({ success: false, message: 'Widget not found.' });
+    }
+
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { id: true, postId: true, likeCount: true, isInternal: true, isSpam: true },
+    });
+    if (!comment || comment.isInternal || comment.isSpam) {
+      return res.status(404).json({ success: false, message: 'Comment not found.' });
+    }
+    // Verify the comment's post is reachable via this widget (boards / statuses match)
+    const check = await assertPostInWidget(token, comment.postId);
+    if (check.error) return res.status(check.error.status).json({ success: false, message: check.error.message });
+
+    const existing = await prisma.commentLike.findUnique({
+      where: { userId_commentId: { userId: req.user.id, commentId } },
+    });
+
+    let liked;
+    let likeCount = comment.likeCount || 0;
+    if (existing) {
+      await prisma.commentLike.delete({ where: { userId_commentId: { userId: req.user.id, commentId } } });
+      likeCount = Math.max(0, likeCount - 1);
+      liked = false;
+    } else {
+      await prisma.commentLike.create({ data: { userId: req.user.id, commentId } });
+      likeCount = likeCount + 1;
+      liked = true;
+    }
+    await prisma.comment.update({ where: { id: commentId }, data: { likeCount } });
+
+    res.json({ success: true, data: { liked, likeCount } });
   } catch (err) { next(err); }
 };
 
@@ -604,4 +677,5 @@ module.exports = {
   submitPublicPost,
   getPublicComments,
   addPublicComment,
+  togglePublicCommentLike,
 };

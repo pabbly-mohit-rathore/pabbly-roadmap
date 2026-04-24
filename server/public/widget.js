@@ -281,6 +281,7 @@
       searchQuery: '',
       voterEmail: null,      // from localStorage
       votedIds: {},          // { postId: true } from localStorage
+      likedCommentIds: new Set(), // comments the signed-in user has liked on current post
     };
     this.els = {};           // cached references to key DOM nodes
     this.isOpen = false;
@@ -837,29 +838,19 @@
     return wrap;
   };
 
-  // Render the comments section inside the given host element.
-  // Loads comments asynchronously and includes a compose box.
-  Widget.prototype._renderComments = function (host, post) {
+  // Build a compose box (textarea + attach + submit). Reused for top-level
+  // comments and inline replies. If opts.parentId is set, the request POSTs
+  // with parentId so the comment nests under that parent.
+  Widget.prototype._buildCompose = function (post, opts) {
     var self = this, e = this.els;
-
-    var header = el('div', {
-      style: 'display:flex;align-items:center;gap:8px;padding-top:20px;margin-top:6px;border-top:1px solid ' + e.border + ';margin-bottom:12px;',
-    });
-    header.innerHTML =
-      '<span style="font-size:15px;font-weight:700;color:' + e.text + ';">Comments</span>' +
-      '<span id="prw-cc-badge" style="font-size:12px;color:' + e.muted + ';">…</span>';
-    host.appendChild(header);
-
-    // Comments list (filled after fetch)
-    var listEl = el('div', { id: 'prw-comments-list', style: 'display:flex;flex-direction:column;gap:10px;margin-bottom:14px;' });
-    listEl.innerHTML = '<div style="font-size:12px;color:' + e.muted + ';padding:8px 0;">Loading comments…</div>';
-    host.appendChild(listEl);
-
-    // Compose box
-    var compose = el('div', {
-      style: 'border:1px solid ' + e.border + ';border-radius:10px;padding:10px;background:' + (e.dark ? '#0f172a' : '#fafafa') + ';',
-    });
+    opts = opts || {};
+    var isReply = !!opts.parentId;
     var authed = isAuthed();
+
+    var compose = el('div', {
+      style: 'border:1px solid ' + e.border + ';border-radius:10px;padding:10px;background:' + (e.dark ? '#0f172a' : '#fafafa') + (isReply ? ';margin-top:10px' : '') + ';',
+    });
+
     var emailInput = null;
     if (!authed) {
       emailInput = el('input', {
@@ -870,14 +861,15 @@
       });
       compose.appendChild(emailInput);
     }
+
     var textarea = el('textarea', {
-      placeholder: 'Write a comment…',
+      placeholder: isReply ? 'Write a reply…' : 'Write a comment…',
       class: 'prw-input',
-      style: 'width:100%;padding:8px 10px;border:1px solid ' + e.border + ';border-radius:8px;font-size:13px;outline:none;background:' + (e.dark ? '#0f172a' : '#fff') + ';color:' + e.text + ';min-height:60px;resize:vertical;box-sizing:border-box;font-family:inherit;',
+      style: 'width:100%;padding:8px 10px;border:1px solid ' + e.border + ';border-radius:8px;font-size:13px;outline:none;background:' + (e.dark ? '#0f172a' : '#fff') + ';color:' + e.text + ';min-height:' + (isReply ? '50' : '60') + 'px;resize:vertical;box-sizing:border-box;font-family:inherit;',
     });
     compose.appendChild(textarea);
 
-    // Attach row — paperclip button + hidden file input + selected chip
+    // Attach row
     var selectedFile = null;
     var fileInput = el('input', {
       type: 'file',
@@ -889,11 +881,7 @@
     var attachRow = el('div', {
       style: 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px;color:' + e.muted + ';',
     });
-    var attachBtn = el('button', {
-      type: 'button',
-      class: 'prw-attach-btn',
-      style: 'color:' + e.muted + ';',
-    });
+    var attachBtn = el('button', { type: 'button', class: 'prw-attach-btn', style: 'color:' + e.muted + ';' });
     attachBtn.innerHTML = ICON.paperclip + '<span>Attach</span>';
     attachBtn.onclick = function () { fileInput.click(); };
     attachRow.appendChild(attachBtn);
@@ -918,6 +906,8 @@
       if (removeBtn) removeBtn.onclick = function () { selectedFile = null; fileInput.value = ''; renderChip(); };
     }
 
+    var msg = el('div', { style: 'font-size:12px;margin-top:6px;min-height:16px;color:' + e.muted + ';' });
+
     fileInput.onchange = function () {
       var f = fileInput.files && fileInput.files[0];
       if (!f) { selectedFile = null; renderChip(); return; }
@@ -932,14 +922,25 @@
       renderChip();
     };
 
-    var msg = el('div', { style: 'font-size:12px;margin-top:6px;min-height:16px;color:' + e.muted + ';' });
     compose.appendChild(msg);
+
+    // Submit button row — "Reply" button also gets a Cancel sibling
+    var btnRow = el('div', { style: 'display:flex;align-items:center;gap:8px;margin-top:8px;' });
     var btn = el('button', {
-      style: 'margin-top:8px;padding:8px 14px;background:' + e.accent + ';color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;',
+      style: 'padding:8px 14px;background:' + e.accent + ';color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;',
     });
-    btn.textContent = 'Post Comment';
-    compose.appendChild(btn);
-    host.appendChild(compose);
+    btn.textContent = isReply ? 'Post Reply' : 'Post Comment';
+    btnRow.appendChild(btn);
+    if (isReply) {
+      var cancelBtn = el('button', {
+        type: 'button',
+        style: 'padding:8px 14px;background:transparent;color:' + e.muted + ';border:1px solid ' + e.border + ';border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;',
+      });
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.onclick = function () { if (opts.onCancel) opts.onCancel(); };
+      btnRow.appendChild(cancelBtn);
+    }
+    compose.appendChild(btnRow);
 
     btn.onclick = function () {
       var content = textarea.value.trim();
@@ -947,13 +948,13 @@
       btn.disabled = true;
       msg.style.color = e.muted; msg.textContent = 'Posting…';
 
-      // FormData so text fields + optional file ride the same request
       var fd = new FormData();
       if (content) fd.append('content', content);
       if (!authed && emailInput) fd.append('email', emailInput.value.trim());
       if (selectedFile) fd.append('attachment', selectedFile);
+      if (opts.parentId) fd.append('parentId', opts.parentId);
 
-      var headers = {}; // NO Content-Type — browser sets multipart boundary
+      var headers = {};
       if (authed) Object.assign(headers, authHeaders());
 
       fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/posts/' + encodeURIComponent(post.id) + '/comments', {
@@ -966,7 +967,7 @@
             msg.style.color = e.accent; msg.textContent = 'Posted';
             textarea.value = '';
             selectedFile = null; fileInput.value = ''; renderChip();
-            self._loadComments(post, listEl);
+            if (opts.onPosted) opts.onPosted();
           } else if (res.d && res.d.code === 'USER_NOT_REGISTERED') {
             msg.style.color = '#ef4444';
             msg.innerHTML = (res.d.message || 'Not registered.') + ' <a href="' + APP_URL + '/register" target="_blank" rel="noopener" style="color:' + e.accent + ';font-weight:600;">Sign up here</a>.';
@@ -982,19 +983,225 @@
         });
     };
 
+    return { el: compose, focus: function () { textarea.focus(); } };
+  };
+
+  // Toggle like on a comment — optimistic, auth-required. Shows sign-in
+  // prompt if the caller isn't authenticated.
+  Widget.prototype._toggleCommentLike = function (c, heartBtn, countSpan) {
+    var self = this;
+    if (!isAuthed()) {
+      alert('Please sign in to like comments.');
+      return;
+    }
+    var liked = self.state.likedCommentIds.has(c.id);
+    // Optimistic flip
+    if (liked) {
+      self.state.likedCommentIds.delete(c.id);
+      heartBtn.classList.remove('liked');
+      c.likeCount = Math.max(0, (c.likeCount || 0) - 1);
+    } else {
+      self.state.likedCommentIds.add(c.id);
+      heartBtn.classList.add('liked');
+      c.likeCount = (c.likeCount || 0) + 1;
+    }
+    countSpan.textContent = c.likeCount > 0 ? String(c.likeCount) : '';
+
+    fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/comments/' + encodeURIComponent(c.id) + '/like', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.d || !res.d.success) {
+          // Rollback
+          if (liked) { self.state.likedCommentIds.add(c.id); heartBtn.classList.add('liked'); c.likeCount = (c.likeCount || 0) + 1; }
+          else { self.state.likedCommentIds.delete(c.id); heartBtn.classList.remove('liked'); c.likeCount = Math.max(0, (c.likeCount || 0) - 1); }
+          countSpan.textContent = c.likeCount > 0 ? String(c.likeCount) : '';
+          if (res.d && res.d.code === 'AUTH_REQUIRED') alert(res.d.message || 'Please sign in to like comments.');
+        } else {
+          // Sync with server's authoritative count
+          c.likeCount = res.d.data.likeCount;
+          countSpan.textContent = c.likeCount > 0 ? String(c.likeCount) : '';
+        }
+      })
+      .catch(function () {
+        // Rollback on network error
+        if (liked) { self.state.likedCommentIds.add(c.id); heartBtn.classList.add('liked'); c.likeCount = (c.likeCount || 0) + 1; }
+        else { self.state.likedCommentIds.delete(c.id); heartBtn.classList.remove('liked'); c.likeCount = Math.max(0, (c.likeCount || 0) - 1); }
+        countSpan.textContent = c.likeCount > 0 ? String(c.likeCount) : '';
+      });
+  };
+
+  // Build a single comment card — returns a DOM node. `isReply=true` renders
+  // the card with a slightly smaller avatar and no nested replies section.
+  Widget.prototype._commentCard = function (c, post, listEl, isReply) {
+    var self = this, e = this.els;
+    var avSize = isReply ? 28 : 32;
+
+    var card = el('div', {
+      style: 'padding:14px 16px;border:1px solid ' + e.border + ';border-radius:12px;background:' + (e.dark ? '#1f2937' : '#ffffff') + ';',
+    });
+
+    var name = (c.author && c.author.name) || 'User';
+    var initial = name.charAt(0).toUpperCase();
+    var aUrl = c.author && avatarUrl(c.author.avatar);
+
+    var body = el('div', { style: 'display:flex;gap:12px;align-items:flex-start;' });
+    var avatarEl;
+    if (aUrl) {
+      avatarEl = el('img', { src: aUrl, alt: '', style: 'width:' + avSize + 'px;height:' + avSize + 'px;border-radius:50%;object-fit:cover;flex-shrink:0;' });
+    } else {
+      avatarEl = el('div', { style: 'width:' + avSize + 'px;height:' + avSize + 'px;border-radius:50%;background:' + e.accent + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:' + (isReply ? 11 : 12) + 'px;font-weight:700;flex-shrink:0;' });
+      avatarEl.textContent = initial;
+    }
+    body.appendChild(avatarEl);
+
+    var right = el('div', { style: 'flex:1;min-width:0;' });
+
+    // Header row — name, time, official badge
+    var headerRow = el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;' });
+    var nameEl = el('span', { style: 'font-size:14px;font-weight:600;color:' + e.text + ';' });
+    nameEl.textContent = name;
+    headerRow.appendChild(nameEl);
+    var timeEl = el('span', { style: 'font-size:12px;color:' + e.muted + ';' });
+    timeEl.textContent = timeAgo(c.createdAt);
+    headerRow.appendChild(timeEl);
+    if (c.isOfficial) {
+      var off = el('span', { style: 'padding:1px 6px;border-radius:4px;background:' + e.accent + ';color:#fff;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;' });
+      off.textContent = 'Official';
+      headerRow.appendChild(off);
+    }
+    right.appendChild(headerRow);
+
+    // Body — rich HTML from Tiptap
+    if (c.content) {
+      var bodyEl = el('div', { class: 'prw-post-content', style: 'color:' + e.text + ';margin-top:4px;font-size:13.5px;' });
+      bodyEl.innerHTML = c.content;
+      right.appendChild(bodyEl);
+    }
+
+    // Attachment pill
+    if (c.attachmentUrl) {
+      var sizeStr = fmtBytes(c.attachmentSize);
+      var pal = attachmentPalette(c.attachmentMime, c.attachmentName, e.dark);
+      var a = el('a', {
+        class: 'prw-attach-link',
+        href: c.attachmentUrl,
+        target: '_blank',
+        rel: 'noopener',
+        download: c.attachmentName || '',
+        style: 'color:' + pal.color + ';border-color:' + pal.border + ';background:' + pal.background + ';',
+      });
+      a.innerHTML = ICON.download + '<span class="prw-attach-name">' + escapeHtml(c.attachmentName || 'attachment') + '</span>' + (sizeStr ? '<span class="prw-attach-size">· ' + sizeStr + '</span>' : '');
+      right.appendChild(a);
+    }
+
+    // Action row — heart + reply
+    var actionRow = el('div', { style: 'display:flex;align-items:center;gap:16px;margin-top:10px;' });
+    var isLiked = self.state.likedCommentIds.has(c.id);
+    var heartBtn = el('button', { type: 'button', class: 'prw-cmt-action' + (isLiked ? ' liked' : ''), 'aria-label': 'Like' });
+    var heartIcon = el('span', { style: 'display:inline-flex;' });
+    heartIcon.innerHTML = ICON.heart;
+    heartBtn.appendChild(heartIcon);
+    var countSpan = el('span');
+    countSpan.textContent = c.likeCount > 0 ? String(c.likeCount) : '';
+    heartBtn.appendChild(countSpan);
+    heartBtn.onclick = function () { self._toggleCommentLike(c, heartBtn, countSpan); };
+    actionRow.appendChild(heartBtn);
+
+    var replyBtn = el('button', { type: 'button', class: 'prw-cmt-action', 'aria-label': 'Reply' });
+    replyBtn.innerHTML = ICON.reply + '<span>Reply</span>';
+    actionRow.appendChild(replyBtn);
+    right.appendChild(actionRow);
+
+    // Inline reply compose slot — parent-level only (no nested reply-of-reply)
+    var replyHost = null;
+    if (!isReply) {
+      replyHost = el('div');
+      right.appendChild(replyHost);
+      replyBtn.onclick = function () {
+        if (replyHost.firstChild) { replyHost.innerHTML = ''; return; }
+        var compose = self._buildCompose(post, {
+          parentId: c.id,
+          onCancel: function () { replyHost.innerHTML = ''; },
+          onPosted: function () { replyHost.innerHTML = ''; self._loadComments(post, listEl); },
+        });
+        replyHost.appendChild(compose.el);
+        compose.focus();
+      };
+    } else {
+      // On reply cards, Reply still focuses parent-level compose
+      replyBtn.onclick = function () {
+        // Walk up to find the top-level parent card's replyHost — easier:
+        // just target the post's top-level compose instead.
+        var ta = self.els && self.els.panel && self.els.panel.querySelector('textarea[placeholder="Write a comment…"]');
+        if (ta) { try { ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {} ta.focus(); }
+      };
+    }
+
+    body.appendChild(right);
+    card.appendChild(body);
+
+    // Replies nested below (parent cards only)
+    if (!isReply && Array.isArray(c.replies) && c.replies.length) {
+      var repliesWrap = el('div', {
+        style: 'margin-top:10px;padding-left:16px;border-left:2px solid ' + e.border + ';display:flex;flex-direction:column;gap:10px;',
+      });
+      c.replies.forEach(function (r) {
+        repliesWrap.appendChild(self._commentCard(r, post, listEl, true));
+      });
+      card.appendChild(repliesWrap);
+    }
+
+    return card;
+  };
+
+  // Render the comments section inside the given host element.
+  // Loads comments asynchronously and includes a compose box.
+  Widget.prototype._renderComments = function (host, post) {
+    var self = this, e = this.els;
+
+    var header = el('div', {
+      style: 'display:flex;align-items:center;gap:8px;padding-top:20px;margin-top:6px;border-top:1px solid ' + e.border + ';margin-bottom:12px;',
+    });
+    header.innerHTML =
+      '<span style="font-size:15px;font-weight:700;color:' + e.text + ';">Comments</span>' +
+      '<span id="prw-cc-badge" style="font-size:12px;color:' + e.muted + ';">…</span>';
+    host.appendChild(header);
+
+    // Comments list (filled after fetch)
+    var listEl = el('div', { id: 'prw-comments-list', style: 'display:flex;flex-direction:column;gap:10px;margin-bottom:14px;' });
+    listEl.innerHTML = '<div style="font-size:12px;color:' + e.muted + ';padding:8px 0;">Loading comments…</div>';
+    host.appendChild(listEl);
+
+    // Top-level compose box — reuses the shared _buildCompose helper
+    var mainCompose = self._buildCompose(post, {
+      onPosted: function () { self._loadComments(post, listEl); },
+    });
+    host.appendChild(mainCompose.el);
+
     this._loadComments(post, listEl);
   };
 
   // Fetch + render the comment list (replaces contents of listEl).
   Widget.prototype._loadComments = function (post, listEl) {
     var self = this, e = this.els;
-    fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(this.opts.token) + '/posts/' + encodeURIComponent(post.id) + '/comments')
+    var headers = {};
+    if (isAuthed()) Object.assign(headers, authHeaders());
+    fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(this.opts.token) + '/posts/' + encodeURIComponent(post.id) + '/comments', { headers: headers })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         var comments = (data && data.data && data.data.comments) || [];
-        // Update count badge
+        var likedIds = (data && data.data && data.data.likedCommentIds) || [];
+        self.state.likedCommentIds = new Set(likedIds);
+
+        // Count includes top-level + replies (matches main app commentCount semantics)
+        var total = 0;
+        comments.forEach(function (c) { total += 1 + ((c.replies && c.replies.length) || 0); });
         var badge = self.els && self.els.panel && self.els.panel.querySelector('#prw-cc-badge');
-        if (badge) badge.textContent = comments.length ? ('(' + comments.length + ')') : '(0)';
+        if (badge) badge.textContent = '(' + total + ')';
+
         listEl.innerHTML = '';
         if (!comments.length) {
           var empty = el('div', { style: 'font-size:13px;color:' + e.muted + ';padding:8px 0;' });
@@ -1003,79 +1210,7 @@
           return;
         }
         comments.forEach(function (c) {
-          // Card wrapper — rounded border, white/dark bg, padding matches main app
-          var row = el('div', {
-            style: 'padding:14px 16px;border:1px solid ' + e.border + ';border-radius:12px;background:' + (e.dark ? '#1f2937' : '#ffffff') + ';',
-          });
-
-          var name = (c.author && c.author.name) || 'User';
-          var initial = name.charAt(0).toUpperCase();
-          var aUrl = c.author && avatarUrl(c.author.avatar);
-
-          // Avatar — real image if available, otherwise colored initial fallback (32px)
-          var avatarHtml = aUrl
-            ? '<img src="' + escapeHtml(aUrl) + '" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;" />'
-            : '<div style="width:32px;height:32px;border-radius:50%;background:' + e.accent + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">' + escapeHtml(initial) + '</div>';
-
-          var officialBadge = c.isOfficial
-            ? '<span style="margin-left:6px;padding:1px 6px;border-radius:4px;background:' + e.accent + ';color:#fff;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Official</span>'
-            : '';
-
-          // Attachment pill (colored per file type)
-          var attachHtml = '';
-          if (c.attachmentUrl) {
-            var sizeStr = fmtBytes(c.attachmentSize);
-            var pal = attachmentPalette(c.attachmentMime, c.attachmentName, e.dark);
-            attachHtml =
-              '<a class="prw-attach-link" href="' + escapeHtml(c.attachmentUrl) + '" target="_blank" rel="noopener" download="' + escapeHtml(c.attachmentName || '') + '" style="color:' + pal.color + ';border-color:' + pal.border + ';background:' + pal.background + ';">' +
-                ICON.download +
-                '<span class="prw-attach-name">' + escapeHtml(c.attachmentName || 'attachment') + '</span>' +
-                (sizeStr ? '<span class="prw-attach-size">· ' + sizeStr + '</span>' : '') +
-              '</a>';
-          }
-
-          // Body — render rich HTML from Tiptap (same trusted content the main app renders).
-          // Keeps bold, lists, mentions, images rendered exactly like the main app's comment view.
-          var bodyHtml = c.content
-            ? '<div class="prw-post-content" style="color:' + e.text + ';margin-top:4px;font-size:13.5px;">' + c.content + '</div>'
-            : '';
-
-          // Likes — show count only when > 0 (matches main app). Non-interactive
-          // in the widget since public likes aren't wired; purely visual.
-          var likeCount = (c.likeCount && c.likeCount > 0) ? String(c.likeCount) : '';
-
-          row.innerHTML =
-            '<div style="display:flex;gap:12px;align-items:flex-start;">' +
-              avatarHtml +
-              '<div style="flex:1;min-width:0;">' +
-                '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-                  '<span style="font-size:14px;font-weight:600;color:' + e.text + ';">' + escapeHtml(name) + '</span>' +
-                  '<span style="font-size:12px;color:' + e.muted + ';">' + timeAgo(c.createdAt) + '</span>' +
-                  officialBadge +
-                '</div>' +
-                bodyHtml +
-                attachHtml +
-                '<div style="display:flex;align-items:center;gap:16px;margin-top:10px;">' +
-                  '<button type="button" class="prw-cmt-action" aria-label="Like">' + ICON.heart + (likeCount ? '<span>' + likeCount + '</span>' : '') + '</button>' +
-                  '<button type="button" class="prw-cmt-action" data-prw-reply="1" aria-label="Reply">' + ICON.reply + '<span>Reply</span></button>' +
-                '</div>' +
-              '</div>' +
-            '</div>';
-
-          // Reply — scrolls to compose and focuses textarea (widget doesn't support
-          // threaded replies server-side, but focusing matches the main app's flow)
-          var replyBtn = row.querySelector('[data-prw-reply]');
-          if (replyBtn) {
-            replyBtn.onclick = function () {
-              var ta = self.els && self.els.panel && self.els.panel.querySelector('textarea[placeholder="Write a comment…"]');
-              if (ta) {
-                try { ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { ta.scrollIntoView(); }
-                ta.focus();
-              }
-            };
-          }
-
-          listEl.appendChild(row);
+          listEl.appendChild(self._commentCard(c, post, listEl, false));
         });
       })
       .catch(function () {
