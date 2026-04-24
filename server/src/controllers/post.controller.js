@@ -220,6 +220,7 @@ const getPostBySlug = async (req, res, next) => {
           select: {
             id: true, content: true, isInternal: true, isOfficial: true,
             isPinned: true, likeCount: true, createdAt: true, authorId: true, parentId: true,
+            attachmentUrl: true, attachmentName: true, attachmentMime: true, attachmentSize: true,
             author: { select: { id: true, name: true, avatar: true } },
             likes: { select: { userId: true } },
             replies: {
@@ -227,6 +228,7 @@ const getPostBySlug = async (req, res, next) => {
               select: {
                 id: true, content: true, isOfficial: true, isPinned: true,
                 likeCount: true, createdAt: true, authorId: true, parentId: true,
+                attachmentUrl: true, attachmentName: true, attachmentMime: true, attachmentSize: true,
                 author: { select: { id: true, name: true, avatar: true } },
                 likes: { select: { userId: true } },
               },
@@ -714,6 +716,7 @@ const getPostById = async (req, res, next) => {
           select: {
             id: true, content: true, isInternal: true, isOfficial: true,
             isPinned: true, likeCount: true, createdAt: true, authorId: true, parentId: true,
+            attachmentUrl: true, attachmentName: true, attachmentMime: true, attachmentSize: true,
             author: { select: { id: true, name: true, avatar: true } },
             likes: { select: { userId: true } },
             replies: {
@@ -721,6 +724,7 @@ const getPostById = async (req, res, next) => {
               select: {
                 id: true, content: true, isOfficial: true, isPinned: true,
                 likeCount: true, createdAt: true, authorId: true, parentId: true,
+                attachmentUrl: true, attachmentName: true, attachmentMime: true, attachmentSize: true,
                 author: { select: { id: true, name: true, avatar: true } },
                 likes: { select: { userId: true } },
               },
