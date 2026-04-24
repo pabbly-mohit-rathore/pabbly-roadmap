@@ -864,6 +864,50 @@
     return wrap;
   };
 
+  // Shown when an action (vote, comment, reply, submit) requires auth but
+  // the visitor isn't signed in. Opens the Pabbly Roadmap login page in a
+  // new tab — the widget picks up the session automatically after login.
+  Widget.prototype._requireSignIn = function (action) {
+    var verb = action === 'vote' ? 'vote' : action === 'comment' ? 'comment' : action === 'reply' ? 'reply' : 'do that';
+    var ok = window.confirm('Please sign in to the Pabbly Roadmap to ' + verb + '.\n\nOpen the sign-in page?');
+    if (ok) { try { window.open(APP_URL + '/login', '_blank', 'noopener'); } catch (_) {} }
+  };
+
+  // Build a styled sign-in required banner for compose/submit views where
+  // we want to replace the input fields entirely instead of a blocking dialog.
+  Widget.prototype._buildSignInBanner = function (action) {
+    var e = this.els;
+    var box = el('div', {
+      style: [
+        'padding:16px', 'border-radius:10px',
+        'background:' + (e.dark ? 'rgba(5,150,105,0.12)' : '#f0fdf4'),
+        'border:1px solid ' + (e.dark ? 'rgba(5,150,105,0.35)' : '#bbf7d0'),
+        'color:' + (e.dark ? '#86efac' : '#15803d'),
+        'font-size:13px', 'line-height:1.55',
+        'display:flex', 'gap:12px', 'align-items:center', 'flex-wrap:wrap',
+      ].join(';'),
+    });
+    var msg = el('span', { style: 'flex:1;min-width:200px;' });
+    msg.textContent = action === 'submit'
+      ? 'Please sign in to the Pabbly Roadmap to submit a post.'
+      : action === 'comment' ? 'Please sign in to the Pabbly Roadmap to comment.'
+      : 'Please sign in to the Pabbly Roadmap to continue.';
+    box.appendChild(msg);
+    var btn = el('button', {
+      type: 'button',
+      style: [
+        'padding:8px 14px', 'background:' + e.accent, 'color:#fff',
+        'border:none', 'border-radius:8px',
+        'font-size:13px', 'font-weight:600', 'cursor:pointer',
+        'font-family:inherit',
+      ].join(';'),
+    });
+    btn.textContent = 'Sign in';
+    btn.onclick = function () { try { window.open(APP_URL + '/login', '_blank', 'noopener'); } catch (_) {} };
+    box.appendChild(btn);
+    return box;
+  };
+
   // Attach @-mention autocomplete to a textarea. When the user types '@'
   // followed by query chars, a dropdown of matching roadmap users appears
   // below the textarea. Selecting one inserts "@Name " at the cursor.
@@ -1052,22 +1096,18 @@
     var self = this, e = this.els;
     opts = opts || {};
     var isReply = !!opts.parentId;
-    var authed = isAuthed();
+
+    // Auth gate — widget requires an existing Pabbly Roadmap session;
+    // no email-entry fallback. Show a sign-in banner instead of the form.
+    if (!isAuthed()) {
+      var wrapper = el('div', { style: isReply ? 'margin-top:10px;' : '' });
+      wrapper.appendChild(self._buildSignInBanner(isReply ? 'reply' : 'comment'));
+      return { el: wrapper, focus: function () {} };
+    }
 
     var compose = el('div', {
       style: 'border:1px solid ' + e.border + ';border-radius:10px;padding:10px;background:' + (e.dark ? '#0f172a' : '#fafafa') + (isReply ? ';margin-top:10px' : '') + ';',
     });
-
-    var emailInput = null;
-    if (!authed) {
-      emailInput = el('input', {
-        type: 'email', placeholder: 'Your registered email',
-        value: self.state.voterEmail || '',
-        class: 'prw-input',
-        style: 'width:100%;padding:8px 10px;border:1px solid ' + e.border + ';border-radius:8px;font-size:13px;outline:none;background:' + (e.dark ? '#0f172a' : '#fff') + ';color:' + e.text + ';margin-bottom:8px;box-sizing:border-box;font-family:inherit;',
-      });
-      compose.appendChild(emailInput);
-    }
 
     var textarea = el('textarea', {
       placeholder: isReply ? 'Write a reply…' : 'Write a comment…',
@@ -1158,12 +1198,11 @@
 
       var fd = new FormData();
       if (content) fd.append('content', content);
-      if (!authed && emailInput) fd.append('email', emailInput.value.trim());
       if (selectedFile) fd.append('attachment', selectedFile);
       if (opts.parentId) fd.append('parentId', opts.parentId);
 
-      var headers = {};
-      if (authed) Object.assign(headers, authHeaders());
+      // Auth-only — widget requires an existing Pabbly Roadmap session
+      var headers = Object.assign({}, authHeaders());
 
       fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/posts/' + encodeURIComponent(post.id) + '/comments', {
         method: 'POST', headers: headers, body: fd,
@@ -1493,9 +1532,13 @@
       return { wrap: w, input: node };
     }
 
-    var authed = isAuthed();
+    // Auth gate — widget requires an existing Pabbly Roadmap session
+    if (!isAuthed()) {
+      wrap.appendChild(self._buildSignInBanner('submit'));
+      return wrap;
+    }
 
-    // Info banner — tailored message depending on auth state
+    // Info banner — confirms whose account is being used to submit
     var notice = el('div', {
       style: [
         'padding:10px 12px', 'border-radius:8px',
@@ -1505,17 +1548,8 @@
         'font-size:12px', 'margin-bottom:14px', 'line-height:1.5',
       ].join(';'),
     });
-    notice.innerHTML = authed
-      ? 'Submitting as your signed-in roadmap account.'
-      : 'Only registered roadmap users can submit feedback. Please use the email you signed up with.';
+    notice.innerHTML = 'Submitting as your signed-in roadmap account.';
     wrap.appendChild(notice);
-
-    var emailInput = null;
-    if (!authed) {
-      var emF = floatField({ id: 'prw-f-email', type: 'email', label: 'Registered Email', value: self.state.voterEmail || '', help: 'Use the email you signed up with.' });
-      emailInput = emF.input;
-      wrap.appendChild(emF.wrap);
-    }
 
     var tF = floatField({ id: 'prw-f-title', label: 'Title *', help: 'Enter the title for your post.' });
     var titleInput = tF.input;
@@ -1535,13 +1569,11 @@
       msg.style.color = e.muted;
       msg.textContent = 'Submitting…';
       btn.disabled = true;
-      var headers = { 'Content-Type': 'application/json' };
-      if (authed) Object.assign(headers, authHeaders());
+      var headers = Object.assign({ 'Content-Type': 'application/json' }, authHeaders());
       var body = {
         title: titleInput.value.trim(),
         description: descInput.value.trim(),
       };
-      if (!authed && emailInput) body.email = emailInput.value.trim();
       fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/submit', {
         method: 'POST',
         headers: headers,
@@ -1551,10 +1583,6 @@
         .then(function (res) {
           btn.disabled = false;
           if (res.ok && res.d && res.d.success) {
-            if (!authed && emailInput && emailInput.value.trim()) {
-              self.state.voterEmail = emailInput.value.trim().toLowerCase();
-              localStorage.setItem(self._lsKey('email'), self.state.voterEmail);
-            }
             wrap.innerHTML =
               '<div style="text-align:center;padding:40px 20px;">' +
                 '<div style="width:56px;height:56px;border-radius:50%;background:' + e.accent + ';margin:0 auto 16px;display:flex;align-items:center;justify-content:center;color:#fff;">' +
@@ -1710,32 +1738,15 @@
   };
 
   // ============================================================
-  // UPVOTE — prompts for email on first use, stored in localStorage
+  // UPVOTE — requires the visitor to be signed in to the Pabbly Roadmap.
+  // Falls back to a "please sign in" prompt instead of asking for email.
   // ============================================================
   Widget.prototype._toggleVote = function (post) {
     var self = this;
-    var headers = { 'Content-Type': 'application/json' };
-    var body = { postId: post.id };
+    if (!isAuthed()) { self._requireSignIn('vote'); return; }
 
-    if (isAuthed()) {
-      // Logged-in path — no email prompt needed
-      Object.assign(headers, authHeaders());
-    } else {
-      // Fall back to email prompt for anonymous visitors on external sites
-      var email = this.state.voterEmail;
-      if (!email) {
-        email = window.prompt('Enter your email to vote:');
-        if (!email) return;
-        email = email.trim().toLowerCase();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          alert('Please enter a valid email.');
-          return;
-        }
-        this.state.voterEmail = email;
-        localStorage.setItem(this._lsKey('email'), email);
-      }
-      body.email = email;
-    }
+    var headers = Object.assign({ 'Content-Type': 'application/json' }, authHeaders());
+    var body = { postId: post.id };
 
     fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(this.opts.token) + '/vote', {
       method: 'POST',
