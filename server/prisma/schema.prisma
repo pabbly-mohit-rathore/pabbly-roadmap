@@ -352,6 +352,12 @@ model Comment {
   postId     String
   parentId   String?  // Nested reply — kisi comment ka reply
 
+  // Optional single file attachment (uploaded via embed widget comment form)
+  attachmentUrl  String?
+  attachmentName String?
+  attachmentMime String?
+  attachmentSize Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -7,7 +7,27 @@
 // ============================================================
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const prisma = require('../config/database');
+
+// Public base URL used to build absolute attachment URLs returned to widget
+function resolvePublicBase(req) {
+  const envBase = process.env.PUBLIC_API_URL || process.env.API_URL;
+  if (envBase) return envBase.replace(/\/+$/, '');
+  const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  return `${proto}://${host}`;
+}
+
+function attachmentUrlFor(req, storedFilename) {
+  return `${resolvePublicBase(req)}/uploads/comments/${storedFilename}`;
+}
+
+function unlinkSafe(absPath) {
+  if (!absPath) return;
+  fs.unlink(absPath, () => {});
+}
 
 function requireAdmin(req, res) {
   if (req.user.role !== 'admin') {
@@ -480,6 +500,7 @@ const getPublicComments = async (req, res, next) => {
       orderBy: [{ isPinned: 'desc' }, { createdAt: 'asc' }],
       select: {
         id: true, content: true, isOfficial: true, isPinned: true, createdAt: true,
+        attachmentUrl: true, attachmentName: true, attachmentMime: true, attachmentSize: true,
         author: { select: { id: true, name: true, avatar: true } },
       },
     });
@@ -489,29 +510,42 @@ const getPublicComments = async (req, res, next) => {
 };
 
 // PUBLIC — add a new comment. Auth preferred (optionalAuth), otherwise
-// email is required and must match an existing roadmap user.
+// email is required and must match an existing roadmap user. Optional
+// single file attachment is uploaded via multer (field name: "attachment").
 const addPublicComment = async (req, res, next) => {
+  // Multer has already saved the file to disk by the time we run. Any
+  // validation failure below must unlink the orphan so /uploads doesn't bloat.
+  const uploadedFile = req.file || null;
+  const uploadedPath = uploadedFile ? uploadedFile.path : null;
+
   try {
     const { token, postId } = req.params;
     const { content, email } = req.body || {};
 
-    if (!content || !String(content).trim()) {
-      return res.status(400).json({ success: false, message: 'Comment content is required.' });
+    const trimmedContent = content ? String(content).trim() : '';
+    if (!trimmedContent && !uploadedFile) {
+      unlinkSafe(uploadedPath);
+      return res.status(400).json({ success: false, message: 'Comment content or attachment is required.' });
     }
 
     const check = await assertPostInWidget(token, postId);
-    if (check.error) return res.status(check.error.status).json({ success: false, message: check.error.message });
+    if (check.error) {
+      unlinkSafe(uploadedPath);
+      return res.status(check.error.status).json({ success: false, message: check.error.message });
+    }
 
     let user;
     if (req.user && req.user.isActive) {
       user = req.user;
     } else {
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+        unlinkSafe(uploadedPath);
         return res.status(401).json({ success: false, message: 'Please sign in to comment.', code: 'AUTH_REQUIRED' });
       }
       const cleanEmail = String(email).trim().toLowerCase();
       user = await prisma.user.findUnique({ where: { email: cleanEmail } });
       if (!user || !user.isActive) {
+        unlinkSafe(uploadedPath);
         return res.status(403).json({
           success: false,
           message: 'This email is not registered on our roadmap. Please sign up first to comment.',
@@ -520,14 +554,25 @@ const addPublicComment = async (req, res, next) => {
       }
     }
 
+    const attachmentData = uploadedFile
+      ? {
+          attachmentUrl: attachmentUrlFor(req, uploadedFile.filename),
+          attachmentName: uploadedFile.originalname,
+          attachmentMime: uploadedFile.mimetype,
+          attachmentSize: uploadedFile.size,
+        }
+      : {};
+
     const comment = await prisma.comment.create({
       data: {
         postId,
         authorId: user.id,
-        content: String(content).trim(),
+        content: trimmedContent,
+        ...attachmentData,
       },
       select: {
         id: true, content: true, isOfficial: true, isPinned: true, createdAt: true,
+        attachmentUrl: true, attachmentName: true, attachmentMime: true, attachmentSize: true,
         author: { select: { id: true, name: true, avatar: true } },
       },
     });
@@ -539,7 +584,10 @@ const addPublicComment = async (req, res, next) => {
     }).catch(() => {});
 
     res.status(201).json({ success: true, data: { comment } });
-  } catch (err) { next(err); }
+  } catch (err) {
+    unlinkSafe(uploadedPath);
+    next(err);
+  }
 };
 
 module.exports = {

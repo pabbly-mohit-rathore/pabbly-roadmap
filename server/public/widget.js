@@ -55,7 +55,18 @@
       '.prw-post-content pre code { background:transparent; padding:0; }\n' +
       '.prw-post-content blockquote { border-left:3px solid rgba(148,163,184,0.35); padding:4px 12px; margin:12px 0; color:inherit; opacity:0.85; }\n' +
       '.prw-post-content img { max-width:100%; border-radius:8px; margin:10px 0; display:block; }\n' +
-      '.prw-post-content hr { border:0; border-top:1px dashed rgba(148,163,184,0.35); margin:16px 0; }\n';
+      '.prw-post-content hr { border:0; border-top:1px dashed rgba(148,163,184,0.35); margin:16px 0; }\n' +
+      // Upvote button hover — subtle lift + shadow so clickability reads
+      '.prw-vote-btn { transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease; }\n' +
+      '.prw-vote-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }\n' +
+      '.prw-vote-btn:active { transform: translateY(0); box-shadow: none; }\n' +
+      // Attachment row (below comment textarea) + file chip inside comments
+      '.prw-attach-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:6px 2px; font-size:13px; cursor:pointer; font-family:inherit; transition: opacity 0.15s ease; }\n' +
+      '.prw-attach-btn:hover { opacity:0.75; }\n' +
+      '.prw-attach-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid rgba(148,163,184,0.4); font-size:12px; margin-top:6px; max-width:100%; }\n' +
+      '.prw-attach-link { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.35); font-size:12.5px; margin-top:8px; text-decoration:none; transition: background 0.15s ease; max-width:100%; overflow:hidden; }\n' +
+      '.prw-attach-link:hover { background:rgba(148,163,184,0.12); }\n' +
+      '.prw-attach-link .prw-attach-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; }\n';
     var s = document.createElement('style');
     s.setAttribute('data-prw', '1');
     s.textContent = css;
@@ -115,6 +126,12 @@
       return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch (e) { return ''; }
   }
+  function fmtBytes(n) {
+    if (typeof n !== 'number' || !isFinite(n) || n <= 0) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1024 / 1024).toFixed(1) + ' MB';
+  }
   function prettyStatus(s) {
     return ({
       under_review: 'Under Review', planned: 'Planned', in_progress: 'In Progress',
@@ -160,6 +177,10 @@
     up: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>',
     comment: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
     plus: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+    paperclip: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 17.98 8.83l-8.58 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
+    download: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+    file: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+    x: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
   };
 
   // ---------- constructor ----------
@@ -557,6 +578,7 @@
     // Compact horizontal vote button — matches app's upvote chip size
     var voteBtn = el('button', {
       'aria-label': 'Upvote',
+      class: 'prw-vote-btn',
       style: [
         'display:inline-flex', 'align-items:center', 'gap:6px',
         'padding:6px 12px', 'height:32px',
@@ -654,6 +676,7 @@
     titleRow.appendChild(titleEl);
 
     var voteBtn = el('button', {
+      class: 'prw-vote-btn',
       style: [
         'display:inline-flex', 'flex-direction:column', 'align-items:center',
         'justify-content:center', 'gap:2px',
@@ -732,6 +755,62 @@
       style: 'width:100%;padding:8px 10px;border:1px solid ' + e.border + ';border-radius:8px;font-size:13px;outline:none;background:' + (e.dark ? '#0f172a' : '#fff') + ';color:' + e.text + ';min-height:60px;resize:vertical;box-sizing:border-box;font-family:inherit;',
     });
     compose.appendChild(textarea);
+
+    // Attach row — paperclip button + hidden file input + selected chip
+    var selectedFile = null;
+    var fileInput = el('input', {
+      type: 'file',
+      style: 'display:none;',
+      accept: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.md,.zip,.rar,.7z,.jpg,.jpeg,.png,.gif,.webp,.svg',
+    });
+    compose.appendChild(fileInput);
+
+    var attachRow = el('div', {
+      style: 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px;color:' + e.muted + ';',
+    });
+    var attachBtn = el('button', {
+      type: 'button',
+      class: 'prw-attach-btn',
+      style: 'color:' + e.muted + ';',
+    });
+    attachBtn.innerHTML = ICON.paperclip + '<span>Attach</span>';
+    attachBtn.onclick = function () { fileInput.click(); };
+    attachRow.appendChild(attachBtn);
+
+    var chipEl = el('span', {
+      class: 'prw-attach-chip',
+      style: 'background:' + (e.dark ? '#0f172a' : '#fff') + ';color:' + e.text + ';display:none;',
+    });
+    attachRow.appendChild(chipEl);
+    compose.appendChild(attachRow);
+
+    function renderChip() {
+      if (!selectedFile) { chipEl.style.display = 'none'; chipEl.innerHTML = ''; return; }
+      var sizeStr = fmtBytes(selectedFile.size);
+      chipEl.style.display = 'inline-flex';
+      chipEl.innerHTML =
+        ICON.file +
+        '<span style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(selectedFile.name) + '</span>' +
+        (sizeStr ? '<span style="opacity:0.7;">' + sizeStr + '</span>' : '') +
+        '<button type="button" data-prw-remove="1" aria-label="Remove attachment" style="background:transparent;border:none;padding:0 2px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;">' + ICON.x + '</button>';
+      var removeBtn = chipEl.querySelector('[data-prw-remove]');
+      if (removeBtn) removeBtn.onclick = function () { selectedFile = null; fileInput.value = ''; renderChip(); };
+    }
+
+    fileInput.onchange = function () {
+      var f = fileInput.files && fileInput.files[0];
+      if (!f) { selectedFile = null; renderChip(); return; }
+      if (f.size > 10 * 1024 * 1024) {
+        msg.style.color = '#ef4444';
+        msg.textContent = 'Attachment must be under 10 MB.';
+        fileInput.value = '';
+        return;
+      }
+      msg.textContent = '';
+      selectedFile = f;
+      renderChip();
+    };
+
     var msg = el('div', { style: 'font-size:12px;margin-top:6px;min-height:16px;color:' + e.muted + ';' });
     compose.appendChild(msg);
     var btn = el('button', {
@@ -743,15 +822,21 @@
 
     btn.onclick = function () {
       var content = textarea.value.trim();
-      if (!content) { msg.style.color = '#ef4444'; msg.textContent = 'Please write something before posting.'; return; }
+      if (!content && !selectedFile) { msg.style.color = '#ef4444'; msg.textContent = 'Please write something or attach a file.'; return; }
       btn.disabled = true;
       msg.style.color = e.muted; msg.textContent = 'Posting…';
-      var headers = { 'Content-Type': 'application/json' };
+
+      // FormData so text fields + optional file ride the same request
+      var fd = new FormData();
+      if (content) fd.append('content', content);
+      if (!authed && emailInput) fd.append('email', emailInput.value.trim());
+      if (selectedFile) fd.append('attachment', selectedFile);
+
+      var headers = {}; // NO Content-Type — browser sets multipart boundary
       if (authed) Object.assign(headers, authHeaders());
-      var body = { content: content };
-      if (!authed && emailInput) body.email = emailInput.value.trim();
+
       fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/posts/' + encodeURIComponent(post.id) + '/comments', {
-        method: 'POST', headers: headers, body: JSON.stringify(body),
+        method: 'POST', headers: headers, body: fd,
       })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (res) {
@@ -759,6 +844,7 @@
           if (res.ok && res.d && res.d.success) {
             msg.style.color = e.accent; msg.textContent = 'Posted';
             textarea.value = '';
+            selectedFile = null; fileInput.value = ''; renderChip();
             self._loadComments(post, listEl);
           } else if (res.d && res.d.code === 'USER_NOT_REGISTERED') {
             msg.style.color = '#ef4444';
@@ -803,13 +889,31 @@
           var officialBadge = c.isOfficial
             ? '<span style="margin-left:6px;padding:1px 6px;border-radius:4px;background:' + e.accent + ';color:#fff;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Official</span>'
             : '';
+          // Build attachment block — download link with original filename
+          var attachHtml = '';
+          if (c.attachmentUrl) {
+            var sizeStr = fmtBytes(c.attachmentSize);
+            attachHtml =
+              '<a class="prw-attach-link" href="' + escapeHtml(c.attachmentUrl) + '" target="_blank" rel="noopener" download="' + escapeHtml(c.attachmentName || '') + '" style="color:' + e.text + ';background:' + (e.dark ? '#0f172a' : '#f8fafc') + ';">' +
+                ICON.download +
+                '<span class="prw-attach-name" style="font-weight:600;">' + escapeHtml(c.attachmentName || 'attachment') + '</span>' +
+                (sizeStr ? '<span style="opacity:0.65;font-size:11.5px;">· ' + sizeStr + '</span>' : '') +
+              '</a>';
+          }
+
+          var bodyText = stripHtml(c.content);
+          var bodyHtml = bodyText
+            ? '<div style="font-size:13px;color:' + e.text + ';line-height:1.55;white-space:pre-wrap;word-break:break-word;">' + escapeHtml(bodyText) + '</div>'
+            : '';
+
           row.innerHTML =
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
               '<span style="width:24px;height:24px;border-radius:50%;background:' + e.accent + ';color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">' + escapeHtml(initial) + '</span>' +
               '<span style="font-size:13px;font-weight:600;color:' + e.text + ';">' + escapeHtml((c.author && c.author.name) || 'User') + '</span>' + officialBadge +
               '<span style="margin-left:auto;font-size:11px;color:' + e.muted + ';">' + fmtDate(c.createdAt) + '</span>' +
             '</div>' +
-            '<div style="font-size:13px;color:' + e.text + ';line-height:1.55;white-space:pre-wrap;word-break:break-word;">' + escapeHtml(stripHtml(c.content)) + '</div>';
+            bodyHtml +
+            attachHtml;
           listEl.appendChild(row);
         });
       })
