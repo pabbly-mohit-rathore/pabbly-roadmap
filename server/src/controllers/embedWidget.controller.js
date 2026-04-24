@@ -537,6 +537,37 @@ const getPublicComments = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// PUBLIC — search roadmap users for @-mention autocomplete inside the widget.
+// Returns up to 8 matches by name or email. No auth required, but widget must be active.
+const searchWidgetUsers = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const q = (req.query.q || '').toString().trim();
+
+    const widget = await prisma.embedWidget.findUnique({ where: { token } });
+    if (!widget || !widget.isActive) {
+      return res.status(404).json({ success: false, message: 'Widget not found.' });
+    }
+
+    const where = { isActive: true };
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      select: { id: true, name: true, avatar: true, email: true },
+      orderBy: { name: 'asc' },
+      take: 8,
+    });
+
+    res.json({ success: true, data: { users } });
+  } catch (err) { next(err); }
+};
+
 // PUBLIC — toggle like on a comment. Requires auth (anonymous like spam is trivial).
 const togglePublicCommentLike = async (req, res, next) => {
   try {
@@ -696,4 +727,5 @@ module.exports = {
   getPublicComments,
   addPublicComment,
   togglePublicCommentLike,
+  searchWidgetUsers,
 };

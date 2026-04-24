@@ -101,6 +101,22 @@
       '.prw-cmt-action:hover { color: var(--prw-text, #111827); }\n' +
       '.prw-cmt-action.liked { color: #ef4444; }\n' +
       '.prw-cmt-action.liked svg { fill: currentColor; }\n' +
+      // "N Reply/Replies" toggle — accent color, chevron rotates on expand
+      '.prw-replies-toggle { display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:2px 0; cursor:pointer; font-size:12px; font-weight:600; color: var(--prw-accent, #059669); font-family: inherit; transition: opacity 0.15s ease; }\n' +
+      '.prw-replies-toggle:hover { opacity: 0.85; }\n' +
+      '.prw-replies-toggle svg { transition: transform 0.2s ease; }\n' +
+      '.prw-replies-toggle.expanded svg { transform: rotate(180deg); }\n' +
+      // Inline mention chip (renders @Name styled text in comment bodies)
+      '.prw-post-content .mention-tag, .mention-tag { display:inline-block; color:#1d4ed8; font-weight:600; background:#dbeafe; padding:1px 8px; border-radius:9999px; font-size:0.95em; line-height:1.4; white-space:nowrap; }\n' +
+      // Mention autocomplete dropdown (positioned below textarea)
+      '.prw-mention-drop { position:absolute; z-index:2147483650; max-height:240px; overflow-y:auto; border-radius:10px; padding:4px; min-width:220px; max-width:300px; box-shadow: 0 12px 32px rgba(0,0,0,0.18); background: var(--prw-field-bg, #ffffff); border:1px solid var(--prw-border, #e5e7eb); }\n' +
+      '.prw-mention-item { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:pointer; font-size:13px; color: var(--prw-text, #111827); }\n' +
+      '.prw-mention-item:hover, .prw-mention-item.active { background: rgba(148,163,184,0.15); }\n' +
+      '.prw-mention-item .prw-mention-avatar { width:24px; height:24px; border-radius:50%; flex-shrink:0; object-fit:cover; }\n' +
+      '.prw-mention-item .prw-mention-avatar-fallback { width:24px; height:24px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; }\n' +
+      '.prw-mention-item .prw-mention-name { font-weight:600; }\n' +
+      '.prw-mention-item .prw-mention-email { color: var(--prw-muted, #6b7280); font-size: 11.5px; margin-left:auto; }\n' +
+      '.prw-mention-empty { padding:10px 12px; color: var(--prw-muted, #6b7280); font-size:12.5px; text-align:center; }\n' +
       // Attachment row (below comment textarea) + file chip inside comments
       '.prw-attach-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:6px 2px; font-size:13px; cursor:pointer; font-family:inherit; transition: opacity 0.15s ease; }\n' +
       '.prw-attach-btn:hover { opacity:0.75; }\n' +
@@ -268,6 +284,7 @@
     x: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
     heart: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
     reply: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>',
+    chevronDown: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
   };
 
   // ---------- constructor ----------
@@ -282,6 +299,7 @@
       voterEmail: null,      // from localStorage
       votedIds: {},          // { postId: true } from localStorage
       likedCommentIds: new Set(), // comments the signed-in user has liked on current post
+      expandedReplyIds: new Set(), // parent comment IDs whose replies are currently expanded
     };
     this.els = {};           // cached references to key DOM nodes
     this.isOpen = false;
@@ -468,6 +486,14 @@
     panel.style.setProperty('--prw-field-bg', dark ? '#111827' : '#ffffff');
     panel.style.setProperty('--prw-text', text);
     panel.style.setProperty('--prw-muted', muted);
+    panel.style.setProperty('--prw-accent', accent);
+    // Also on document root so portaled dropdowns (appended to body) can pick them up
+    document.documentElement.style.setProperty('--prw-border', border);
+    document.documentElement.style.setProperty('--prw-border-hover', borderHover);
+    document.documentElement.style.setProperty('--prw-field-bg', dark ? '#111827' : '#ffffff');
+    document.documentElement.style.setProperty('--prw-text', text);
+    document.documentElement.style.setProperty('--prw-muted', muted);
+    document.documentElement.style.setProperty('--prw-accent', accent);
 
     this.els = {
       backdrop: backdrop, panel: panel, header: header, searchBar: searchBar, content: content,
@@ -838,6 +864,187 @@
     return wrap;
   };
 
+  // Attach @-mention autocomplete to a textarea. When the user types '@'
+  // followed by query chars, a dropdown of matching roadmap users appears
+  // below the textarea. Selecting one inserts "@Name " at the cursor.
+  Widget.prototype._setupMentionAutocomplete = function (textarea) {
+    var self = this, e = this.els;
+    var dropdown = null;
+    var activeIndex = 0;
+    var currentUsers = [];
+    var currentMatch = null; // { start, end, query }
+    var searchTimer = null;
+    var latestQueryId = 0;
+
+    function closeDropdown() {
+      if (dropdown && dropdown.parentNode) dropdown.parentNode.removeChild(dropdown);
+      dropdown = null;
+      currentUsers = [];
+      currentMatch = null;
+      activeIndex = 0;
+    }
+
+    function positionDropdown() {
+      if (!dropdown) return;
+      var rect = textarea.getBoundingClientRect();
+      var scrollY = window.scrollY || window.pageYOffset;
+      var scrollX = window.scrollX || window.pageXOffset;
+      // Position below textarea — flip above if close to viewport bottom
+      var spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 200 && rect.top > 240) {
+        dropdown.style.top = '';
+        dropdown.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+      } else {
+        dropdown.style.bottom = '';
+        dropdown.style.top = (rect.bottom + scrollY + 4) + 'px';
+      }
+      dropdown.style.left = (rect.left + scrollX) + 'px';
+      dropdown.style.width = Math.max(220, Math.min(300, rect.width)) + 'px';
+    }
+
+    function hashColor(str) {
+      // Deterministic color from string — matches main app's avatar fallback feel
+      var h = 0;
+      for (var i = 0; i < (str || '').length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+      var hues = ['#059669', '#2563eb', '#9333ea', '#db2777', '#ea580c', '#0891b2', '#65a30d'];
+      return hues[h % hues.length];
+    }
+
+    function renderDropdown() {
+      if (!dropdown) {
+        dropdown = el('div', { class: 'prw-mention-drop' });
+        document.body.appendChild(dropdown);
+      }
+      positionDropdown();
+      dropdown.innerHTML = '';
+
+      if (!currentUsers.length) {
+        var empty = el('div', { class: 'prw-mention-empty' });
+        empty.textContent = 'No users found';
+        dropdown.appendChild(empty);
+        return;
+      }
+
+      currentUsers.forEach(function (u, i) {
+        var item = el('div', { class: 'prw-mention-item' + (i === activeIndex ? ' active' : '') });
+        var av = avatarUrl(u.avatar);
+        if (av) {
+          var img = el('img', { class: 'prw-mention-avatar', src: av, alt: '' });
+          item.appendChild(img);
+        } else {
+          var fb = el('div', { class: 'prw-mention-avatar-fallback', style: 'background:' + hashColor(u.id || u.name) + ';' });
+          fb.textContent = (u.name || '?').charAt(0).toUpperCase();
+          item.appendChild(fb);
+        }
+        var nameEl = el('span', { class: 'prw-mention-name' });
+        nameEl.textContent = u.name || 'User';
+        item.appendChild(nameEl);
+        if (u.email) {
+          var emailEl = el('span', { class: 'prw-mention-email' });
+          emailEl.textContent = u.email;
+          item.appendChild(emailEl);
+        }
+        // Mousedown (not click) — click fires after blur which closes the dropdown
+        item.addEventListener('mousedown', function (ev) {
+          ev.preventDefault();
+          selectUser(u);
+        });
+        dropdown.appendChild(item);
+      });
+    }
+
+    function selectUser(user) {
+      if (!currentMatch) return closeDropdown();
+      var v = textarea.value;
+      var before = v.slice(0, currentMatch.start);
+      var after = v.slice(currentMatch.end);
+      var insertion = '@' + (user.name || 'user') + ' ';
+      textarea.value = before + insertion + after;
+      var newPos = before.length + insertion.length;
+      textarea.setSelectionRange(newPos, newPos);
+      textarea.focus();
+      closeDropdown();
+    }
+
+    function findMatch() {
+      var v = textarea.value;
+      var pos = textarea.selectionStart;
+      if (pos === null || pos === undefined) return null;
+      // Walk back from cursor: stop at whitespace. If we find '@' that's
+      // either at the start or preceded by whitespace, that's the trigger.
+      for (var i = pos - 1; i >= 0; i--) {
+        var ch = v.charAt(i);
+        if (ch === '@') {
+          if (i === 0 || /\s/.test(v.charAt(i - 1))) {
+            return { start: i, end: pos, query: v.slice(i + 1, pos) };
+          }
+          return null;
+        }
+        if (/\s/.test(ch)) return null;
+      }
+      return null;
+    }
+
+    function onInputOrSelection() {
+      var match = findMatch();
+      if (!match) { closeDropdown(); return; }
+      currentMatch = match;
+      var q = match.query;
+      var myQueryId = ++latestQueryId;
+
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () {
+        var url = API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/users' + (q ? ('?q=' + encodeURIComponent(q)) : '');
+        fetch(url)
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            // Ignore stale responses
+            if (myQueryId !== latestQueryId || !currentMatch) return;
+            currentUsers = (data && data.data && data.data.users) || [];
+            activeIndex = 0;
+            renderDropdown();
+          })
+          .catch(function () { /* silent — dropdown just won't appear */ });
+      }, 150);
+    }
+
+    function onKeyDown(ev) {
+      if (!dropdown || !currentUsers.length) {
+        if (ev.key === 'Escape') closeDropdown();
+        return;
+      }
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        activeIndex = (activeIndex + 1) % currentUsers.length;
+        renderDropdown();
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        activeIndex = (activeIndex - 1 + currentUsers.length) % currentUsers.length;
+        renderDropdown();
+      } else if (ev.key === 'Enter' || ev.key === 'Tab') {
+        ev.preventDefault();
+        selectUser(currentUsers[activeIndex]);
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault();
+        closeDropdown();
+      }
+    }
+
+    textarea.addEventListener('input', onInputOrSelection);
+    textarea.addEventListener('click', onInputOrSelection);
+    textarea.addEventListener('keyup', function (ev) {
+      // Navigation keys don't change text but do move cursor — update match state
+      if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(ev.key) !== -1) onInputOrSelection();
+    });
+    textarea.addEventListener('keydown', onKeyDown);
+    textarea.addEventListener('blur', function () {
+      // Slight delay so dropdown mousedown can fire first
+      setTimeout(closeDropdown, 150);
+    });
+    window.addEventListener('scroll', positionDropdown, true);
+    window.addEventListener('resize', positionDropdown);
+  };
+
   // Build a compose box (textarea + attach + submit). Reused for top-level
   // comments and inline replies. If opts.parentId is set, the request POSTs
   // with parentId so the comment nests under that parent.
@@ -868,6 +1075,7 @@
       style: 'width:100%;padding:8px 10px;border:1px solid ' + e.border + ';border-radius:8px;font-size:13px;outline:none;background:' + (e.dark ? '#0f172a' : '#fff') + ';color:' + e.text + ';min-height:' + (isReply ? '50' : '60') + 'px;resize:vertical;box-sizing:border-box;font-family:inherit;',
     });
     compose.appendChild(textarea);
+    self._setupMentionAutocomplete(textarea);
 
     // Attach row
     var selectedFile = null;
@@ -1113,6 +1321,20 @@
     var replyBtn = el('button', { type: 'button', class: 'prw-cmt-action', 'aria-label': 'Reply' });
     replyBtn.innerHTML = ICON.reply + '<span>Reply</span>';
     actionRow.appendChild(replyBtn);
+
+    // "N Reply/Replies" toggle — only on parent cards with replies. Clicking
+    // collapses/expands the nested replies (mirrors the main post page).
+    var replyCount = (!isReply && Array.isArray(c.replies)) ? c.replies.length : 0;
+    var repliesToggleBtn = null;
+    if (replyCount > 0) {
+      repliesToggleBtn = el('button', {
+        type: 'button',
+        class: 'prw-replies-toggle expanded',
+        'aria-label': replyCount === 1 ? '1 Reply' : replyCount + ' Replies',
+      });
+      repliesToggleBtn.innerHTML = ICON.chevronDown + '<span>' + replyCount + ' ' + (replyCount === 1 ? 'Reply' : 'Replies') + '</span>';
+      actionRow.appendChild(repliesToggleBtn);
+    }
     right.appendChild(actionRow);
 
     // Inline reply compose slot — parent-level only (no nested reply-of-reply)
@@ -1125,16 +1347,20 @@
         var compose = self._buildCompose(post, {
           parentId: c.id,
           onCancel: function () { replyHost.innerHTML = ''; },
-          onPosted: function () { replyHost.innerHTML = ''; self._loadComments(post, listEl); },
+          onPosted: function () {
+            replyHost.innerHTML = '';
+            // Expand replies after posting so the new one is visible
+            self.state.expandedReplyIds = self.state.expandedReplyIds || new Set();
+            self.state.expandedReplyIds.add(c.id);
+            self._loadComments(post, listEl);
+          },
         });
         replyHost.appendChild(compose.el);
         compose.focus();
       };
     } else {
-      // On reply cards, Reply still focuses parent-level compose
+      // On reply cards, Reply focuses the parent-level compose (single-nesting only)
       replyBtn.onclick = function () {
-        // Walk up to find the top-level parent card's replyHost — easier:
-        // just target the post's top-level compose instead.
         var ta = self.els && self.els.panel && self.els.panel.querySelector('textarea[placeholder="Write a comment…"]');
         if (ta) { try { ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {} ta.focus(); }
       };
@@ -1143,15 +1369,36 @@
     body.appendChild(right);
     card.appendChild(body);
 
-    // Replies nested below (parent cards only)
-    if (!isReply && Array.isArray(c.replies) && c.replies.length) {
+    // Replies nested below (parent cards only) — collapsed by default unless
+    // the user has expanded this thread earlier in this session.
+    if (!isReply && replyCount > 0) {
+      self.state.expandedReplyIds = self.state.expandedReplyIds || new Set();
+      var expanded = self.state.expandedReplyIds.has(c.id);
       var repliesWrap = el('div', {
-        style: 'margin-top:10px;padding-left:16px;border-left:2px solid ' + e.border + ';display:flex;flex-direction:column;gap:10px;',
+        style: 'margin-top:10px;padding-left:16px;border-left:2px solid ' + e.border + ';display:' + (expanded ? 'flex' : 'none') + ';flex-direction:column;gap:10px;',
       });
       c.replies.forEach(function (r) {
         repliesWrap.appendChild(self._commentCard(r, post, listEl, true));
       });
       card.appendChild(repliesWrap);
+
+      // Sync toggle's expanded state with initial display
+      if (repliesToggleBtn) {
+        if (expanded) repliesToggleBtn.classList.add('expanded');
+        else repliesToggleBtn.classList.remove('expanded');
+        repliesToggleBtn.onclick = function () {
+          var isOpen = repliesWrap.style.display !== 'none';
+          if (isOpen) {
+            repliesWrap.style.display = 'none';
+            repliesToggleBtn.classList.remove('expanded');
+            self.state.expandedReplyIds.delete(c.id);
+          } else {
+            repliesWrap.style.display = 'flex';
+            repliesToggleBtn.classList.add('expanded');
+            self.state.expandedReplyIds.add(c.id);
+          }
+        };
+      }
     }
 
     return card;

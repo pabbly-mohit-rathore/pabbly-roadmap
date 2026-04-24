@@ -32,6 +32,7 @@ const {
   getPublicComments,
   addPublicComment,
   togglePublicCommentLike,
+  searchWidgetUsers,
 } = require('../controllers/embedWidget.controller');
 
 // Multer errors (file too large, invalid mimetype) must return JSON
@@ -51,6 +52,7 @@ router.get('/public/:token/posts', getPublicPosts);
 router.get('/public/:token/posts/:postId', getPublicPost);
 router.get('/public/:token/posts/:postId/comments', optionalAuth, getPublicComments);
 router.post('/public/:token/comments/:commentId/like', optionalAuth, togglePublicCommentLike);
+router.get('/public/:token/users', searchWidgetUsers);
 router.post(
   '/public/:token/posts/:postId/comments',
   optionalAuth,
