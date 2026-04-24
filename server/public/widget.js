@@ -73,7 +73,9 @@
       '  outline:none; font-size:14px; font-family: inherit; box-sizing: border-box;\n' +
       '  transition: border-color 0.15s ease;\n' +
       '}\n' +
-      '.prw-float > textarea.prw-float-input { min-height: 120px; resize: vertical; line-height: 1.5; }\n' +
+      // Description (and other textareas) cap at 60vh — content beyond that
+      // scrolls inside the textarea, never overflowing into the panel body.
+      '.prw-float > textarea.prw-float-input { min-height: 120px; max-height: 60vh; overflow-y: auto; resize: vertical; line-height: 1.5; }\n' +
       '.prw-float > input.prw-float-input:hover, .prw-float > input.prw-float-input:focus,\n' +
       '.prw-float > textarea.prw-float-input:hover, .prw-float > textarea.prw-float-input:focus {\n' +
       '  border-color: var(--prw-border-hover, #9ca3af);\n' +
@@ -85,12 +87,12 @@
       '  transition: top 0.15s ease, font-size 0.15s ease, font-weight 0.15s ease, color 0.15s ease;\n' +
       '}\n' +
       // Textarea label sits near the top of the box rather than vertically centered
-      '.prw-float > textarea.prw-float-input + .prw-float-label { top: 22px; transform: none; }\n' +
-      // When input/textarea has content or is focused — float the label to the border notch
-      '.prw-float > input.prw-float-input:focus + .prw-float-label,\n' +
-      '.prw-float > input.prw-float-input:not(:placeholder-shown) + .prw-float-label,\n' +
-      '.prw-float > textarea.prw-float-input:focus + .prw-float-label,\n' +
-      '.prw-float > textarea.prw-float-input:not(:placeholder-shown) + .prw-float-label {\n' +
+      '.prw-float.is-textarea > .prw-float-label { top: 22px; transform: none; }\n' +
+      // When focused or has content — float the label to the border notch.
+      // Uses JS-applied classes instead of :placeholder-shown (unreliable with
+      // whitespace placeholders across browsers).
+      '.prw-float.is-focused > .prw-float-label,\n' +
+      '.prw-float.is-filled > .prw-float-label {\n' +
       '  top: 0 !important; transform: translateY(-50%) !important;\n' +
       '  font-size: 11px; font-weight: 500;\n' +
       '}\n' +
@@ -1595,14 +1597,21 @@
     var wrap = el('div', { style: 'padding:20px;' });
 
     // Floating-label field helper — matches the main app's Create Post dialog.
-    // Placeholder is a single space (" ") so :placeholder-shown stays true until
-    // the user types, keeping the label in the centered position.
+    // Uses JS-applied `is-focused` / `is-filled` classes so label position is
+    // deterministic (doesn't depend on :placeholder-shown cross-browser quirks).
     function floatField(opts) {
-      var w = el('div', { class: 'prw-float' });
+      var w = el('div', { class: 'prw-float' + (opts.textarea ? ' is-textarea' : '') });
+      var initialValue = opts.value || '';
       var node = opts.textarea
-        ? el('textarea', { id: opts.id, placeholder: ' ', class: 'prw-float-input' })
-        : el('input', { id: opts.id, type: opts.type || 'text', placeholder: ' ', class: 'prw-float-input', value: opts.value || '' });
+        ? el('textarea', { id: opts.id, class: 'prw-float-input' })
+        : el('input', { id: opts.id, type: opts.type || 'text', class: 'prw-float-input' });
+      // Set initial value via DOM property to also pre-fill the field
+      if (initialValue) {
+        node.value = initialValue;
+        w.classList.add('is-filled');
+      }
       if (opts.textarea && opts.minHeight) node.style.minHeight = opts.minHeight;
+
       var lbl = el('label', { class: 'prw-float-label' });
       lbl.setAttribute('for', opts.id);
       lbl.textContent = opts.label;
@@ -1613,6 +1622,15 @@
         help.textContent = opts.help;
         w.appendChild(help);
       }
+
+      // Toggle .is-focused / .is-filled so the label knows when to float
+      node.addEventListener('focus', function () { w.classList.add('is-focused'); });
+      node.addEventListener('blur', function () { w.classList.remove('is-focused'); });
+      node.addEventListener('input', function () {
+        if (node.value && node.value.length > 0) w.classList.add('is-filled');
+        else w.classList.remove('is-filled');
+      });
+
       return { wrap: w, input: node };
     }
 
