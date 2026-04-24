@@ -96,6 +96,11 @@
       '}\n' +
       // Helper text below the field
       '.prw-float-help { font-size: 11.5px; color: var(--prw-muted, #6b7280); margin: 6px 14px 0; }\n' +
+      // Comment card action buttons (heart, reply) — matches main app
+      '.prw-cmt-action { display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:2px 0; cursor:pointer; font-size:12px; font-weight:500; color: var(--prw-muted, #6b7280); transition: color 0.15s ease; font-family: inherit; }\n' +
+      '.prw-cmt-action:hover { color: var(--prw-text, #111827); }\n' +
+      '.prw-cmt-action.liked { color: #ef4444; }\n' +
+      '.prw-cmt-action.liked svg { fill: currentColor; }\n' +
       // Attachment row (below comment textarea) + file chip inside comments
       '.prw-attach-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:6px 2px; font-size:13px; cursor:pointer; font-family:inherit; transition: opacity 0.15s ease; }\n' +
       '.prw-attach-btn:hover { opacity:0.75; }\n' +
@@ -162,6 +167,24 @@
     try {
       return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch (e) { return ''; }
+  }
+  // Relative time — matches the main app's comment timestamps (just now, 5m ago, etc.)
+  function timeAgo(iso) {
+    try {
+      var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+      if (secs < 60) return 'just now';
+      if (secs < 3600) return Math.floor(secs / 60) + 'm ago';
+      if (secs < 86400) return Math.floor(secs / 3600) + 'h ago';
+      if (secs < 604800) return Math.floor(secs / 86400) + 'd ago';
+      return fmtDate(iso);
+    } catch (e) { return ''; }
+  }
+  // Resolve an author avatar to an absolute URL (avatars are stored as
+  // relative /uploads/avatars/... by the main app).
+  function avatarUrl(a) {
+    if (!a) return null;
+    if (/^https?:\/\//i.test(a)) return a;
+    return API_BASE + (a.charAt(0) === '/' ? '' : '/') + a;
   }
   function fmtBytes(n) {
     if (typeof n !== 'number' || !isFinite(n) || n <= 0) return '';
@@ -243,6 +266,8 @@
     download: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
     file: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
     x: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+    heart: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+    reply: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>',
   };
 
   // ---------- constructor ----------
@@ -978,15 +1003,25 @@
           return;
         }
         comments.forEach(function (c) {
+          // Card wrapper — rounded border, white/dark bg, padding matches main app
           var row = el('div', {
-            style: 'padding:10px 12px;border:1px solid ' + e.border + ';border-radius:10px;background:' + (e.dark ? '#1f2937' : '#ffffff') + ';',
+            style: 'padding:14px 16px;border:1px solid ' + e.border + ';border-radius:12px;background:' + (e.dark ? '#1f2937' : '#ffffff') + ';',
           });
-          var initial = ((c.author && c.author.name) || '?').charAt(0).toUpperCase();
+
+          var name = (c.author && c.author.name) || 'User';
+          var initial = name.charAt(0).toUpperCase();
+          var aUrl = c.author && avatarUrl(c.author.avatar);
+
+          // Avatar — real image if available, otherwise colored initial fallback (32px)
+          var avatarHtml = aUrl
+            ? '<img src="' + escapeHtml(aUrl) + '" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;" />'
+            : '<div style="width:32px;height:32px;border-radius:50%;background:' + e.accent + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">' + escapeHtml(initial) + '</div>';
+
           var officialBadge = c.isOfficial
             ? '<span style="margin-left:6px;padding:1px 6px;border-radius:4px;background:' + e.accent + ';color:#fff;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Official</span>'
             : '';
-          // Build attachment block — download link with original filename,
-          // colored per file type to match the main app's CommentAttachment pill.
+
+          // Attachment pill (colored per file type)
           var attachHtml = '';
           if (c.attachmentUrl) {
             var sizeStr = fmtBytes(c.attachmentSize);
@@ -999,19 +1034,47 @@
               '</a>';
           }
 
-          var bodyText = stripHtml(c.content);
-          var bodyHtml = bodyText
-            ? '<div style="font-size:13px;color:' + e.text + ';line-height:1.55;white-space:pre-wrap;word-break:break-word;">' + escapeHtml(bodyText) + '</div>'
+          // Body — render rich HTML from Tiptap (same trusted content the main app renders).
+          // Keeps bold, lists, mentions, images rendered exactly like the main app's comment view.
+          var bodyHtml = c.content
+            ? '<div class="prw-post-content" style="color:' + e.text + ';margin-top:4px;font-size:13.5px;">' + c.content + '</div>'
             : '';
 
+          // Likes — show count only when > 0 (matches main app). Non-interactive
+          // in the widget since public likes aren't wired; purely visual.
+          var likeCount = (c.likeCount && c.likeCount > 0) ? String(c.likeCount) : '';
+
           row.innerHTML =
-            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
-              '<span style="width:24px;height:24px;border-radius:50%;background:' + e.accent + ';color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">' + escapeHtml(initial) + '</span>' +
-              '<span style="font-size:13px;font-weight:600;color:' + e.text + ';">' + escapeHtml((c.author && c.author.name) || 'User') + '</span>' + officialBadge +
-              '<span style="margin-left:auto;font-size:11px;color:' + e.muted + ';">' + fmtDate(c.createdAt) + '</span>' +
-            '</div>' +
-            bodyHtml +
-            attachHtml;
+            '<div style="display:flex;gap:12px;align-items:flex-start;">' +
+              avatarHtml +
+              '<div style="flex:1;min-width:0;">' +
+                '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+                  '<span style="font-size:14px;font-weight:600;color:' + e.text + ';">' + escapeHtml(name) + '</span>' +
+                  '<span style="font-size:12px;color:' + e.muted + ';">' + timeAgo(c.createdAt) + '</span>' +
+                  officialBadge +
+                '</div>' +
+                bodyHtml +
+                attachHtml +
+                '<div style="display:flex;align-items:center;gap:16px;margin-top:10px;">' +
+                  '<button type="button" class="prw-cmt-action" aria-label="Like">' + ICON.heart + (likeCount ? '<span>' + likeCount + '</span>' : '') + '</button>' +
+                  '<button type="button" class="prw-cmt-action" data-prw-reply="1" aria-label="Reply">' + ICON.reply + '<span>Reply</span></button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+
+          // Reply — scrolls to compose and focuses textarea (widget doesn't support
+          // threaded replies server-side, but focusing matches the main app's flow)
+          var replyBtn = row.querySelector('[data-prw-reply]');
+          if (replyBtn) {
+            replyBtn.onclick = function () {
+              var ta = self.els && self.els.panel && self.els.panel.querySelector('textarea[placeholder="Write a comment…"]');
+              if (ta) {
+                try { ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { ta.scrollIntoView(); }
+                ta.focus();
+              }
+            };
+          }
+
           listEl.appendChild(row);
         });
       })
