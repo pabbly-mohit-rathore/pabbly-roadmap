@@ -144,6 +144,32 @@
     return t ? { 'Authorization': 'Bearer ' + t } : {};
   }
   function isAuthed() { return !!getAuthToken(); }
+
+  // Per-browser guest identity — persisted in localStorage. Lets anonymous
+  // visitors vote / comment / submit without signing in. Server lazily
+  // creates a "Guest <id>" user for each unique guestId.
+  function getGuestId() {
+    try {
+      var k = 'prw-guest-id';
+      var id = localStorage.getItem(k);
+      if (id && /^[a-zA-Z0-9-]{8,64}$/.test(id)) return id;
+      // Generate a new UUID-ish id (RFC4122-ish v4 without strict randomness)
+      var rnd = '';
+      var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      for (var i = 0; i < 24; i++) rnd += chars.charAt(Math.floor(Math.random() * chars.length));
+      localStorage.setItem(k, rnd);
+      return rnd;
+    } catch (e) {
+      // Fallback for privacy-mode browsers — per-session-only ID
+      return 'guest' + Math.random().toString(36).slice(2, 20);
+    }
+  }
+  // Headers the widget sends with every public-facing POST
+  function widgetHeaders() {
+    var h = Object.assign({}, authHeaders());
+    h['X-Prw-Guest'] = getGuestId();
+    return h;
+  }
   var APP_URL  = (function () {
     // Best-effort: main app is usually served from a different host.
     // For now use the same origin as API; admin can override with config.appUrl.
@@ -1097,14 +1123,6 @@
     opts = opts || {};
     var isReply = !!opts.parentId;
 
-    // Auth gate — widget requires an existing Pabbly Roadmap session;
-    // no email-entry fallback. Show a sign-in banner instead of the form.
-    if (!isAuthed()) {
-      var wrapper = el('div', { style: isReply ? 'margin-top:10px;' : '' });
-      wrapper.appendChild(self._buildSignInBanner(isReply ? 'reply' : 'comment'));
-      return { el: wrapper, focus: function () {} };
-    }
-
     var compose = el('div', {
       style: 'border:1px solid ' + e.border + ';border-radius:10px;padding:10px;background:' + (e.dark ? '#0f172a' : '#fafafa') + (isReply ? ';margin-top:10px' : '') + ';',
     });
@@ -1200,9 +1218,10 @@
       if (content) fd.append('content', content);
       if (selectedFile) fd.append('attachment', selectedFile);
       if (opts.parentId) fd.append('parentId', opts.parentId);
+      fd.append('guestId', getGuestId());
 
-      // Auth-only — widget requires an existing Pabbly Roadmap session
-      var headers = Object.assign({}, authHeaders());
+      // Browser sets multipart Content-Type for FormData — just add auth + guest headers
+      var headers = widgetHeaders();
 
       fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/posts/' + encodeURIComponent(post.id) + '/comments', {
         method: 'POST', headers: headers, body: fd,
@@ -1237,10 +1256,6 @@
   // prompt if the caller isn't authenticated.
   Widget.prototype._toggleCommentLike = function (c, heartBtn, countSpan) {
     var self = this;
-    if (!isAuthed()) {
-      alert('Please sign in to like comments.');
-      return;
-    }
     var liked = self.state.likedCommentIds.has(c.id);
     // Optimistic flip
     if (liked) {
@@ -1256,7 +1271,8 @@
 
     fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/comments/' + encodeURIComponent(c.id) + '/like', {
       method: 'POST',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      headers: Object.assign({ 'Content-Type': 'application/json' }, widgetHeaders()),
+      body: JSON.stringify({ guestId: getGuestId() }),
     })
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
       .then(function (res) {
@@ -1473,9 +1489,7 @@
   // Fetch + render the comment list (replaces contents of listEl).
   Widget.prototype._loadComments = function (post, listEl) {
     var self = this, e = this.els;
-    var headers = {};
-    if (isAuthed()) Object.assign(headers, authHeaders());
-    fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(this.opts.token) + '/posts/' + encodeURIComponent(post.id) + '/comments', { headers: headers })
+    fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(this.opts.token) + '/posts/' + encodeURIComponent(post.id) + '/comments', { headers: widgetHeaders() })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         var comments = (data && data.data && data.data.comments) || [];
@@ -1532,13 +1546,7 @@
       return { wrap: w, input: node };
     }
 
-    // Auth gate — widget requires an existing Pabbly Roadmap session
-    if (!isAuthed()) {
-      wrap.appendChild(self._buildSignInBanner('submit'));
-      return wrap;
-    }
-
-    // Info banner — confirms whose account is being used to submit
+    // Info banner — confirms whose identity is used to submit
     var notice = el('div', {
       style: [
         'padding:10px 12px', 'border-radius:8px',
@@ -1548,7 +1556,9 @@
         'font-size:12px', 'margin-bottom:14px', 'line-height:1.5',
       ].join(';'),
     });
-    notice.innerHTML = 'Submitting as your signed-in roadmap account.';
+    notice.innerHTML = isAuthed()
+      ? 'Submitting as your signed-in roadmap account.'
+      : 'Submitting as a guest. Sign in to attach this post to your account.';
     wrap.appendChild(notice);
 
     var tF = floatField({ id: 'prw-f-title', label: 'Title *', help: 'Enter the title for your post.' });
@@ -1569,10 +1579,11 @@
       msg.style.color = e.muted;
       msg.textContent = 'Submitting…';
       btn.disabled = true;
-      var headers = Object.assign({ 'Content-Type': 'application/json' }, authHeaders());
+      var headers = Object.assign({ 'Content-Type': 'application/json' }, widgetHeaders());
       var body = {
         title: titleInput.value.trim(),
         description: descInput.value.trim(),
+        guestId: getGuestId(),
       };
       fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(self.opts.token) + '/submit', {
         method: 'POST',
@@ -1743,10 +1754,8 @@
   // ============================================================
   Widget.prototype._toggleVote = function (post) {
     var self = this;
-    if (!isAuthed()) { self._requireSignIn('vote'); return; }
-
-    var headers = Object.assign({ 'Content-Type': 'application/json' }, authHeaders());
-    var body = { postId: post.id };
+    var headers = Object.assign({ 'Content-Type': 'application/json' }, widgetHeaders());
+    var body = { postId: post.id, guestId: getGuestId() };
 
     fetch(API_BASE + '/api/embed-widgets/public/' + encodeURIComponent(this.opts.token) + '/vote', {
       method: 'POST',

@@ -29,6 +29,39 @@ function unlinkSafe(absPath) {
   fs.unlink(absPath, () => {});
 }
 
+// Resolve the acting user for a widget request. Priority:
+//   1. Authenticated req.user (same-origin embed where user is signed in)
+//   2. guestId from body/headers — lazily creates a synthetic "Guest" user
+//      keyed by the browser's persisted UUID. Enables vote/comment/submit
+//      from anonymous visitors without credential prompts.
+async function resolveWidgetUser(req) {
+  if (req.user && req.user.isActive) return req.user;
+
+  const guestId = String(
+    (req.body && req.body.guestId) ||
+    req.headers['x-prw-guest'] ||
+    ''
+  ).trim();
+  if (!guestId || !/^[a-zA-Z0-9-]{8,64}$/.test(guestId)) return null;
+
+  const email = `guest-${guestId.toLowerCase()}@widget.local`;
+  let user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    // Friendly short label — "Guest abc1de"
+    const shortLabel = guestId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toLowerCase();
+    user = await prisma.user.create({
+      data: {
+        email,
+        name: `Guest ${shortLabel}`,
+        role: 'user',
+        isActive: true,
+        emailVerified: false,
+      },
+    });
+  }
+  return user;
+}
+
 function requireAdmin(req, res) {
   if (req.user.role !== 'admin') {
     res.status(403).json({ success: false, message: 'Only admins can manage embed widgets.' });
@@ -324,7 +357,7 @@ const getPublicPost = async (req, res, next) => {
 const togglePublicVote = async (req, res, next) => {
   try {
     const { token } = req.params;
-    const { postId, email } = req.body || {};
+    const { postId } = req.body || {};
 
     const widget = await prisma.embedWidget.findUnique({
       where: { token },
@@ -335,13 +368,9 @@ const togglePublicVote = async (req, res, next) => {
     }
     if (!postId) return res.status(400).json({ success: false, message: 'postId is required.' });
 
-    let user;
-    if (req.user && req.user.isActive) {
-      user = req.user;
-    } else {
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
-        return res.status(401).json({ success: false, message: 'Please sign in to vote.', code: 'AUTH_REQUIRED' });
-      }
+    const user = await resolveWidgetUser(req);
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Unable to identify visitor.', code: 'GUEST_REQUIRED' });
     }
 
     const post = await prisma.post.findUnique({
@@ -353,23 +382,6 @@ const togglePublicVote = async (req, res, next) => {
     }
     if (Array.isArray(widget.postStatuses) && widget.postStatuses.length > 0 && !widget.postStatuses.includes(post.status)) {
       return res.status(404).json({ success: false, message: 'Post not available through this widget.' });
-    }
-
-    // If no authenticated user, resolve by email (create on-the-fly)
-    if (!user) {
-      const cleanEmail = String(email).trim().toLowerCase();
-      user = await prisma.user.findUnique({ where: { email: cleanEmail } });
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            email: cleanEmail,
-            name: cleanEmail.split('@')[0],
-            role: 'user',
-            isActive: true,
-            emailVerified: false,
-          },
-        });
-      }
     }
 
     const existing = await prisma.vote.findUnique({
@@ -425,23 +437,9 @@ const submitPublicPost = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'That board is not available through this widget.' });
     }
 
-    // Resolve author — authenticated user first, otherwise lookup by email
-    let user;
-    if (req.user && req.user.isActive) {
-      user = req.user;
-    } else {
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
-        return res.status(401).json({ success: false, message: 'Please sign in to submit feedback.', code: 'AUTH_REQUIRED' });
-      }
-      const cleanEmail = String(email).trim().toLowerCase();
-      user = await prisma.user.findUnique({ where: { email: cleanEmail } });
-      if (!user || !user.isActive) {
-        return res.status(403).json({
-          success: false,
-          message: 'This email is not registered on our roadmap. Please sign up first to submit feedback.',
-          code: 'USER_NOT_REGISTERED',
-        });
-      }
+    const user = await resolveWidgetUser(req);
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Unable to identify visitor.', code: 'GUEST_REQUIRED' });
     }
 
     // Build a URL-safe slug. Append short random suffix to avoid collisions.
@@ -516,9 +514,10 @@ const getPublicComments = async (req, res, next) => {
       },
     });
 
-    // Which comments has the caller liked? Only available for authed users.
+    // Which comments has the caller (authed user OR guest) liked?
     let likedCommentIds = [];
-    if (req.user && req.user.isActive) {
+    const viewer = await resolveWidgetUser(req);
+    if (viewer) {
       const all = [];
       comments.forEach((c) => {
         all.push(c.id);
@@ -526,7 +525,7 @@ const getPublicComments = async (req, res, next) => {
       });
       if (all.length) {
         const rows = await prisma.commentLike.findMany({
-          where: { userId: req.user.id, commentId: { in: all } },
+          where: { userId: viewer.id, commentId: { in: all } },
           select: { commentId: true },
         });
         likedCommentIds = rows.map((r) => r.commentId);
@@ -572,13 +571,15 @@ const searchWidgetUsers = async (req, res, next) => {
 const togglePublicCommentLike = async (req, res, next) => {
   try {
     const { token, commentId } = req.params;
-    if (!req.user || !req.user.isActive) {
-      return res.status(401).json({ success: false, message: 'Please sign in to like comments.', code: 'AUTH_REQUIRED' });
-    }
 
     const widget = await prisma.embedWidget.findUnique({ where: { token } });
     if (!widget || !widget.isActive) {
       return res.status(404).json({ success: false, message: 'Widget not found.' });
+    }
+
+    const user = await resolveWidgetUser(req);
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Unable to identify visitor.', code: 'GUEST_REQUIRED' });
     }
 
     const comment = await prisma.comment.findUnique({
@@ -593,17 +594,17 @@ const togglePublicCommentLike = async (req, res, next) => {
     if (check.error) return res.status(check.error.status).json({ success: false, message: check.error.message });
 
     const existing = await prisma.commentLike.findUnique({
-      where: { userId_commentId: { userId: req.user.id, commentId } },
+      where: { userId_commentId: { userId: user.id, commentId } },
     });
 
     let liked;
     let likeCount = comment.likeCount || 0;
     if (existing) {
-      await prisma.commentLike.delete({ where: { userId_commentId: { userId: req.user.id, commentId } } });
+      await prisma.commentLike.delete({ where: { userId_commentId: { userId: user.id, commentId } } });
       likeCount = Math.max(0, likeCount - 1);
       liked = false;
     } else {
-      await prisma.commentLike.create({ data: { userId: req.user.id, commentId } });
+      await prisma.commentLike.create({ data: { userId: user.id, commentId } });
       likeCount = likeCount + 1;
       liked = true;
     }
@@ -654,24 +655,10 @@ const addPublicComment = async (req, res, next) => {
       parentId = parent.parentId || parent.id;
     }
 
-    let user;
-    if (req.user && req.user.isActive) {
-      user = req.user;
-    } else {
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
-        unlinkSafe(uploadedPath);
-        return res.status(401).json({ success: false, message: 'Please sign in to comment.', code: 'AUTH_REQUIRED' });
-      }
-      const cleanEmail = String(email).trim().toLowerCase();
-      user = await prisma.user.findUnique({ where: { email: cleanEmail } });
-      if (!user || !user.isActive) {
-        unlinkSafe(uploadedPath);
-        return res.status(403).json({
-          success: false,
-          message: 'This email is not registered on our roadmap. Please sign up first to comment.',
-          code: 'USER_NOT_REGISTERED',
-        });
-      }
+    const user = await resolveWidgetUser(req);
+    if (!user) {
+      unlinkSafe(uploadedPath);
+      return res.status(400).json({ success: false, message: 'Unable to identify visitor.', code: 'GUEST_REQUIRED' });
     }
 
     const attachmentData = uploadedFile
