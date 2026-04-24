@@ -228,6 +228,37 @@
     if (/^https?:\/\//i.test(a)) return a;
     return API_BASE + (a.charAt(0) === '/' ? '' : '/') + a;
   }
+  // Build Tiptap-compatible HTML from a textarea's raw value + picked mentions.
+  // Mentions are wrapped in <span class="mention-tag" ...> matching the main
+  // app's storage format so the chip renders identically everywhere.
+  function serializeMentionText(textarea) {
+    var text = textarea.value || '';
+    var mentions = (textarea._prwMentions || []).slice()
+      // Drop any whose range no longer matches @Name (defensive)
+      .filter(function (m) { return text.substr(m.start, m.length) === ('@' + m.name); })
+      .sort(function (a, b) { return a.start - b.start; });
+
+    var out = '';
+    var i = 0;
+    mentions.forEach(function (m) {
+      out += escapeHtml(text.slice(i, m.start));
+      out +=
+        '<span class="mention-tag" data-type="mention" ' +
+        'data-mention-id="' + escapeHtml(m.id) + '" ' +
+        'data-mention-label="' + escapeHtml(m.name) + '">' +
+          '@' + escapeHtml(m.name) +
+        '</span>';
+      i = m.start + m.length;
+    });
+    out += escapeHtml(text.slice(i));
+
+    // Tiptap-ish paragraph wrapping: split on blank lines, single newlines become <br>
+    var paragraphs = out.split(/\n{2,}/).map(function (p) {
+      return '<p>' + p.replace(/\n/g, '<br/>') + '</p>';
+    });
+    return paragraphs.join('');
+  }
+
   function fmtBytes(n) {
     if (typeof n !== 'number' || !isFinite(n) || n <= 0) return '';
     if (n < 1024) return n + ' B';
@@ -946,6 +977,18 @@
     var searchTimer = null;
     var latestQueryId = 0;
 
+    // Mentions the user has picked — tracked so we can wrap them in
+    // <span class="mention-tag"> on submit. Each entry: { start, length, id, name }.
+    textarea._prwMentions = [];
+
+    // Drop any mentions whose text range has been edited away.
+    function pruneMentions() {
+      var v = textarea.value;
+      textarea._prwMentions = textarea._prwMentions.filter(function (m) {
+        return v.substr(m.start, m.length) === ('@' + m.name);
+      });
+    }
+
     function closeDropdown() {
       if (dropdown && dropdown.parentNode) dropdown.parentNode.removeChild(dropdown);
       dropdown = null;
@@ -1028,8 +1071,30 @@
       var v = textarea.value;
       var before = v.slice(0, currentMatch.start);
       var after = v.slice(currentMatch.end);
-      var insertion = '@' + (user.name || 'user') + ' ';
+      var name = user.name || 'user';
+      var mentionText = '@' + name;          // what renders as a chip
+      var insertion = mentionText + ' ';      // trailing space separates next word
       textarea.value = before + insertion + after;
+
+      // Shift any existing mentions that lived AFTER the replaced range
+      var oldRangeLen = currentMatch.end - currentMatch.start;
+      var delta = insertion.length - oldRangeLen;
+      textarea._prwMentions = textarea._prwMentions.filter(function (m) {
+        // Drop mentions that overlapped with the replaced query
+        return m.start + m.length <= currentMatch.start || m.start >= currentMatch.end;
+      }).map(function (m) {
+        if (m.start >= currentMatch.end) m.start += delta;
+        return m;
+      });
+
+      // Register the new mention
+      textarea._prwMentions.push({
+        start: currentMatch.start,
+        length: mentionText.length,
+        id: user.id,
+        name: name,
+      });
+
       var newPos = before.length + insertion.length;
       textarea.setSelectionRange(newPos, newPos);
       textarea.focus();
@@ -1056,6 +1121,9 @@
     }
 
     function onInputOrSelection() {
+      // Any edit invalidates some mentions — drop those that no longer match
+      pruneMentions();
+
       var match = findMatch();
       if (!match) { closeDropdown(); return; }
       currentMatch = match;
@@ -1209,7 +1277,9 @@
     compose.appendChild(btnRow);
 
     btn.onclick = function () {
-      var content = textarea.value.trim();
+      var rawText = textarea.value.trim();
+      // Serialize with mention-tag spans so picked @mentions render as chips
+      var content = rawText ? serializeMentionText(textarea) : '';
       if (!content && !selectedFile) { msg.style.color = '#ef4444'; msg.textContent = 'Please write something or attach a file.'; return; }
       btn.disabled = true;
       msg.style.color = e.muted; msg.textContent = 'Posting…';

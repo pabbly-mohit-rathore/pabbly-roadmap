@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const prisma = require('../config/database');
+const { notifyMentions } = require('../utils/notifyMentions');
 
 // Public base URL used to build absolute attachment URLs returned to widget
 function resolvePublicBase(req) {
@@ -691,6 +692,25 @@ const addPublicComment = async (req, res, next) => {
       where: { id: postId },
       data: { commentCount: { increment: 1 } },
     }).catch(() => {});
+
+    // @-mentions → notify each mentioned user (fire-and-forget). Widget content
+    // carries the same <span class="mention-tag" data-mention-id="..."> markup
+    // that the main-app editor produces, so the extractor picks them up.
+    const postForMention = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, title: true, slug: true },
+    }).catch(() => null);
+    if (postForMention) {
+      notifyMentions({
+        html: trimmedContent,
+        actorId: user.id,
+        actorName: (comment.author && comment.author.name) || user.name || 'Someone',
+        context: parentId ? 'reply' : 'comment',
+        postId,
+        postTitle: postForMention.title,
+        postSlug: postForMention.slug,
+      }).catch((err) => console.error('notifyMentions failed (widget):', err));
+    }
 
     res.status(201).json({ success: true, data: { comment } });
   } catch (err) {
