@@ -56,10 +56,9 @@
       '.prw-post-content blockquote { border-left:3px solid rgba(148,163,184,0.35); padding:4px 12px; margin:12px 0; color:inherit; opacity:0.85; }\n' +
       '.prw-post-content img { max-width:100%; border-radius:8px; margin:10px 0; display:block; }\n' +
       '.prw-post-content hr { border:0; border-top:1px dashed rgba(148,163,184,0.35); margin:16px 0; }\n' +
-      // Upvote button hover — subtle lift + shadow so clickability reads
-      '.prw-vote-btn { transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease; }\n' +
-      '.prw-vote-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }\n' +
-      '.prw-vote-btn:active { transform: translateY(0); box-shadow: none; }\n' +
+      // Upvote button hover — border flips to accent color (matches main app)
+      // Accent color is applied inline per instance since it's dynamic per widget.
+      '.prw-vote-btn { transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease; }\n' +
       // Attachment row (below comment textarea) + file chip inside comments
       '.prw-attach-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:6px 2px; font-size:13px; cursor:pointer; font-family:inherit; transition: opacity 0.15s ease; }\n' +
       '.prw-attach-btn:hover { opacity:0.75; }\n' +
@@ -99,8 +98,8 @@
     if (attrs) {
       for (var k in attrs) {
         if (k === 'style') e.style.cssText = attrs[k];
-        else if (k === 'onclick') e.onclick = attrs[k];
         else if (k === 'html') e.innerHTML = attrs[k];
+        else if (k.charCodeAt(0) === 111 && k.charCodeAt(1) === 110 && typeof attrs[k] === 'function') e[k] = attrs[k]; // onfoo → property
         else e.setAttribute(k, attrs[k]);
       }
     }
@@ -616,6 +615,12 @@
         'flex-shrink:0', 'line-height:1',
       ].join(';'),
       onclick: function (ev) { ev.stopPropagation(); self._toggleVote(p); },
+      onmouseenter: function () {
+        if (!hasVoted) { this.style.borderColor = e.accent; this.style.color = e.accent; }
+      },
+      onmouseleave: function () {
+        if (!hasVoted) { this.style.borderColor = e.border; this.style.color = e.text; }
+      },
     });
     voteBtn.innerHTML = ICON.up + '<span>' + (p.voteCount || 0) + '</span>';
     card.appendChild(voteBtn);
@@ -714,6 +719,12 @@
         'font-size:13px', 'font-weight:600', 'flex-shrink:0',
       ].join(';'),
       onclick: function () { self._toggleVote(post); },
+      onmouseenter: function () {
+        if (!hasVoted) { this.style.borderColor = e.accent; this.style.color = e.accent; }
+      },
+      onmouseleave: function () {
+        if (!hasVoted) { this.style.borderColor = e.border; this.style.color = e.text; }
+      },
     });
     voteBtn.innerHTML = ICON.up + '<span>' + (post.voteCount || 0) + '</span>';
     titleRow.appendChild(voteBtn);
