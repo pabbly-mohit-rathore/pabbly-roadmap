@@ -457,7 +457,11 @@
     var self = this, cfg = this.config;
     var dark = cfg.theme === 'dark';
     var accent = cfg.accentColor || '#059669';
-    var width = cfg.widgetWidth || 380;
+    var configuredWidth = cfg.widgetWidth || 380;
+    // On mobile, cap width so the panel never exceeds the viewport.
+    var viewportW = (typeof window !== 'undefined' && window.innerWidth) || configuredWidth;
+    var isMobile = viewportW < 640;
+    var width = Math.min(configuredWidth, viewportW);
     var bg = dark ? '#111827' : '#ffffff';
     var border = dark ? '#374151' : '#e5e7eb';
     // Darker border shown on hover/focus (matches app's gray-400 → gray-500 pattern)
@@ -483,16 +487,21 @@
     var panelStyle = [];
     var from = cfg.openFrom || (cfg.type === 'modal' ? 'right' : 'auto');
     if (cfg.type === 'popover') {
-      var popWidth = Math.min(560, width);
+      // On mobile, popover should fill viewport minus 16px padding on each side.
+      var popWidth = isMobile ? (viewportW - 16) : Math.min(560, width);
+      var sideOffset = isMobile ? 8 : 32;
       panelStyle.push('width:' + popWidth + 'px', 'max-height:88vh', 'border-radius:14px');
       if (from === 'top') {
-        panelStyle.push('top:32px', 'left:50%', 'transform:translateX(-50%)');
+        panelStyle.push('top:' + sideOffset + 'px', 'left:50%', 'transform:translateX(-50%)');
       } else if (from === 'bottom') {
-        panelStyle.push('bottom:32px', 'left:50%', 'transform:translateX(-50%)');
+        panelStyle.push('bottom:' + sideOffset + 'px', 'left:50%', 'transform:translateX(-50%)');
       } else if (from === 'left') {
-        panelStyle.push('top:50%', 'left:32px', 'transform:translateY(-50%)');
+        // On mobile fall back to centered to avoid overflow
+        if (isMobile) panelStyle.push('top:50%', 'left:50%', 'transform:translate(-50%,-50%)');
+        else panelStyle.push('top:50%', 'left:32px', 'transform:translateY(-50%)');
       } else if (from === 'right') {
-        panelStyle.push('top:50%', 'right:32px', 'transform:translateY(-50%)');
+        if (isMobile) panelStyle.push('top:50%', 'left:50%', 'transform:translate(-50%,-50%)');
+        else panelStyle.push('top:50%', 'right:32px', 'transform:translateY(-50%)');
       } else {
         // auto (default) = centered
         panelStyle.push('top:50%', 'left:50%', 'transform:translate(-50%,-50%)');
@@ -501,17 +510,21 @@
       // modal supports right | left | center
       if (from === 'center') {
         // Centered modal dialog — not a drawer
+        var centerW = isMobile ? (viewportW - 16) : Math.min(560, width);
         panelStyle.push(
           'top:50%', 'left:50%', 'transform:translate(-50%,-50%)',
-          'width:' + Math.min(560, width) + 'px', 'max-height:88vh',
+          'width:' + centerW + 'px', 'max-height:88vh',
           'border-radius:14px'
         );
       } else if (from === 'left') {
-        panelStyle.push('width:' + width + 'px', 'height:100vh', 'top:0',
+        // On mobile, drawer fills full viewport width
+        var drawerW = isMobile ? viewportW : width;
+        panelStyle.push('width:' + drawerW + 'px', 'height:100vh', 'top:0',
           'left:0', 'border-right:1px solid ' + border);
       } else {
         // right (default)
-        panelStyle.push('width:' + width + 'px', 'height:100vh', 'top:0',
+        var drawerW2 = isMobile ? viewportW : width;
+        panelStyle.push('width:' + drawerW2 + 'px', 'height:100vh', 'top:0',
           'right:0', 'border-left:1px solid ' + border);
       }
     }
