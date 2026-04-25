@@ -13,6 +13,7 @@ export default function Tooltip({ title, children }: TooltipProps) {
   const triggerRef = useRef<HTMLElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const autoHideRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
     if (show && triggerRef.current && tipRef.current) {
@@ -29,12 +30,41 @@ export default function Tooltip({ title, children }: TooltipProps) {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [show]);
 
-  const handleEnter = () => { setShow(true); };
+  // Dismiss tooltip on outside tap / scroll on touch devices
+  useEffect(() => {
+    if (!show) return;
+    const dismiss = () => { setVisible(false); setTimeout(() => setShow(false), 150); };
+    const onTouchOutside = (e: TouchEvent) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) dismiss();
+    };
+    document.addEventListener('touchstart', onTouchOutside, { passive: true });
+    document.addEventListener('scroll', dismiss, { passive: true, capture: true });
+    return () => {
+      document.removeEventListener('touchstart', onTouchOutside);
+      document.removeEventListener('scroll', dismiss, true);
+    };
+  }, [show]);
+
+  const handleEnter = () => {
+    if (autoHideRef.current) clearTimeout(autoHideRef.current);
+    setShow(true);
+  };
   const handleLeave = () => { setVisible(false); setTimeout(() => setShow(false), 150); };
+  const handleTouchStart = () => {
+    if (autoHideRef.current) clearTimeout(autoHideRef.current);
+    setShow(true);
+    // Auto-dismiss after 2.5s on touch so it doesn't linger
+    autoHideRef.current = setTimeout(() => {
+      setVisible(false);
+      setTimeout(() => setShow(false), 150);
+    }, 2500);
+  };
+
+  useEffect(() => () => { if (autoHideRef.current) clearTimeout(autoHideRef.current); }, []);
 
   if (!title) return children;
 
-  // Clone the child and attach ref + hover handlers directly to it.
+  // Clone the child and attach ref + hover/touch handlers directly to it.
   // This way the Tooltip adds NO extra DOM wrapper — layout stays exactly as the child.
   const child = Children.only(children) as React.ReactElement<any>;
   const enhanced = cloneElement(child, {
@@ -52,6 +82,10 @@ export default function Tooltip({ title, children }: TooltipProps) {
     onMouseLeave: (e: React.MouseEvent) => {
       handleLeave();
       if (child.props.onMouseLeave) child.props.onMouseLeave(e);
+    },
+    onTouchStart: (e: React.TouchEvent) => {
+      handleTouchStart();
+      if (child.props.onTouchStart) child.props.onTouchStart(e);
     },
   });
 

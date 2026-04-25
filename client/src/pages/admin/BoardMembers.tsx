@@ -184,12 +184,12 @@ export default function AdminBoardMembers() {
       ) : (
         <>
           {members.length > 0 ? (
-            <div className={`rounded-lg border overflow-hidden ${
+            <div className={`rounded-lg border overflow-x-auto ${
               theme === 'dark'
                 ? 'bg-gray-800 border-gray-700'
                 : 'bg-white border-gray-200'
             }`}>
-              <table className="w-full">
+              <table className="w-full min-w-[700px]">
                 <thead className={`${
                   theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
                 }`}>

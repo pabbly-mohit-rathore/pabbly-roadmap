@@ -10,6 +10,7 @@ import useAuthStore from './store/authStore';
 import useTeamAccessStore from './store/teamAccessStore';
 import pushNotifications from './services/pushNotification.service';
 import useFeedSocket from './hooks/useFeedSocket';
+import useGlobalScrollbars from './hooks/useGlobalScrollbars';
 
 // Lazy load all pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -42,6 +43,7 @@ function App() {
   const isAdmin = user?.role === 'admin';
   const isTeamAccess = useTeamAccessStore((state) => state.isTeamAccess);
   const canAccessAdmin = isAdmin || isTeamAccess;
+  useGlobalScrollbars();
 
   useEffect(() => {
     const root = document.documentElement;

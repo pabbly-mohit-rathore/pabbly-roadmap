@@ -323,8 +323,8 @@ export default function CommentEditor({
         style={maxEditorHeight ? { maxHeight: maxEditorHeight, overflowY: 'auto' } : undefined} />
 
       {/* Toolbar + Submit */}
-      <div className={`flex items-center justify-between px-3 py-2 border-t ${d ? 'border-gray-700' : 'border-gray-100'}`}>
-        <div className="flex items-center gap-0.5">
+      <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 border-t ${d ? 'border-gray-700' : 'border-gray-100'}`}>
+        <div className="flex items-center gap-0.5 overflow-x-auto">
           <TB dark={d} icon={Bold} title="Bold" action={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} />
           <TB dark={d} icon={Italic} title="Italic" action={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} />
           <TB dark={d} icon={UnderlineIcon} title="Underline" action={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} />
@@ -357,10 +357,10 @@ export default function CommentEditor({
         {!hideButton && (
           showInternalOption && buttonLabel !== 'Reply' && buttonLabel !== 'Save' ? (
             // Split-button: main submit (Public/Internal) + dropdown to switch modes
-            <div ref={modeMenuRef} className="relative inline-flex">
+            <div ref={modeMenuRef} className="relative inline-flex self-end sm:self-auto">
               <Tooltip title={commentMode === 'internal' ? 'Internal — only admins and team members can see this.' : 'Public — everyone can see this.'}>
                 <LoadingButton onClick={handleSubmit} loading={submitting} type="button"
-                  className={`px-4 py-2 text-sm font-semibold rounded-l-lg transition disabled:opacity-70 ${
+                  className={`px-3 sm:px-4 py-2 text-sm font-semibold rounded-l-lg transition disabled:opacity-70 whitespace-nowrap ${
                     commentMode === 'internal'
                       ? 'bg-amber-500 hover:bg-amber-600 text-gray-900'
                       : 'bg-emerald-600 hover:bg-emerald-700 text-white'

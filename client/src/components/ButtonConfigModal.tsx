@@ -61,12 +61,12 @@ export default function ButtonConfigModal({ isOpen, onClose, onInsert, initialAt
   const alignMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
-      <div className={`rounded-xl w-full shadow-xl ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-3 sm:p-4" onClick={onClose}>
+      <div className={`rounded-xl w-full shadow-xl max-h-[95vh] overflow-y-auto ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}
         onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
-        <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '24px' }}>
+        <div className={`flex items-center justify-between border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ padding: '16px 20px' }}>
           <h2 className={`text-xl font-bold ${d ? 'text-white' : 'text-gray-900'}`}>Insert Button</h2>
           <Tooltip title="Click here to close."><button onClick={onClose} className={`p-2 rounded-lg transition-colors ${d ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
             <X className="w-5 h-5" />
@@ -74,7 +74,7 @@ export default function ButtonConfigModal({ isOpen, onClose, onInsert, initialAt
         </div>
 
         {/* Body */}
-        <div className="space-y-5" style={{ padding: '24px' }}>
+        <div className="space-y-5 p-4 sm:p-6">
 
           {/* Preview */}
           <div className={`flex rounded-lg border ${d ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}
@@ -114,7 +114,7 @@ export default function ButtonConfigModal({ isOpen, onClose, onInsert, initialAt
           </div>
 
           {/* Row 1: Style + Alignment */}
-          <div className="flex items-start gap-6">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
             <div>
               <p className={`text-xs font-medium mb-2 ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '2px' }}>Style</p>
               <div className="flex gap-2">
@@ -153,7 +153,7 @@ export default function ButtonConfigModal({ isOpen, onClose, onInsert, initialAt
           </div>
 
           {/* Row 2: Button Text Color + Button Color */}
-          <div className="flex items-start gap-6">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
             <div className="flex-1 min-w-0">
               <p className={`text-xs font-medium mb-2 ${d ? 'text-gray-400' : 'text-gray-500'}`} style={{ marginLeft: '2px' }}>Button Text Color</p>
               <div className={`flex items-center rounded-lg border overflow-hidden ${d ? 'border-gray-600' : 'border-gray-300'}`}>

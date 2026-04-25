@@ -59,12 +59,12 @@ export default function AdminSettings() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
         <div>
-          <h1 className={`text-2xl font-bold mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{currentTab.heading}</h1>
-          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{currentTab.description}</p>
+          <h1 className={`text-xl sm:text-2xl font-bold mb-1 sm:mb-2 ${d ? 'text-white' : 'text-gray-900'}`}>{currentTab.heading}</h1>
+          <p className={`text-sm sm:text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>{currentTab.description}</p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
           <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
               showFilters
@@ -77,7 +77,7 @@ export default function AdminSettings() {
           </button></Tooltip>
           {currentTab.btnLabel && (
             <Tooltip title="Click here to add."><button onClick={() => setTriggerAction(prev => prev + 1)}
-              className="flex items-center gap-2 bg-[#009966] text-white rounded-lg hover:bg-[#047857] transition"
+              className="flex items-center gap-2 bg-[#009966] text-white rounded-lg hover:bg-[#047857] transition whitespace-nowrap"
               style={{ padding: '8px 16px', fontSize: '15px', height: '48px' }}>
               <Plus className="w-5 h-5" /> {currentTab.btnLabel}
             </button></Tooltip>
@@ -86,13 +86,13 @@ export default function AdminSettings() {
       </div>
 
       {/* Tabs */}
-      <div className={`flex items-center gap-6 sticky z-30 ${d ? 'bg-gray-950' : 'bg-[#fafafa]'}`} style={{ top: '0px', marginTop: '26px', marginBottom: '26px', paddingTop: '10px', paddingBottom: '10px' }}>
+      <div className={`flex items-center gap-6 sticky z-30 overflow-x-auto ${d ? 'bg-gray-950' : 'bg-[#fafafa]'}`} style={{ top: '0px', marginTop: '26px', marginBottom: '26px', paddingTop: '10px', paddingBottom: '10px' }}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
           return (
             <button key={tab.id} onClick={() => handleTabChange(tab.id)}
-              className={`flex items-center gap-2 pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 pb-2 px-1 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                 active ? `border-black ${d ? 'text-white' : 'text-gray-900'}` : `border-transparent ${d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
               }`}>
               <Icon className="w-4 h-4" />

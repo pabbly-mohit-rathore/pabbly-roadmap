@@ -68,9 +68,151 @@ html.dark .float-label-bg-dropdown {
   padding: 16.5px 14px;
 }
 .tiptap-preview { outline: none; }
-.comment-editor-full { min-height: 80px; max-height: 300px; overflow-y: auto; }
-.comment-editor-compact { min-height: 80px; max-height: 300px; overflow-y: auto; }
+/* Comment editor — TipTap's ProseMirror element gets one of these classes via
+   editorProps.attributes.class. Constrain height + show a visible scrollbar. */
+.comment-editor-full,
+.comment-editor-compact {
+  min-height: 80px !important;
+  max-height: 240px !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: #9ca3af transparent;
+}
+.comment-editor-full::-webkit-scrollbar,
+.comment-editor-compact::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 8px;
+  display: block;
+}
+.comment-editor-full::-webkit-scrollbar-track,
+.comment-editor-compact::-webkit-scrollbar-track {
+  background: transparent;
+}
+.comment-editor-full::-webkit-scrollbar-thumb,
+.comment-editor-compact::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 9999px;
+  min-height: 30px;
+}
+.comment-editor-full::-webkit-scrollbar-thumb:hover,
+.comment-editor-compact::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+html.dark .comment-editor-full,
+html.dark .comment-editor-compact {
+  scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+}
+html.dark .comment-editor-full::-webkit-scrollbar-thumb,
+html.dark .comment-editor-compact::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.6);
+}
 .tiptap.dialog-editor { min-height: 150px; }
+
+@media (max-width: 640px) {
+  .tiptap { min-height: 240px; padding: 12px; }
+  .tiptap.dialog-editor { min-height: 120px; }
+  .comment-editor-full,
+  .comment-editor-compact { min-height: 64px; max-height: 240px; }
+  :is(.tiptap, .tiptap-preview) table td,
+  :is(.tiptap, .tiptap-preview) table th { min-width: 60px; padding: 0.4rem 0.5rem; font-size: 0.875rem; }
+}
+
+/* Very small phones (< 360px) — squeeze paddings + heading sizes */
+@media (max-width: 359px) {
+  .gsb-rail { height: 6px; margin: 4px 0 8px; }
+  .tiptap { min-height: 200px; padding: 10px; }
+  .tiptap.dialog-editor { min-height: 100px; }
+  /* Form inputs in dialogs sometimes overflow due to fixed paddings — soften */
+  input[type="text"], input[type="email"], input[type="url"], input[type="password"], textarea {
+    max-width: 100%;
+  }
+  /* Heading text in cards shrinks slightly */
+  h1.text-2xl { font-size: 1.25rem; line-height: 1.3; }
+  h1.text-xl { font-size: 1.125rem; line-height: 1.3; }
+}
+
+/* Landscape on phones — viewport is short. Reduce vertical paddings so
+   scrollable areas (modals, sidebars) don't feel cramped. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .tiptap { min-height: 160px; }
+  .tiptap.dialog-editor { min-height: 90px; }
+  .comment-editor-full,
+  .comment-editor-compact { min-height: 56px; max-height: 180px; }
+}
+
+/* Hide native horizontal scrollbar — we render our own always-visible
+   custom one (.gsb-rail) below each .overflow-x-auto via useGlobalScrollbars. */
+.overflow-x-auto {
+  scrollbar-width: none;
+}
+.overflow-x-auto::-webkit-scrollbar { height: 0; width: 0; display: none; }
+
+/* Always-visible vertical scrollbar for modal-like scroll containers
+   (anything with .overflow-y-auto). iOS Safari hides native overlay
+   scrollbars by default; -webkit-appearance: none forces a persistent
+   non-overlay scrollbar so the user knows the content is scrollable. */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #9ca3af transparent;
+}
+.overflow-y-auto::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 8px;
+  display: block;
+}
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 9999px;
+  min-height: 30px;
+}
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+html.dark .overflow-y-auto {
+  scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+}
+html.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.6);
+}
+html.dark .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(203, 213, 225, 0.85);
+}
+
+/* Custom always-visible horizontal scrollbar (rendered by useGlobalScrollbars).
+   Thumb-only style: invisible track, single dark gray rounded pill thumb,
+   matching the reference design. */
+.gsb-rail {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  margin: -3px 0 8px;
+  background: transparent;
+  touch-action: none;
+}
+.gsb-thumb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 9999px;
+  background: #9ca3af;
+  cursor: grab;
+  transition: background-color 0.15s ease;
+  will-change: transform, width;
+}
+.gsb-thumb:hover { background: #6b7280; }
+.gsb-thumb-active,
+.gsb-thumb:active { background: #4b5563; cursor: grabbing; }
+html.dark .gsb-thumb { background: rgba(148, 163, 184, 0.7); }
+html.dark .gsb-thumb:hover { background: rgba(203, 213, 225, 0.85); }
+html.dark .gsb-thumb-active,
+html.dark .gsb-thumb:active { background: rgba(226, 232, 240, 0.95); }
+@media (max-width: 640px) {
+  .gsb-rail { height: 7px; margin: -3px 0 10px; }
+}
 
 .tiptap p.is-editor-empty:first-child::before {
   color: #9ca3af;

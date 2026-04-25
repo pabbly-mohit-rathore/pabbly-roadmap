@@ -66,9 +66,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-57px)] flex items-center justify-center px-4">
+    <div className="min-h-[calc(100vh-57px)] flex items-center justify-center px-3 sm:px-4 py-6">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-5 sm:p-8">
           {/* Icon */}
           <div className="flex justify-center mb-4">
             <div className="w-12 h-12 bg-[#059669] rounded-xl flex items-center justify-center">

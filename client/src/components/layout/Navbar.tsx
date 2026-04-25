@@ -1,12 +1,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MessageSquareText, Eye, Bell, LogOut, Sun, Moon, Settings, ChevronDown, Layout, Check, X, Trash2 } from 'lucide-react';
+import { MessageSquareText, Eye, Bell, LogOut, Sun, Moon, Settings, ChevronDown, Layout, Check, X, Trash2, Menu } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
 import useNotificationStore from '../../store/notificationStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
+import useSidebarStore from '../../store/sidebarStore';
 
 const getTimeAgo = (dateStr: string): string => {
   const s = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -31,6 +32,11 @@ export default function Navbar() {
   const { isAuthenticated, user, logout } = useAuthStore();
   const isTeamAccess = useTeamAccessStore((state) => state.isTeamAccess);
   const showViewToggle = user?.role === 'admin' || isTeamAccess;
+  const toggleSidebar = useSidebarStore((s) => s.toggle);
+  const hasSidebar = isAuthenticated && (
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/user/')
+  );
 
   const parseInvitationId = (data?: string | null): string | null => {
     if (!data) return null;
@@ -91,13 +97,24 @@ export default function Navbar() {
     <nav className={`sticky top-0 z-50 border-b transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Left side — Logo */}
-          <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-emerald-600 rounded-lg flex items-center justify-center">
+          {/* Left side — Hamburger + Logo */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {hasSidebar && (
+              <button
+                onClick={toggleSidebar}
+                className={`md:hidden p-2 -ml-1 rounded-lg transition-colors ${
+                  theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                }`}
+                aria-label="Open menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+            <Link to="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 bg-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <MessageSquareText className="w-5 h-5 text-white" />
               </div>
-              <span className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Pabbly Roadmap</span>
+              <span className={`text-base sm:text-lg font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Pabbly Roadmap</span>
             </Link>
           </div>
 
@@ -107,37 +124,37 @@ export default function Navbar() {
             <div className="flex items-center gap-1">
               {/* Toggle between Admin/User view */}
               {showViewToggle && (
-                <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2">
                   <Link
                     to="/user/roadmap"
-                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+                    className={`flex items-center gap-1.5 px-3 lg:px-4 py-2 text-sm font-medium rounded-lg border transition-colors duration-200 ${
                       !location.pathname.startsWith('/admin')
                         ? 'border-[#059669] text-[#059669]'
                         : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    User View
+                    <span className="hidden md:inline">User View</span>
                   </Link>
                   <Link
                     to="/admin/dashboard"
-                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+                    className={`flex items-center gap-1.5 px-3 lg:px-4 py-2 text-sm font-medium rounded-lg border transition-colors duration-200 ${
                       location.pathname.startsWith('/admin')
                         ? 'border-[#059669] text-[#059669]'
                         : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
                     }`}
                   >
                     <Layout className="w-3.5 h-3.5" />
-                    Dashboard
+                    <span className="hidden md:inline">Dashboard</span>
                   </Link>
                 </div>
               )}
 
               {/* Notifications */}
-              <div className="relative ml-2" ref={notifRef}>
+              <div className="relative ml-1 sm:ml-2" ref={notifRef}>
                 <button
                   onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); if (!notifOpen) fetchNotifications(); }}
-                  className={`relative p-2.5 rounded-lg transition-colors duration-200 ${
+                  className={`relative p-2 sm:p-2.5 rounded-lg transition-colors duration-200 ${
                     theme === 'dark'
                       ? 'text-gray-400 hover:text-white hover:bg-gray-800'
                       : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
@@ -146,14 +163,14 @@ export default function Navbar() {
                 >
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    <span className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
 
                 {notifOpen && (
-                  <div className={`absolute right-0 mt-2 w-[380px] max-h-[480px] rounded-xl shadow-lg border z-50 flex flex-col ${
+                  <div className={`absolute right-0 mt-2 w-[calc(100vw-1rem)] sm:w-[380px] max-w-[380px] max-h-[480px] rounded-xl shadow-lg border z-50 flex flex-col ${
                     theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                   }`}>
                     {/* Header */}
@@ -260,15 +277,15 @@ export default function Navbar() {
               </div>
 
               {/* Profile */}
-              <div className="relative ml-2" ref={profileRef}>
+              <div className="relative ml-1 sm:ml-2" ref={profileRef}>
                 <button
                   onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors duration-200 ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-3 py-1.5 rounded-lg transition-colors duration-200 ${
                     theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
                   }`}
                   title="Profile"
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ${
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 ${
                     theme === 'dark' ? 'bg-gray-700' : 'bg-neutral-200'
                   }`}>
                     {user?.avatar ? (
@@ -281,8 +298,8 @@ export default function Navbar() {
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-col items-start">
-                    <span className={`text-sm font-medium leading-tight ${
+                  <div className="hidden sm:flex flex-col items-start max-w-[120px] lg:max-w-none">
+                    <span className={`text-sm font-medium leading-tight truncate max-w-full ${
                       theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                     }`}>
                       {user?.name}
@@ -295,14 +312,14 @@ export default function Navbar() {
                       </span>
                     )}
                   </div>
-                  <ChevronDown className={`w-4 h-4 ${
+                  <ChevronDown className={`w-4 h-4 hidden sm:block ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                   }`} />
                 </button>
 
                 {/* Dropdown Menu */}
                 {profileOpen && (
-                  <div className={`absolute right-0 mt-2 w-[254px] rounded-xl shadow-lg border z-50 ${
+                  <div className={`absolute right-0 mt-2 w-[calc(100vw-1rem)] sm:w-[254px] max-w-[300px] rounded-xl shadow-lg border z-50 ${
                     theme === 'dark'
                       ? 'bg-gray-800 border-gray-700'
                       : 'bg-white border-gray-200'

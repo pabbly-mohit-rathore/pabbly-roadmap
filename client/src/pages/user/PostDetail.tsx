@@ -414,20 +414,20 @@ export default function UserPostDetail() {
     <UserLayout>
       <div className={`${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
         {/* Content */}
-        <div className="mx-auto px-4 py-6" style={{ maxWidth: 'calc(100% - 207px)' }}>
+        <div className="mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full">
           {loading ? (
           <LoadingBar />
           ) : (
-          <div className="grid grid-cols-[1fr_340px] gap-4 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 items-start">
             {/* Main Content */}
             <div>
                 <>
                   {/* Post Card */}
-                  <div className={`rounded-t-xl border border-b-0 p-6 ${
+                  <div className={`rounded-t-xl border border-b-0 p-4 sm:p-6 ${
                     theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                   }`}>
-                    <div className="flex items-center justify-between">
-                      <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <h1 className={`text-base sm:text-2xl font-bold leading-snug flex-1 min-w-0 break-words ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {post?.title}
                       </h1>
                       <div

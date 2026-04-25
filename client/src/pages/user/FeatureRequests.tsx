@@ -94,6 +94,7 @@ export default function UserFeatureRequests() {
     return () => document.removeEventListener('mousedown', onDown);
   }, [rowsDropOpen]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const [sortBy, setSortBy] = useState<'trending' | 'newest' | 'most-voted'>('newest');
   const tabsRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
@@ -289,16 +290,16 @@ export default function UserFeatureRequests() {
       <style>{`@keyframes slideUpCount { 0% { opacity: 0; transform: translateY(8px) scale(0.85); } 60% { opacity: 1; transform: translateY(-2px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } } @keyframes previewFadeIn { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }`}</style>
       <div>
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
-            <h1 className={`text-2xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>
+            <h1 className={`text-xl sm:text-2xl font-bold mb-1 ${d ? 'text-white' : 'text-gray-900'}`}>
               {boardFilter !== 'all' ? boards.find(b => b.id === boardFilter)?.name || 'All Board Posts' : 'All Board Posts'}
             </h1>
             <p className={`text-sm ${d ? 'text-gray-400' : 'text-gray-500'}`}>
               {boardFilter !== 'all' ? (boards.find(b => b.id === boardFilter)?.description || `${posts.length} posts`) : 'Have something to say? Join the conversation.'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
                 className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
                   showFilters
@@ -320,7 +321,7 @@ export default function UserFeatureRequests() {
         {/* Filters */}
         {showFilters && (
         <div className={`p-4 rounded-lg border mb-4 ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-5">
             <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[180px] max-w-[380px] ${
               d ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
             }`} style={{ padding: '0 14px', height: '48px' }}>
@@ -364,7 +365,7 @@ export default function UserFeatureRequests() {
                 { key: 'most-voted', label: 'Most Voted', icon: CheckCircle2 },
               ] as const).map(({ key, label, icon: SortIcon }) => (
                 <button key={key} onClick={() => { setSortBy(key); setPage(0); }}
-                  className={`flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap ${
                     sortBy === key
                       ? 'border-[#059669] text-[#059669] bg-transparent'
                       : d ? 'border-transparent text-gray-400 hover:bg-gray-700 hover:text-white' : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900'
@@ -381,14 +382,14 @@ export default function UserFeatureRequests() {
         {/* Table */}
         {loading ? <LoadingBar /> : (
           <div className={`rounded-xl border ${d ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div style={{ padding: '24px 24px 16px 24px' }}>
+            <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
               <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>
                 {boardFilter !== 'all' ? (boards.find(b => b.id === boardFilter)?.name || 'All Posts') : 'All Posts'}
               </h2>
             </div>
             <div className={`border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} />
             {/* Type Tabs */}
-            <div className={`relative flex items-end border-b ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ height: '48px', paddingLeft: '24px', gap: '40px' }}>
+            <div className={`relative flex items-end border-b overflow-x-auto ${d ? 'border-gray-700' : 'border-gray-200'}`} style={{ height: '48px', paddingLeft: '16px', paddingRight: '16px', gap: '24px' }}>
               {[
                 { key: 'all', label: 'All', tip: 'View all posts', badgeBg: 'bg-gray-800', badgeText: 'text-white', darkBadgeBg: 'bg-white', darkBadgeText: 'text-gray-900' },
                 { key: 'feature', label: 'Feature', tip: 'View all feature requests', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', darkBadgeBg: 'bg-blue-900/40', darkBadgeText: 'text-blue-300' },
@@ -417,7 +418,8 @@ export default function UserFeatureRequests() {
                 style={{ left: indicatorStyle.left, width: indicatorStyle.width, transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
             </div>
 
-            <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px]" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead>
                 <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
                   {[{ label: 'Upvote', tip: 'Total upvotes received' }, { label: 'Title', tip: 'Title of the post or entry' }, { label: 'Status', tip: 'Current status of the item' }, { label: 'Board', tip: 'Board name this item belongs to' }, { label: 'Type', tip: 'Category type of the item' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
@@ -513,16 +515,26 @@ export default function UserFeatureRequests() {
                           const canAction = isMainAdmin || isOwner;
                           return (
                           <div className="relative inline-block">
-                            <Tooltip title="Click to see options."><button onClick={() => canAction && setOpenMenuId(openMenuId === post.id ? null : post.id)}
+                            <Tooltip title="Click to see options."><button onClick={(e) => {
+                              if (!canAction) return;
+                              if (openMenuId === post.id) { setOpenMenuId(null); setMenuPos(null); return; }
+                              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              const spaceBelow = window.innerHeight - r.bottom;
+                              const right = window.innerWidth - r.right;
+                              setMenuPos(spaceBelow < 200
+                                ? { bottom: window.innerHeight - r.top + 8, right }
+                                : { top: r.bottom + 8, right });
+                              setOpenMenuId(post.id);
+                            }}
                               disabled={!canAction}
                               className={`p-1.5 rounded-lg transition ${canAction ? (d ? 'hover:bg-gray-600' : 'hover:bg-gray-100') : 'opacity-30 cursor-not-allowed'}`}>
                               <MoreVertical className={`w-4 h-4 ${d ? 'text-gray-300' : 'text-gray-600'}`} />
                             </button></Tooltip>
-                            {openMenuId === post.id && (
-                              <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${
+                            {openMenuId === post.id && menuPos && (
+                              <div style={{ minWidth: '160px', top: menuPos.top, bottom: menuPos.bottom, right: menuPos.right }} className={`fixed rounded-xl z-[100] p-1.5 ${
                                 d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'
-                              }`} style={{ minWidth: '160px' }}>
-                                <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
+                              }`}>
+                                <div className={`absolute right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent ${menuPos.bottom !== undefined ? `-bottom-2 border-t-[8px] ${d ? 'border-t-gray-700' : 'border-t-white'}` : `-top-2 border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`}`} />
                                 <div className="relative group/mi1">
                                 <button onClick={() => { openEditModal(post); setOpenMenuId(null); }}
                                   className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
@@ -565,9 +577,10 @@ export default function UserFeatureRequests() {
                 )}
               </tbody>
             </table>
+            </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between px-6 py-3">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-y-6 sm:gap-3 gap-x-3 px-4 sm:px-6 py-3">
               <div className="flex items-center gap-3">
                 <Tooltip title="Toggle compact view."><button onClick={() => setDenseMode(!denseMode)}
                   className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
@@ -601,7 +614,7 @@ export default function UserFeatureRequests() {
                 <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                   {sortedPosts.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, sortedPosts.length)}` : '0–0'} of {sortedPosts.length}
                 </span></Tooltip>
-                <div className="flex gap-1">
+                <div className="flex gap-1 ml-auto">
                   <Tooltip title="Go to the previous page."><button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                     className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                     <ChevronLeft className="w-4 h-4" />
@@ -618,7 +631,7 @@ export default function UserFeatureRequests() {
       </div>
 
       {/* Close overlays */}
-      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
+      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => { setOpenMenuId(null); setMenuPos(null); }} />}
 
       <ConfirmDialog
         open={!!deleteConfirm}

@@ -90,6 +90,7 @@ export default function AdminPostDetail() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [tagMenuOpen, setTagMenuOpen] = useState(false);
+  const [tagMenuPos, setTagMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const [upvotersDialogOpen, setUpvotersDialogOpen] = useState(false);
   const [loading, setLoading] = useState(!post);
   const [commentText, setCommentText] = useState('');
@@ -191,6 +192,7 @@ export default function AdminPostDetail() {
           setPost(prev => prev ? { ...prev, tags: [...(prev.tags || []), { tag }] } : prev);
         }
         setTagMenuOpen(false);
+        setTagMenuPos(null);
         toast.success('Tag assigned');
       }
     } catch { toast.error('Failed to assign tag'); }
@@ -548,20 +550,20 @@ export default function AdminPostDetail() {
   return (
     <div className={`${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
       {/* Content */}
-      <div className="mx-auto px-4 py-6" style={{ maxWidth: 'calc(100% - 207px)' }}>
+      <div className="mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full">
         {loading ? (
           <LoadingBar />
         ) : (
-        <div className="grid grid-cols-[1fr_340px] gap-4 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 items-start">
           {/* Main Content */}
           <div>
               <>
                 {/* Post Card */}
-                <div className={`rounded-t-xl border border-b-0 p-6 ${
+                <div className={`rounded-t-xl border border-b-0 p-4 sm:p-6 ${
                   theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                 }`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <h1 className={`text-base sm:text-2xl font-bold leading-snug flex-1 min-w-0 break-words ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {post?.title}
                     </h1>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -584,13 +586,13 @@ export default function AdminPostDetail() {
                           {votes[post!.id]?.count ?? 0}
                         </span>
                       </div>
-                      {/* Upvoter avatars (admin/team only) */}
+                      {/* Upvoter avatars (admin/team only) — hidden on mobile to free up title width */}
                       {(isMainAdmin || isTeamAccess) && post?.votes && post.votes.length > 0 && (() => {
                         const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
                         const shown = post.votes.slice(0, 3);
                         const extra = post.votes.length - shown.length;
                         return (
-                          <div className="flex -space-x-2">
+                          <div className="hidden sm:flex -space-x-2">
                             {shown.map((v) => {
                               const av = v.user.avatar;
                               const url = av ? (av.startsWith('http') ? av : `${API_BASE}${av}`) : null;
@@ -1103,7 +1105,16 @@ export default function AdminPostDetail() {
                   </div>
                   {!isTeamManager && (
                     <div className="relative shrink-0">
-                      <Tooltip title="Click to add a tag."><button onClick={() => setTagMenuOpen((v) => !v)}
+                      <Tooltip title="Click to add a tag."><button onClick={(e) => {
+                        if (tagMenuOpen) { setTagMenuOpen(false); setTagMenuPos(null); return; }
+                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        const spaceBelow = window.innerHeight - r.bottom;
+                        const right = window.innerWidth - r.right;
+                        setTagMenuPos(spaceBelow < 260
+                          ? { bottom: window.innerHeight - r.top + 8, right }
+                          : { top: r.bottom + 8, right });
+                        setTagMenuOpen(true);
+                      }}
                         className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition-colors ${
                           tagMenuOpen
                             ? 'border-[#059669] text-[#059669] bg-emerald-50'
@@ -1111,10 +1122,10 @@ export default function AdminPostDetail() {
                         }`}>
                         <Plus className="w-4 h-4" />
                       </button></Tooltip>
-                      {tagMenuOpen && (
+                      {tagMenuOpen && tagMenuPos && (
                         <>
-                          <div className="fixed inset-0 z-40" onClick={() => setTagMenuOpen(false)} />
-                          <div className={`absolute right-0 top-full mt-1 rounded-lg border shadow-xl p-1 z-50 max-h-[240px] overflow-y-auto ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '220px' }}>
+                          <div className="fixed inset-0 z-40" onClick={() => { setTagMenuOpen(false); setTagMenuPos(null); }} />
+                          <div className={`fixed rounded-lg border shadow-xl p-1 z-[100] max-h-[240px] overflow-y-auto ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`} style={{ minWidth: '220px', top: tagMenuPos.top, bottom: tagMenuPos.bottom, right: tagMenuPos.right }}>
                             {(() => {
                               const assignedIds = new Set((post?.tags || []).map((t) => t.tag.id));
                               const unassigned = availableTags.filter((t) => !assignedIds.has(t.id));

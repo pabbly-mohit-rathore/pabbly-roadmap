@@ -355,25 +355,25 @@ export default function PostEditor() {
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
       {/* Top Bar */}
-      <div className={`flex items-center justify-between px-6 py-3 border-b shrink-0 ${
+      <div className={`flex flex-wrap items-center justify-between gap-2 px-3 sm:px-6 py-3 border-b shrink-0 ${
         theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
       }`}>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <Tooltip title="Click here to go back."><button onClick={() => navigate(backPath)}
             className={`flex items-center gap-1 text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             <ChevronLeft className="w-4 h-4" /> Back
           </button></Tooltip>
           {post && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {post.isDraft && <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-100 text-yellow-700">Draft</span>}
               <span className={`px-2 py-0.5 rounded text-xs font-bold capitalize ${getTypeBadge(post.type)}`}>{post.type}</span>
-              <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>in {post.board.name}</span>
+              <span className={`text-xs hidden sm:inline ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>in {post.board.name}</span>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {lastSaved && (
-            <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+            <span className={`hidden sm:inline text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
               Auto-saved {lastSaved}
             </span>
           )}
@@ -391,8 +391,8 @@ export default function PostEditor() {
       </div>
 
       {/* Content Area */}
-      <div className={`flex-1 overflow-y-auto p-6 ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#f5f5f5]'}`}>
-        <div className="flex gap-6 h-full">
+      <div className={`flex-1 overflow-y-auto p-3 sm:p-6 ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#f5f5f5]'}`}>
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full">
           {/* Left: Editor Card */}
           <div className="flex-1 flex flex-col min-w-0 overflow-visible">
             {/* Title & Description */}

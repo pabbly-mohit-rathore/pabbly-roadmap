@@ -120,10 +120,10 @@ export default function RoadmapPage() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950' : 'bg-[#fafafa]'}`}>
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className={`text-4xl font-bold mb-2 ${
+          <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
             Roadmap
@@ -146,10 +146,10 @@ export default function RoadmapPage() {
         </div>
 
         {/* Kanban Board */}
-        <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 230px)' }}>
-          <div className="grid gap-4 h-full" style={{
-            gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
-            height: '100%',
+        <div className="overflow-x-auto pb-4" style={{ minHeight: '60vh' }}>
+          <div className="grid gap-3 sm:gap-4" style={{
+            gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(220px, 1fr))`,
+            minHeight: '60vh',
           }}>
             {STATUS_ORDER.map((status) => {
               const filteredPosts = getFilteredPosts(status);

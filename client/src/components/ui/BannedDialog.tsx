@@ -32,7 +32,7 @@ export default function BannedDialog() {
         {/* Red header bar */}
         <div className="h-1.5 bg-red-500" />
 
-        <div className="p-8 text-center">
+        <div className="p-5 sm:p-8 text-center">
           {/* Icon */}
           <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-5">
             <ShieldX className="w-8 h-8 text-red-500" />

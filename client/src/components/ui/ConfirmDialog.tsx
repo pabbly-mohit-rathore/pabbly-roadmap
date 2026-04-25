@@ -28,10 +28,10 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'De
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onCancel}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-3 sm:p-4" onClick={onCancel}>
       <div className={`rounded-xl w-full shadow-xl ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '500px' }}
         onClick={(e) => e.stopPropagation()}>
-        <div style={{ padding: '28px' }}>
+        <div className="p-5 sm:p-7">
           <div className="flex items-center gap-4 mb-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${d ? 'bg-red-900/30' : 'bg-red-50'}`}>
               <AlertTriangle className="w-5 h-5 text-red-500" />

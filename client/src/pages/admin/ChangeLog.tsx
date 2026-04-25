@@ -43,6 +43,7 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
   const [filterType, setFilterType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -329,15 +330,24 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
                     </td>
                     <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }} onClick={(e) => e.stopPropagation()}>
                       <div className="relative inline-block">
-                        <Tooltip title="Click to see options."><button onClick={() => setOpenMenuId(openMenuId === entry.id ? null : entry.id)}
+                        <Tooltip title="Click to see options."><button onClick={(e) => {
+                          if (openMenuId === entry.id) { setOpenMenuId(null); setMenuPos(null); return; }
+                          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          const spaceBelow = window.innerHeight - r.bottom;
+                          const right = window.innerWidth - r.right;
+                          setMenuPos(spaceBelow < 200
+                            ? { bottom: window.innerHeight - r.top + 8, right }
+                            : { top: r.bottom + 8, right });
+                          setOpenMenuId(entry.id);
+                        }}
                           className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
                           <MoreVertical className="w-4 h-4 text-gray-400" />
                         </button></Tooltip>
-                        {openMenuId === entry.id && (
-                          <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${
+                        {openMenuId === entry.id && menuPos && (
+                          <div style={{ minWidth: '160px', top: menuPos.top, bottom: menuPos.bottom, right: menuPos.right }} className={`fixed rounded-xl z-[100] p-1.5 ${
                             d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'
-                          }`} style={{ minWidth: '160px' }}>
-                            <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
+                          }`}>
+                            <div className={`absolute right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent ${menuPos.bottom !== undefined ? `-bottom-2 border-t-[8px] ${d ? 'border-t-gray-700' : 'border-t-white'}` : `-top-2 border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`}`} />
                             <div className="relative group/mi1">
                                 <button onClick={() => { navigate(`/admin/changelog/${entry.id}/edit`); setOpenMenuId(null); }}
                               className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
@@ -447,7 +457,7 @@ export default function AdminChangeLog({ triggerCreate }: { triggerCreate?: numb
       )}
 
       {/* Close menu on click outside */}
-      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
+      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => { setOpenMenuId(null); setMenuPos(null); }} />}
 
       <ConfirmDialog
         open={!!deleteConfirm}

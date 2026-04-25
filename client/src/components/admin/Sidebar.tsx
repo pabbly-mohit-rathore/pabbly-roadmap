@@ -1,5 +1,5 @@
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { LayoutDashboard, Settings, User, Bell, Lock, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, Settings, User, Bell, Lock, Settings as SettingsIcon, Eye, Layout } from 'lucide-react';
 import { Icon } from '@iconify/react';
 
 function RoadmapIcon({ className }: { className?: string }) {
@@ -12,6 +12,7 @@ function AllPostsIcon({ className }: { className?: string }) {
 import useThemeStore from '../../store/themeStore';
 import useTeamAccessStore from '../../store/teamAccessStore';
 import useAuthStore from '../../store/authStore';
+import useSidebarStore from '../../store/sidebarStore';
 
 export default function AdminSidebar() {
   const location = useLocation();
@@ -19,9 +20,12 @@ export default function AdminSidebar() {
   const theme = useThemeStore((state) => state.theme);
   const { isTeamAccess } = useTeamAccessStore();
   const { user } = useAuthStore();
+  const mobileOpen = useSidebarStore((s) => s.mobileOpen);
 
   const isRealAdmin = user?.role === 'admin';
   const isTeamMember = isTeamAccess && !isRealAdmin;
+  const showViewToggle = isRealAdmin || isTeamAccess;
+  const onAdminRoute = location.pathname.startsWith('/admin');
   const isProfileSettings = location.pathname.startsWith('/admin/profile-settings');
 
   // Profile settings tabs
@@ -75,12 +79,43 @@ export default function AdminSidebar() {
 
   return (
     <aside
-      className={`fixed left-0 z-40 border-r transition-colors overflow-y-auto ${
-        theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'
-      }`}
+      className={`fixed left-0 z-40 border-r overflow-y-auto transition-transform duration-200 md:translate-x-0 ${
+        mobileOpen ? 'translate-x-0' : '-translate-x-full'
+      } ${theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'}`}
       style={{ width: '207px', top: '64px', height: 'calc(100vh - 64px)' }}
     >
       <div className={`h-px w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`} />
+
+      {/* View Toggle (mobile only) — switches between Admin and User view */}
+      {showViewToggle && (
+        <div className={`md:hidden p-3 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 px-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>View</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              to="/admin/dashboard"
+              className={`flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                onAdminRoute
+                  ? 'border-[#059669] text-[#059669]'
+                  : theme === 'dark' ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-600'
+              }`}
+            >
+              <Layout className="w-3.5 h-3.5" />
+              Admin
+            </Link>
+            <Link
+              to="/user/roadmap"
+              className={`flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                !onAdminRoute
+                  ? 'border-[#059669] text-[#059669]'
+                  : theme === 'dark' ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-600'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              User
+            </Link>
+          </div>
+        </div>
+      )}
 
       <nav className="p-3">
         <ul className="space-y-1">

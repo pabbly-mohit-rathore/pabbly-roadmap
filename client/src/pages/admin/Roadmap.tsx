@@ -221,21 +221,21 @@ export default function AdminRoadmap() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className={`text-2xl font-bold mb-2 ${
+          <h1 className={`text-xl sm:text-2xl font-bold mb-1 sm:mb-2 ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
             Roadmap
           </h1>
-          <p className={`text-base ${
+          <p className={`text-sm sm:text-base ${
             theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
           }`}>
             View your product roadmap by status
           </p>
         </div>
         <Tooltip title="Click here to toggle filters."><button onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+          className={`flex items-center gap-1.5 px-4 text-sm font-medium rounded-lg border transition-colors duration-200 self-start ${
             showFilters
               ? 'border-[#059669] text-[#059669]'
               : theme === 'dark' ? 'border-gray-700 text-gray-400 hover:border-[#059669] hover:text-[#059669]' : 'border-gray-200 text-gray-600 hover:border-[#059669] hover:text-[#059669]'
@@ -248,12 +248,12 @@ export default function AdminRoadmap() {
 
       {/* Filter Bar */}
       {showFilters && (
-      <div className={`p-4 rounded-lg border mb-4 ${
+      <div className={`p-4 rounded-lg border mb-6 ${
         theme === 'dark'
           ? 'bg-gray-800 border-gray-700'
           : 'bg-white border-gray-200'
       }`}>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-5">
           {/* Search */}
           <div className={`flex items-center gap-2 rounded-lg border flex-1 min-w-[200px] max-w-[380px] ${
             theme === 'dark'
@@ -311,8 +311,8 @@ export default function AdminRoadmap() {
         <LoadingBar />
       ) : (
         <div className="overflow-x-auto pb-4" style={{ height: showFilters ? 'calc(100vh - 300px)' : 'calc(100vh - 210px)' }}>
-          <div className="grid gap-4 h-full" style={{
-            gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(260px, 1fr))`,
+          <div className="grid gap-3 sm:gap-4 h-full" style={{
+            gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(220px, 1fr))`,
             height: '100%',
           }}>
             {STATUS_ORDER.map((status) => {

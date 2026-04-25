@@ -189,7 +189,7 @@ export default function AdminReporting({ showFilters = false }: { showFilters?: 
       )}
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         {activity && (
           <>
             <StatCard label="Posts" count={activity.posts.count} change={activity.posts.change} />
@@ -200,7 +200,7 @@ export default function AdminReporting({ showFilters = false }: { showFilters?: 
       </div>
 
       {/* 2 Cards: Posts Overview (donut) + Status Pipeline */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-6">
         {/* Posts Overview - Donut Chart */}
         <div className={`p-5 rounded-lg border flex flex-col ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Posts Overview</h2>
@@ -251,12 +251,12 @@ export default function AdminReporting({ showFilters = false }: { showFilters?: 
             {/* Board Legend */}
             <div className="space-y-4">
               {boardData.boards.slice(0, 5).map((board, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'][index % 8] }} />
+                <div key={index} className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="w-3.5 h-3.5 rounded-full shrink-0 mt-1" style={{ backgroundColor: ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'][index % 8] }} />
                     <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{board.name}</span>
                   </div>
-                  <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{board.count}</span>
+                  <span className={`text-sm font-bold shrink-0 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{board.count}</span>
                 </div>
               ))}
             </div>
@@ -346,7 +346,8 @@ export default function AdminReporting({ showFilters = false }: { showFilters?: 
         <div style={{ padding: '24px 24px 16px 24px' }}>
           <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>Activity Log</h2>
         </div>
-        <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px]" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <thead>
             <tr className={theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
               {[
@@ -414,9 +415,9 @@ export default function AdminReporting({ showFilters = false }: { showFilters?: 
             )}
           </tbody>
         </table>
+        </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-6 py-3">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-y-6 sm:gap-3 gap-x-3 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
             <button onClick={() => setLogDenseMode(!logDenseMode)}
               className={`relative w-9 h-5 rounded-full transition-colors ${logDenseMode ? 'bg-[#059669]' : (theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300')}`}>
@@ -448,7 +449,7 @@ export default function AdminReporting({ showFilters = false }: { showFilters?: 
             <UITooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               {logTotal > 0 ? `${logPage * logRowsPerPage + 1}–${Math.min((logPage + 1) * logRowsPerPage, logTotal)}` : '0–0'} of {logTotal}
             </span></UITooltip>
-            <div className="flex gap-1">
+            <div className="flex gap-1 ml-auto">
               <button onClick={() => setLogPage(Math.max(0, logPage - 1))} disabled={logPage === 0}
                 className={`p-1.5 rounded transition disabled:opacity-30 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                 <ChevronLeft className="w-4 h-4" />

@@ -59,6 +59,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [rowsDropOpen, setRowsDropOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const handleCreateBoard = async () => {
@@ -173,7 +174,8 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
             <h2 className={`font-bold ${d ? 'text-white' : 'text-gray-900'}`} style={{ fontSize: '18px' }}>All Boards</h2>
           </div>
 
-          <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px]" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
                 {[{ label: 'S.No', tip: 'Serial number of the row' }, { label: 'Board', tip: 'Board name this item belongs to' }, { label: 'Description', tip: 'Short description of the item' }, { label: 'Created At', tip: 'Date when this item was created' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
@@ -192,7 +194,6 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
               {paginatedBoards.length > 0 ? paginatedBoards.map((board, idx) => {
                 const boardColor = board.color || '#6366f1';
                 const initial = board.name?.charAt(0).toUpperCase();
-                const isLastRows = idx >= paginatedBoards.length - 2 && paginatedBoards.length > 2;
                 return (
                   <tr key={board.id}
                     className={`border-b border-dashed transition-colors cursor-pointer ${d ? 'border-gray-700 hover:bg-gray-700/40' : 'border-gray-200 hover:bg-gray-50'}`}
@@ -226,13 +227,23 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
                     {/* Actions */}
                     <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }}>
                       <div className="relative inline-block">
-                        <Tooltip title="Click to see options."><button onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === board.id ? null : board.id); }}
+                        <Tooltip title="Click to see options."><button onClick={(e) => {
+                          e.stopPropagation();
+                          if (openMenuId === board.id) { setOpenMenuId(null); setMenuPos(null); return; }
+                          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          const spaceBelow = window.innerHeight - r.bottom;
+                          const right = window.innerWidth - r.right;
+                          setMenuPos(spaceBelow < 200
+                            ? { bottom: window.innerHeight - r.top + 8, right }
+                            : { top: r.bottom + 8, right });
+                          setOpenMenuId(board.id);
+                        }}
                           className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
                           <MoreVertical className="w-4 h-4 text-gray-400" />
                         </button></Tooltip>
-                        {openMenuId === board.id && (
-                          <div className={`absolute right-0 ${isLastRows ? 'bottom-full mb-3' : 'top-full mt-3'} rounded-xl z-50 p-1.5 ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px' }}>
-                            <div className={`absolute ${isLastRows ? '-bottom-2 border-t-[8px] border-l-[8px] border-r-[8px] border-l-transparent border-r-transparent' : '-top-2 border-b-[8px] border-l-[8px] border-r-[8px] border-l-transparent border-r-transparent'} right-[10px] w-0 h-0 ${isLastRows ? (d ? 'border-t-gray-700' : 'border-t-white') : (d ? 'border-b-gray-700' : 'border-b-white')}`} />
+                        {openMenuId === board.id && menuPos && (
+                          <div className={`fixed rounded-xl z-[100] p-1.5 ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px', top: menuPos.top, bottom: menuPos.bottom, right: menuPos.right }}>
+                            <div className={`absolute right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent ${menuPos.bottom !== undefined ? `-bottom-2 border-t-[8px] ${d ? 'border-t-gray-700' : 'border-t-white'}` : `-top-2 border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`}`} />
                             <div className="relative group/mi1">
                                 <button onClick={(e) => { e.stopPropagation(); openEditModal(board); setOpenMenuId(null); }}
                               className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${d ? 'hover:bg-gray-600 text-gray-200' : 'hover:bg-gray-50 text-gray-800'}`}>
@@ -278,9 +289,10 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
               )}
             </tbody>
           </table>
+          </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between px-6 py-3">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-y-6 sm:gap-3 gap-x-3 px-4 sm:px-6 py-3">
             <div className="flex items-center gap-3">
               <Tooltip title="Toggle compact view."><button onClick={() => setDenseMode(!denseMode)}
                 className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
@@ -312,7 +324,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
               <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                 {boards.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, boards.length)}` : '0–0'} of {boards.length}
               </span></Tooltip>
-              <div className="flex gap-1">
+              <div className="flex gap-1 ml-auto">
                 <Tooltip title="Go to the previous page."><button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                   className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                   <ChevronLeft className="w-4 h-4" />
@@ -328,7 +340,7 @@ export default function AdminBoards({ triggerCreate }: { triggerCreate?: number 
         </div>
       )}
 
-      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
+      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => { setOpenMenuId(null); setMenuPos(null); }} />}
 
       <ConfirmDialog
         open={!!deleteConfirm}

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Copy, Sparkles, Settings as SettingsIcon, ChevronDown, Info, Filter } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import useThemeStore from '../../store/themeStore';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -216,22 +217,29 @@ export default function EmbedWidgetEditor() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <input type="text" value={widget.name} onChange={(e) => update({ name: e.target.value })}
-            className={`text-2xl font-bold mb-2 bg-transparent border-none outline-none p-0 ${d ? 'text-white' : 'text-gray-900'}`}
-            style={{ width: `${Math.max(240, widget.name.length * 14)}px` }} />
-          <p className={`text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>Customize this widget and grab the embed code.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => navigate('/admin/settings?tab=embed-widgets')}
+              aria-label="Back"
+              className={`sm:hidden flex-shrink-0 p-1 -ml-1 rounded-lg transition-colors ${d ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'}`}>
+              <Icon icon="famicons:chevron-back-outline" width={18} height={18} />
+            </button>
+            <input type="text" value={widget.name} onChange={(e) => update({ name: e.target.value })}
+              className={`text-xl sm:text-2xl font-bold mb-1 sm:mb-2 bg-transparent border-none outline-none p-0 w-full ${d ? 'text-white' : 'text-gray-900'}`} />
+          </div>
+          <p className={`text-sm sm:text-base ${d ? 'text-gray-400' : 'text-gray-500'}`}>Customize this widget and grab the embed code.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
           <LoadingButton onClick={handleTest} loading={testing}
             style={{ padding: '10px 18px', fontSize: '14px' }}
-            className={`flex items-center gap-2 rounded-lg border font-medium transition ${d ? 'border-gray-700 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+            className={`flex items-center gap-2 rounded-lg border font-medium transition whitespace-nowrap ${d ? 'border-gray-700 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
             <Sparkles className="w-4 h-4" />
             Test Widget
           </LoadingButton>
           <LoadingButton onClick={handleSave} loading={saving}
-            className="flex items-center gap-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition font-medium"
+            className="flex items-center gap-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857] transition font-medium whitespace-nowrap"
             style={{ padding: '10px 18px', fontSize: '14px' }}>
             Save Changes
           </LoadingButton>
@@ -239,7 +247,7 @@ export default function EmbedWidgetEditor() {
       </div>
 
       {/* Two-column layout: Left = settings, Right = embed + preview trigger */}
-      <div className="grid gap-6" style={{ gridTemplateColumns: '1.1fr 1fr' }}>
+      <div className="grid gap-4 lg:gap-6 grid-cols-1 lg:grid-cols-[1.1fr_1fr]">
         {/* LEFT — settings */}
         <div className="space-y-4">
           {/* Appearance section */}

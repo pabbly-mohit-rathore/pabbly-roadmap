@@ -23,6 +23,7 @@ export default function AdminUsers({ showFilters = false }: { showFilters?: bool
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [copiedField, setCopiedField] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [denseMode, setDenseMode] = useState(false);
@@ -122,7 +123,8 @@ export default function AdminUsers({ showFilters = false }: { showFilters?: bool
               style={{ left: indicatorStyle.left, width: indicatorStyle.width, transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
           </div>
 
-          <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[1000px]" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr className={d ? 'bg-gray-700/50' : 'bg-gray-50'} style={{ height: '56.5px' }}>
                 {[{ label: 'User', tip: 'User name and email' }, { label: 'Role', tip: 'User role in the system' }, { label: 'Posts', tip: 'Total posts created by the user' }, { label: 'Votes', tip: 'Total votes cast by the user' }, { label: 'Boards', tip: 'Boards associated with this item' }, { label: 'Status', tip: 'Current status of the item' }, { label: 'Created', tip: 'Date when this item was created' }, { label: 'Actions', tip: 'Available actions for this item' }].map((h, i) => (
@@ -174,13 +176,22 @@ export default function AdminUsers({ showFilters = false }: { showFilters?: bool
                   <td className={`${denseMode ? 'py-1.5' : 'py-4'} text-right`} style={{ paddingRight: '16px' }} onClick={(e) => e.stopPropagation()}>
                     {user.role !== 'admin' && (
                       <div className="relative inline-block">
-                        <Tooltip title="Click to see options."><button onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                        <Tooltip title="Click to see options."><button onClick={(e) => {
+                          if (openMenuId === user.id) { setOpenMenuId(null); setMenuPos(null); return; }
+                          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          const spaceBelow = window.innerHeight - r.bottom;
+                          const right = window.innerWidth - r.right;
+                          setMenuPos(spaceBelow < 200
+                            ? { bottom: window.innerHeight - r.top + 8, right }
+                            : { top: r.bottom + 8, right });
+                          setOpenMenuId(user.id);
+                        }}
                           className={`p-1.5 rounded-lg transition ${d ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}>
                           <MoreVertical className="w-4 h-4 text-gray-400" />
                         </button></Tooltip>
-                        {openMenuId === user.id && (
-                          <div className={`absolute right-0 top-full mt-3 rounded-xl z-50 p-1.5 ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px' }}>
-                            <div className={`absolute -top-2 right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`} />
+                        {openMenuId === user.id && menuPos && (
+                          <div className={`fixed rounded-xl z-[100] p-1.5 ${d ? 'bg-gray-700 shadow-xl shadow-black/30' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)]'}`} style={{ minWidth: '160px', top: menuPos.top, bottom: menuPos.bottom, right: menuPos.right }}>
+                            <div className={`absolute right-[10px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent ${menuPos.bottom !== undefined ? `-bottom-2 border-t-[8px] ${d ? 'border-t-gray-700' : 'border-t-white'}` : `-top-2 border-b-[8px] ${d ? 'border-b-gray-700' : 'border-b-white'}`}`} />
                             <div className="relative group/mi1">
                                 <button onClick={() => { handleBanUser(user.id, user.isActive ? 'ban' : 'unban'); setOpenMenuId(null); }}
                               className={`w-full px-3 py-2 text-left text-[14px] font-medium flex items-center gap-3 transition-colors rounded-lg ${
@@ -213,9 +224,10 @@ export default function AdminUsers({ showFilters = false }: { showFilters?: bool
               )}
             </tbody>
           </table>
+          </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between px-6 py-3">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-y-6 sm:gap-3 gap-x-3 px-4 sm:px-6 py-3">
             <div className="flex items-center gap-3">
               <Tooltip title="Toggle compact view."><button onClick={() => setDenseMode(!denseMode)}
                 className={`relative w-9 h-5 rounded-full transition-colors ${denseMode ? 'bg-[#059669]' : (d ? 'bg-gray-600' : 'bg-gray-300')}`}>
@@ -247,7 +259,7 @@ export default function AdminUsers({ showFilters = false }: { showFilters?: bool
               <Tooltip title="Shows the current range of rows being displayed and the total number of rows."><span className={`text-sm ${d ? 'text-gray-400' : 'text-gray-600'}`}>
                 {filteredUsers.length > 0 ? `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, filteredUsers.length)}` : '0–0'} of {filteredUsers.length}
               </span></Tooltip>
-              <div className="flex gap-1">
+              <div className="flex gap-1 ml-auto">
                 <Tooltip title="Go to the previous page."><button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
                   className={`p-1.5 rounded transition disabled:opacity-30 ${d ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
                   <ChevronLeft className="w-4 h-4" />
@@ -263,7 +275,7 @@ export default function AdminUsers({ showFilters = false }: { showFilters?: bool
         </div>
       )}
 
-      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
+      {openMenuId && <div className="fixed inset-0 z-40" onClick={() => { setOpenMenuId(null); setMenuPos(null); }} />}
 
       {/* User Detail Drawer */}
       {selectedUser && (

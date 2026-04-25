@@ -59,10 +59,10 @@ export default function StatusReasonDialog({ open, status, onConfirm, onCancel, 
   const canSubmit = plainTextLength(reasonHtml) >= 3 && !loading;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onCancel}>
-      <div className={`rounded-xl w-full shadow-xl ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-3 sm:p-4" onClick={onCancel}>
+      <div className={`rounded-xl w-full shadow-xl max-h-[95vh] overflow-y-auto ${d ? 'bg-gray-900' : 'bg-white'}`} style={{ maxWidth: '600px' }}
         onClick={(e) => e.stopPropagation()}>
-        <div style={{ padding: '28px' }}>
+        <div className="p-5 sm:p-7">
           <div className="flex items-start gap-4 mb-4">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconWrapBg}`}>
               <Icon className={`w-5 h-5 ${iconColor}`} />
